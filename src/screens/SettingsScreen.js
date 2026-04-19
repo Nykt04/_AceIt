@@ -8,28 +8,38 @@ import {
   ScrollView,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
+  const { signOut, user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(true);
   const [offlineMode, setOfflineMode] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Logout',
         style: 'destructive',
-        onPress: () => {
-          Alert.alert('Success', 'Logged out successfully!');
-          navigation.navigate('Home');
+        onPress: async () => {
+          setLogoutLoading(true);
+          try {
+            await signOut();
+            // Navigation will happen automatically when auth state changes
+          } catch (error) {
+            Alert.alert('Error', error.message || 'Failed to logout');
+            setLogoutLoading(false);
+          }
         },
       },
     ]);
@@ -72,13 +82,13 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Account</Text>
           <TouchableOpacity
             style={styles.settingItem}
-            onPress={() => Alert.alert('Profile', 'Your profile: user@example.com')}
+            onPress={() => Alert.alert('Profile', `Email: ${user?.email || 'N/A'}`)}
             activeOpacity={0.7}
           >
             <SettingRow
               icon=""
               title="Profile"
-              description="View and edit your profile"
+              description={user?.email || 'View your profile'}
             />
           </TouchableOpacity>
           <TouchableOpacity

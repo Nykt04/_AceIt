@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StudyProvider } from './src/context/StudyContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import HomeScreen from './src/screens/HomeScreen';
 import CreateSetScreen from './src/screens/CreateSetScreen';
 import SetDetailScreen from './src/screens/SetDetailScreen';
@@ -20,9 +21,25 @@ const NAVIGATION_STATE_KEY = '@aceit_navigation_state_v1';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
-  const [isReady, setIsReady] = useState(false);
+// Auth Stack - shown when user is not authenticated
+function AuthStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: '#0f172a' },
+        animation: 'slide_from_right',
+      }}
+    >
+      <Stack.Screen name="LoginSignup" component={LoginSignupScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// App Stack - shown when user is authenticated
+function AppStack() {
   const [initialState, setInitialState] = useState(undefined);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -53,39 +70,61 @@ export default function App() {
   }
 
   return (
-    <StudyProvider>
-      <NavigationContainer
-        initialState={initialState}
-        onStateChange={async (state) => {
-          try {
-            await AsyncStorage.setItem(NAVIGATION_STATE_KEY, JSON.stringify(state));
-          } catch (e) {
-            console.warn('Failed to save navigation state', e);
-          }
+    <NavigationContainer
+      initialState={initialState}
+      onStateChange={async (state) => {
+        try {
+          await AsyncStorage.setItem(NAVIGATION_STATE_KEY, JSON.stringify(state));
+        } catch (e) {
+          console.warn('Failed to save navigation state', e);
+        }
+      }}
+    >
+      <StatusBar style="light" />
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#0f172a' },
+          animation: 'slide_from_right',
         }}
       >
-        <StatusBar style="light" />
-        <Stack.Navigator
-          initialRouteName="Home"
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: '#0f172a' },
-            animation: 'slide_from_right',
-          }}
-        >
-          <Stack.Screen name="About" component={AboutScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="CreateSet" component={CreateSetScreen} />
-          <Stack.Screen name="SetDetail" component={SetDetailScreen} />
-          <Stack.Screen name="QuizSettings" component={QuizSettingsScreen} />
-          <Stack.Screen name="Study" component={StudyScreen} />
-          <Stack.Screen name="AIGenerate" component={AIGenerateScreen} />
-          <Stack.Screen name="FileUploadQuestions" component={FileUploadQuestionsScreen} />
-          <Stack.Screen name="LoginSignup" component={LoginSignupScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </StudyProvider>
+        <Stack.Screen name="About" component={AboutScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="CreateSet" component={CreateSetScreen} />
+        <Stack.Screen name="SetDetail" component={SetDetailScreen} />
+        <Stack.Screen name="QuizSettings" component={QuizSettingsScreen} />
+        <Stack.Screen name="Study" component={StudyScreen} />
+        <Stack.Screen name="AIGenerate" component={AIGenerateScreen} />
+        <Stack.Screen name="FileUploadQuestions" component={FileUploadQuestionsScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+// Root Navigator - conditionally shows Auth or App stack
+function RootNavigator() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={styles.boot}>
+        <ActivityIndicator size="large" color="#6366f1" />
+      </View>
+    );
+  }
+
+  return isAuthenticated ? <AppStack /> : <AuthStack />;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <StudyProvider>
+        <RootNavigator />
+      </StudyProvider>
+    </AuthProvider>
   );
 }
 

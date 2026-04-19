@@ -15,6 +15,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import { signIn, signUp } from '../services/authService';
 
 export default function LoginSignupScreen() {
   const navigation = useNavigation();
@@ -61,17 +62,31 @@ export default function LoginSignupScreen() {
     ]).start();
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      Alert.alert('Success', isLogin ? 'Logged in successfully!' : 'Account created successfully!');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      setName('');
-      // Navigate to Home
-      navigation.navigate('Home');
+      let result;
+      
+      if (isLogin) {
+        result = await signIn(email, password);
+      } else {
+        result = await signUp(email, password, name);
+      }
+
+      if (result.error) {
+        Alert.alert('Error', result.error);
+      } else {
+        if (isLogin) {
+          Alert.alert('Success', 'Signed in successfully!');
+        } else {
+          Alert.alert('Success', 'Account created! Please check your email to confirm.');
+        }
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setName('');
+        // Navigate to Home after successful auth
+        navigation.navigate('Home');
+      }
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Try again.');
+      Alert.alert('Error', error.message || 'Something went wrong. Try again.');
     } finally {
       setLoading(false);
     }
