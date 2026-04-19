@@ -1,0 +1,82 @@
+flowchart LR
+    Start([App Start])
+    Init["Init StudyContext & load user data"]
+    Auth{Authenticated?}
+    Login[LoginSignupScreen]
+    Home[HomeScreen]
+
+    subgraph UserActions[User Actions]
+      ViewSet["Open Set (SetDetailScreen)"]
+      CreateSet["Create Set"]
+      GenerateAI["AIGenerateScreen"]
+      UploadFile["FileUploadQuestionsScreen"]
+      OpenQuiz["Open QuizSettings"]
+      StudySession["StudySession / StudyScreen"]
+    end
+
+    subgraph Services[Services]
+      Storage[storageService]
+      AIService[aiService]
+    end
+
+    subgraph Context[Context]
+      StudyCtx["StudyContext"]
+    end
+
+    Start --> Init
+    Init --> Auth
+    Auth -- No --> Login
+    Login -->|on success| Init
+    Auth -- Yes --> Home
+
+    Home --> ViewSet
+    Home --> CreateSet
+    Home --> GenerateAI
+    Home --> UploadFile
+    Home --> OpenQuiz
+
+    %% Create flow: CreateSet -> save -> update context -> view
+    CreateSet -->|fill form| SaveCreate[Save set]
+    SaveCreate -->|calls| Storage
+    Storage -->|returns set id| ViewSet
+    SaveCreate -->|update| StudyCtx
+
+    %% AI flow: request generation -> save -> update
+    GenerateAI -->|request generate| AIReq["aiService.generate()"]
+    AIReq --> AIService
+    AIService -->|questions| SaveAI[Save generated set]
+    SaveAI --> Storage
+    SaveAI --> StudyCtx
+    Storage --> ViewSet
+
+    %% Upload flow
+    UploadFile -->|parse file| ParseFile["parse -> questions list"]
+    ParseFile --> SaveUpload[Save uploaded set]
+    SaveUpload --> Storage
+    SaveUpload --> StudyCtx
+    Storage --> ViewSet
+
+    %% Quiz flow
+    ViewSet --> OpenQuiz
+    OpenQuiz -->|set options| StartQuiz[Start Quiz]
+    StartQuiz --> StudySession
+    StudySession -->|progress| SaveProgress[Save progress]
+    SaveProgress --> Storage
+    SaveProgress --> StudyCtx
+
+    %% context usage: components read/update shared state
+    Home -.-> StudyCtx
+    ViewSet -.-> StudyCtx
+    CreateSet -.-> StudyCtx
+    GenerateAI -.-> StudyCtx
+    UploadFile -.-> StudyCtx
+    OpenQuiz -.-> StudyCtx
+    StudySession -.-> StudyCtx
+
+    %% services clickable
+    click Storage href "src/services/storageService.js" "Open storageService"
+    click AIService href "src/services/aiService.js" "Open aiService"
+    click StudyCtx href "src/context/StudyContext.js" "Open StudyContext"
+
+    classDef svc fill:#f9f,stroke:#333,stroke-width:1px;
+    class Storage,AIService svc;
