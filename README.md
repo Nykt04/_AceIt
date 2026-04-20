@@ -1,6 +1,6 @@
 # AceIt – Quizlet-style mobile app
 
-A React Native (Expo) mobile app to create study sets, flashcards, and quizzes with **AI-generated questions** (multiple choice and true/false).
+A Progressive Web Application to create study sets, flashcards, and quizzes with **AI-generated questions** (multiple choice and true/false).
 
 ## Features
 
