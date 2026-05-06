@@ -24,7 +24,7 @@ import Sidebar from '../components/Sidebar';
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { signOut, user } = useAuth();
-  const { theme, isDarkMode, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -274,17 +274,6 @@ export default function SettingsScreen() {
         {/* Preferences Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>Preferences</Text>
-          <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-            <SettingRow
-              icon=""
-              title="Dark Mode"
-              description={isDarkMode ? "Dark mode enabled" : "Light mode enabled"}
-              value={isDarkMode}
-              onToggle={toggleTheme}
-              isToggle
-              theme={theme}
-            />
-          </View>
           <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
             <SettingRow
               icon=""
