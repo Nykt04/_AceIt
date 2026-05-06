@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Animated, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Animated, Platform, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
+import { useTheme } from '../context/ThemeContext';
 import { Alert } from 'react-native';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
-const AnimatedCard = ({ item, index, navigation, onDelete }) => {
+const AnimatedCard = ({ item, index, navigation, onDelete, theme }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(50)).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -68,7 +69,7 @@ const AnimatedCard = ({ item, index, navigation, onDelete }) => {
                         transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
                 }}>
                         <TouchableOpacity
-                                style={styles.card}
+                                style={[styles.card, { backgroundColor: theme.secondary, borderColor: theme.border }]}
                                 onPress={() => navigation.navigate('SetDetail', { set: item })}
                                 onPressIn={handlePressIn}
                                 onPressOut={handlePressOut}
@@ -76,11 +77,11 @@ const AnimatedCard = ({ item, index, navigation, onDelete }) => {
                         >
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <View style={{ flex: 1, marginRight: 8 }}>
-                                        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                                        <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
                                         {item.description ? (
-                                                <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+                                                <Text style={[styles.cardDesc, { color: theme.textSecondary }]} numberOfLines={2}>{item.description}</Text>
                                         ) : null}
-                                        <Text style={styles.cardMeta}>
+                                        <Text style={[styles.cardMeta, { color: theme.textTertiary }]}>
                                                 {termCount} terms · {item.questions?.length || 0} quiz questions
                                         </Text>
                                     </View>
@@ -99,6 +100,7 @@ const AnimatedCard = ({ item, index, navigation, onDelete }) => {
 export default function HomeScreen() {
     const navigation = useNavigation();
     const { studySets, loading, refresh, deleteStudySet } = useStudy();
+    const { theme } = useTheme();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const fabScale1 = useRef(new Animated.Value(1)).current;
     const fabScale2 = useRef(new Animated.Value(1)).current;
@@ -172,39 +174,95 @@ export default function HomeScreen() {
                     },
                 }}
                 onDelete={handleDelete}
+                theme={theme}
             />
         );
     };
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
                 <View style={styles.centered}>
-                    <ActivityIndicator size="large" color="#6366f1" />
+                    <ActivityIndicator size="large" color={theme.primaryAccent} />
                 </View>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <Navbar onMenuPress={() => setSidebarOpen(true)} />
-            <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <View style={styles.header}>
-                <Text style={styles.subtitle}>Your sets</Text>
-            </View>
-            <FlatList
-                data={studySets}
-                keyExtractor={(item) => item.id}
-                renderItem={renderSet}
-                contentContainerStyle={styles.list}
-                ListEmptyComponent={
-                    <View style={styles.empty}>
-                        <Text style={styles.emptyText}>No study sets yet</Text>
-                        <Text style={styles.emptyHint}>Create one or generate with AI</Text>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+            <Navbar onMenuPress={() => {
+                console.log('[HomeScreen] Menu button clicked, opening sidebar');
+                setSidebarOpen(true);
+            }} />
+            <Sidebar isOpen={sidebarOpen} onClose={() => {
+                console.log('[HomeScreen] Sidebar closed');
+                setSidebarOpen(false);
+            }} />
+            
+            <ScrollView contentContainerStyle={styles.scrollContent} scrollEnabled={true}>
+                <View style={styles.header}>
+                    <Text style={[styles.title, { color: theme.text }]}>📚 My Study Sets</Text>
+                    <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{studySets.length} set{studySets.length !== 1 ? 's' : ''}</Text>
+                </View>
+
+                {studySets.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <View style={styles.emptyIllustration}>
+                            <Text style={styles.emptyIcon}>📖</Text>
+                        </View>
+                        <Text style={[styles.emptyTitle, { color: theme.text }]}>No Study Sets Yet</Text>
+                        <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
+                            Start your learning journey by creating your first study set or generating one with AI!
+                        </Text>
+                        
+                        <View style={styles.quickActionsContainer}>
+                            <TouchableOpacity 
+                                style={[styles.quickActionCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                                onPress={() => navigation.navigate('CreateSet')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.quickActionIcon}>✏️</Text>
+                                <Text style={[styles.quickActionTitle, { color: theme.text }]}>Create Manually</Text>
+                                <Text style={[styles.quickActionDesc, { color: theme.textSecondary }]}>Add terms and definitions</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                                style={[styles.quickActionCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                                onPress={() => navigation.navigate('AIGenerate')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.quickActionIcon}>✨</Text>
+                                <Text style={[styles.quickActionTitle, { color: theme.text }]}>AI Generate</Text>
+                                <Text style={[styles.quickActionDesc, { color: theme.textSecondary }]}>Create with AI assistance</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                                style={[styles.quickActionCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+                                onPress={() => navigation.navigate('FileUploadQuestions')}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.quickActionIcon}>📄</Text>
+                                <Text style={[styles.quickActionTitle, { color: theme.text }]}>Upload File</Text>
+                                <Text style={[styles.quickActionDesc, { color: theme.textSecondary }]}>Extract from DOCX/TXT</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.tipsContainer}>
+                            <Text style={styles.tipsTitle}>💡 Tips to Get Started:</Text>
+                            <Text style={styles.tipItem}>• Create a set with key terms you want to learn</Text>
+                            <Text style={styles.tipItem}>• Use AI to generate questions from your notes</Text>
+                            <Text style={styles.tipItem}>• Test yourself with interactive quizzes</Text>
+                            <Text style={styles.tipItem}>• Track your progress over time</Text>
+                        </View>
                     </View>
-                }
-            />
+                ) : (
+                    <View style={styles.list}>
+                        {studySets.map((item, index) => renderSet({ item, index }))}
+                    </View>
+                )}
+            </ScrollView>
+
             <View style={styles.fabRow}>
                 <Animated.View style={{ transform: [{ scale: fabScale1 }] }}>
                     <TouchableOpacity
@@ -214,7 +272,7 @@ export default function HomeScreen() {
                         onPressOut={() => handleFabPressOut(fabScale1)}
                         activeOpacity={1}
                     >
-                        <Text style={styles.fabIcon}></Text>
+                        <Text style={styles.fabIcon}>✨</Text>
                         <Text style={styles.fabLabel}>AI Generate</Text>
                     </TouchableOpacity>
                 </Animated.View>
@@ -238,34 +296,216 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#0f172a' },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
-    subtitle: { fontSize: 14, color: '#94a3b8' },
-    list: { padding: 16, paddingBottom: 100 },
+    scrollContent: { flexGrow: 1, paddingBottom: 100 },
+    
+    // Header
+    header: { 
+        paddingHorizontal: 20, 
+        paddingTop: 20, 
+        paddingBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: '#1e293b',
+    },
+    title: { 
+        fontSize: 32, 
+        fontWeight: '800', 
+        color: '#f8fafc',
+        marginBottom: 4,
+    },
+    subtitle: { 
+        fontSize: 16, 
+        color: '#94a3b8',
+        fontWeight: '500',
+    },
+    
+    // Study Sets List
+    list: { 
+        padding: 16, 
+        gap: 12,
+    },
     card: {
         backgroundColor: '#1e293b',
         borderRadius: 16,
         padding: 18,
         marginBottom: 12,
+        borderWidth: 1.5,
+        borderColor: '#334155',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
     },
-    cardTitle: { fontSize: 18, fontWeight: '700', color: '#f8fafc' },
-    cardDesc: { fontSize: 14, color: '#94a3b8', marginTop: 6 },
-    cardMeta: { fontSize: 12, color: '#64748b', marginTop: 8 },
-    empty: { alignItems: 'center', paddingVertical: 48 },
-    emptyText: { fontSize: 18, color: '#64748b' },
-    emptyHint: { fontSize: 14, color: '#475569', marginTop: 8 },
-    fabRow: { position: 'absolute', bottom: 24, left: 16, right: 16, flexDirection: 'row', justifyContent: 'flex-end' },
+    cardTitle: { 
+        fontSize: 20, 
+        fontWeight: '700', 
+        color: '#f8fafc',
+    },
+    cardDesc: { 
+        fontSize: 15, 
+        color: '#cbd5e1', 
+        marginTop: 8,
+        fontWeight: '500',
+    },
+    cardMeta: { 
+        fontSize: 14, 
+        color: '#94a3b8', 
+        marginTop: 10,
+        fontWeight: '500',
+    },
+    
+    // Empty State
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 48,
+    },
+    emptyIllustration: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#1e293b',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 24,
+        borderWidth: 2,
+        borderColor: '#334155',
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    emptyIcon: {
+        fontSize: 64,
+    },
+    emptyTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: '#f8fafc',
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    emptyDescription: {
+        fontSize: 17,
+        color: '#cbd5e1',
+        textAlign: 'center',
+        marginBottom: 32,
+        lineHeight: 26,
+    },
+    
+    // Quick Actions
+    quickActionsContainer: {
+        width: '100%',
+        marginBottom: 32,
+        gap: 12,
+    },
+    quickActionCard: {
+        backgroundColor: '#1e293b',
+        borderRadius: 14,
+        padding: 18,
+        borderWidth: 1.5,
+        borderColor: '#334155',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    quickActionIcon: {
+        fontSize: 40,
+        marginBottom: 12,
+    },
+    quickActionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#f8fafc',
+        marginBottom: 6,
+    },
+    quickActionDesc: {
+        fontSize: 14,
+        color: '#94a3b8',
+        textAlign: 'center',
+    },
+    
+    // Tips Section
+    tipsContainer: {
+        backgroundColor: '#1e293b',
+        borderRadius: 14,
+        padding: 18,
+        borderWidth: 1.5,
+        borderColor: '#334155',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    tipsTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#f8fafc',
+        marginBottom: 12,
+    },
+    tipItem: {
+        fontSize: 15,
+        color: '#cbd5e1',
+        marginBottom: 8,
+        lineHeight: 22,
+    },
+    
+    // FAB
+    fabRow: { 
+        position: 'absolute', 
+        bottom: 24, 
+        left: 16, 
+        right: 16, 
+        flexDirection: 'row', 
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
     fab: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#334155',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
+        paddingVertical: 16,
+        paddingHorizontal: 22,
         borderRadius: 14,
         marginLeft: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: '#475569',
     },
-    fabIcon: { fontSize: 18, color: '#fff', marginRight: 8 },
-    fabPrimary: { backgroundColor: '#6366f1' },
-    fabLabel: { fontSize: 15, fontWeight: '600', color: '#fff' },
-    deleteBtn: { padding: 6, marginLeft: 4, borderRadius: 8 },
-    deleteText: { fontSize: 18, color: '#f87171' },
+    fabIcon: { 
+        fontSize: 20, 
+        color: '#fff', 
+        marginRight: 10,
+    },
+    fabPrimary: { 
+        backgroundColor: '#6366f1',
+        borderColor: '#818cf8',
+    },
+    fabLabel: { 
+        fontSize: 16, 
+        fontWeight: '700', 
+        color: '#fff',
+    },
+    
+    // Delete Button
+    deleteBtn: { 
+        padding: 8, 
+        marginLeft: 8,
+        borderRadius: 8,
+        backgroundColor: '#1e293b',
+    },
+    deleteText: { 
+        fontSize: 20,
+    },
 });

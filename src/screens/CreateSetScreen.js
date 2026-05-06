@@ -2,12 +2,15 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, Alert, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
+import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import EditableFlashcard from '../components/EditableFlashcard';
 
 export default function CreateSetScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { theme } = useTheme();
   const editingSet = route.params?.set;
   const { addStudySet, updateStudySet } = useStudy();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,7 +18,9 @@ export default function CreateSetScreen() {
   const [title, setTitle] = useState(editingSet?.title ?? '');
   const [description, setDescription] = useState(editingSet?.description ?? '');
   const [terms, setTerms] = useState(editingSet?.terms ?? [{ term: '', definition: '' }]);
+  const [questions, setQuestions] = useState(editingSet?.questions ?? []);
   const [saving, setSaving] = useState(false);
+  const [showQuestionsEditor, setShowQuestionsEditor] = useState(false);
   const addTermScale = useRef(new Animated.Value(1)).current;
   const saveBtnScale = useRef(new Animated.Value(1)).current;
 
@@ -45,6 +50,16 @@ export default function CreateSetScreen() {
     setTerms((t) => t.filter((_, i) => i !== index));
   };
 
+  const handleEditQuestion = (index, updatedQuestion) => {
+    const updatedQuestions = [...questions];
+    updatedQuestions[index] = updatedQuestion;
+    setQuestions(updatedQuestions);
+  };
+
+  const handleDeleteQuestion = (index) => {
+    setQuestions((q) => q.filter((_, i) => i !== index));
+  };
+
   const save = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
@@ -71,10 +86,10 @@ export default function CreateSetScreen() {
     setSaving(true);
     try {
       if (editingSet) {
-        await updateStudySet(editingSet.id, { title: trimmedTitle, description: description.trim(), terms: validTerms });
+        await updateStudySet(editingSet.id, { title: trimmedTitle, description: description.trim(), terms: validTerms, questions });
         navigation.goBack();
       } else {
-        const newSet = await addStudySet({ title: trimmedTitle, description: description.trim(), terms: validTerms, questions: [] });
+        const newSet = await addStudySet({ title: trimmedTitle, description: description.trim(), terms: validTerms, questions });
         navigation.replace('SetDetail', { set: newSet });
       }
     } catch (e) {
@@ -155,21 +170,142 @@ export default function CreateSetScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f172a' },
   flex: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
-  cancel: { fontSize: 16, color: '#94a3b8' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: '#f8fafc' },
-  save: { fontSize: 16, fontWeight: '600', color: '#6366f1' },
-  saveDisabled: { color: '#64748b' },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 18, 
+    paddingVertical: 16, 
+    borderBottomWidth: 1.5, 
+    borderBottomColor: '#1e293b',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cancel: { 
+    fontSize: 18, 
+    color: '#94a3b8',
+    fontWeight: '700',
+  },
+  headerTitle: { 
+    fontSize: 26, 
+    fontWeight: '800', 
+    color: '#f8fafc',
+  },
+  save: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#6366f1',
+  },
+  saveDisabled: { 
+    color: '#64748b',
+  },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  titleInput: { backgroundColor: '#1e293b', borderRadius: 12, padding: 16, fontSize: 18, color: '#f8fafc', marginBottom: 12 },
-  descInput: { backgroundColor: '#1e293b', borderRadius: 12, padding: 16, fontSize: 15, color: '#f8fafc', minHeight: 80, marginBottom: 24 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#e2e8f0', marginBottom: 12 },
-  termRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  termInputs: { flex: 1 },
-  termInput: { backgroundColor: '#1e293b', borderRadius: 10, padding: 12, fontSize: 15, color: '#f8fafc', marginBottom: 8 },
-  removeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#334155', alignItems: 'center', justifyContent: 'center' },
-  removeText: { fontSize: 20, color: '#f87171', fontWeight: '600' },
-  addTerm: { marginTop: 8, paddingVertical: 14, alignItems: 'center', borderWidth: 2, borderColor: '#334155', borderRadius: 12, borderStyle: 'dashed' },
-  addTermText: { fontSize: 15, color: '#94a3b8', fontWeight: '500' },
+  scrollContent: { 
+    padding: 18, 
+    paddingBottom: 40,
+  },
+  titleInput: { 
+    backgroundColor: '#1e293b', 
+    borderRadius: 14, 
+    padding: 16, 
+    fontSize: 20, 
+    fontWeight: '700',
+    color: '#f8fafc', 
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  descInput: { 
+    backgroundColor: '#1e293b', 
+    borderRadius: 14, 
+    padding: 16, 
+    fontSize: 16, 
+    color: '#f8fafc', 
+    minHeight: 100, 
+    marginBottom: 28,
+    borderWidth: 1.5,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionTitle: { 
+    fontSize: 20, 
+    fontWeight: '800', 
+    color: '#f8fafc', 
+    marginBottom: 16,
+  },
+  termRow: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-start', 
+    marginBottom: 16,
+    gap: 12,
+  },
+  termInputs: { 
+    flex: 1,
+  },
+  termInput: { 
+    backgroundColor: '#1e293b', 
+    borderRadius: 12, 
+    padding: 14, 
+    fontSize: 16, 
+    color: '#f8fafc', 
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  removeBtn: { 
+    width: 48, 
+    height: 48, 
+    borderRadius: 12, 
+    backgroundColor: '#ef4444', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    marginTop: 4,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  removeText: { 
+    fontSize: 26, 
+    color: '#fff', 
+    fontWeight: '700',
+  },
+  addTerm: { 
+    marginTop: 12, 
+    paddingVertical: 16, 
+    alignItems: 'center', 
+    borderWidth: 2, 
+    borderColor: '#334155', 
+    borderRadius: 14, 
+    borderStyle: 'dashed',
+    backgroundColor: '#1e293b',
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  addTermText: { 
+    fontSize: 17, 
+    color: '#6366f1', 
+    fontWeight: '700',
+  },
 });

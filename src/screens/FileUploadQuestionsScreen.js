@@ -15,6 +15,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { useStudy } from '../context/StudyContext';
+import { generateQuestionsFromText } from '../services/aiService';
 
 export default function FileUploadQuestionsScreen() {
   const navigation = useNavigation();
@@ -97,48 +98,9 @@ export default function FileUploadQuestionsScreen() {
     }
   };
 
-  const generateQuestionsFromText = (text, desiredCount) => {
-    // Simple question generation from text
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 20);
-    const questions = [];
-    const questionCount = Math.min(desiredCount, sentences.length * 2);
-
-    // Create multiple choice questions from sentences
-    sentences.slice(0, Math.min(Math.ceil(desiredCount * 0.7), sentences.length)).forEach((sentence, idx) => {
-      const cleaned = sentence.trim();
-      if (cleaned.length > 0) {
-        questions.push({
-          question: `Which of the following relates to: "${cleaned.substring(0, 50)}..."?`,
-          type: 'multiple_choice',
-          options: [
-            cleaned.substring(0, 40),
-            'Alternative fact ' + (idx + 1),
-            'Different concept ' + (idx + 1),
-            'Unrelated statement',
-          ],
-          correctIndex: 0,
-        });
-      }
-    });
-
-    // Add true/false questions for remaining count
-    if (questions.length < desiredCount && sentences.length > 0) {
-      const remainingCount = desiredCount - questions.length;
-      sentences.slice(0, Math.min(remainingCount, 3)).forEach((sentence, idx) => {
-        questions.push({
-          question: `True or False: The text mentions "${sentence.trim().substring(0, 30)}..."`,
-          type: 'true_false',
-          correctAnswer: true,
-        });
-      });
-    }
-
-    return questions;
-  };
-
   const handleGenerateFromFile = async () => {
-    if (!selectedFile) {
-      Alert.alert('Required', 'Please select a file first');
+    if (!fileContent.trim()) {
+      Alert.alert('Required', 'Please provide study material first');
       return;
     }
     
@@ -160,40 +122,34 @@ export default function FileUploadQuestionsScreen() {
 
     setLoading(true);
     try {
-      // Simulate processing time for file extraction and generation
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const questions = await generateQuestionsFromText(fileContent, questionCount);
 
-      // Generate questions based on file content
-      const mockQuestions = generateQuestionsFromText(fileContent, questionCount);
-      const selectedQuestions = mockQuestions.slice(0, questionCount);
-
-      if (selectedQuestions.length === 0) {
-        Alert.alert('Info', 'No questions could be generated from the provided text. Try with more detailed content.');
-        setLoading(false);
+      if (!questions || questions.length === 0) {
+        Alert.alert('Info', 'No questions could be generated. Try with more detailed content.');
         return;
       }
 
       if (existingSet) {
         const existing = existingSet.questions || [];
         await updateStudySet(existingSet.id, {
-          questions: [...existing, ...selectedQuestions],
+          questions: [...existing, ...questions],
         });
         navigation.navigate('SetDetail', {
-          set: { ...existingSet, questions: [...existing, ...selectedQuestions] },
+          set: { ...existingSet, questions: [...existing, ...questions] },
         });
       } else {
         const newSet = await addStudySet({
           title: setTitle.trim(),
-          description: `Generated from file: ${fileName}`,
+          description: 'AI-generated from study material',
           terms: [],
-          questions: selectedQuestions,
+          questions,
         });
         navigation.replace('SetDetail', { set: newSet });
       }
 
-      Alert.alert('Success', `Generated ${selectedQuestions.length} questions from file!`);
+      Alert.alert('Success', `Generated ${questions.length} questions using AI!`);
     } catch (error) {
-      Alert.alert('Error', 'Failed to generate questions from file');
+      Alert.alert('Error', error.message || 'Failed to generate questions');
       console.error(error);
     } finally {
       setLoading(false);
@@ -303,36 +259,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    padding: 24,
+    paddingBottom: 50,
   },
   header: {
-    marginBottom: 32,
+    marginBottom: 40,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: '#f8fafc',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#94a3b8',
+    lineHeight: 22,
   },
   section: {
-    marginBottom: 28,
+    marginBottom: 36,
   },
   sectionLabel: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#e2e8f0',
-    marginBottom: 12,
+    marginBottom: 14,
+    letterSpacing: 0.3,
   },
   input: {
     backgroundColor: '#1e293b',
     borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     borderWidth: 1,
     borderColor: '#334155',
     fontSize: 16,
@@ -340,40 +301,41 @@ const styles = StyleSheet.create({
   },
   fileBox: {
     backgroundColor: '#1e293b',
-    borderRadius: 12,
-    paddingVertical: 32,
-    paddingHorizontal: 20,
+    borderRadius: 14,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#334155',
     borderStyle: 'dashed',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   fileIcon: {
-    fontSize: 48,
-    marginBottom: 12,
+    fontSize: 56,
+    marginBottom: 16,
   },
   fileText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#e2e8f0',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   fileHint: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748b',
   },
   fileSize: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6366f1',
-    marginTop: 8,
-    fontWeight: '500',
+    marginTop: 12,
+    fontWeight: '600',
   },
   selectButton: {
     backgroundColor: '#6366f1',
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
+    marginBottom: 8,
   },
   selectButtonText: {
     fontSize: 16,
@@ -386,8 +348,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   questionInput: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     fontSize: 16,
     color: '#f8fafc',
     borderWidth: 1,
@@ -395,35 +357,36 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   questionInputHint: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#94a3b8',
-    marginTop: 8,
+    marginTop: 12,
     paddingHorizontal: 2,
+    fontWeight: '500',
   },
   infoBox: {
     backgroundColor: '#1e293b',
     borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
+    padding: 20,
+    borderLeftWidth: 5,
     borderLeftColor: '#6366f1',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   infoTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#e2e8f0',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   infoText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#94a3b8',
-    marginBottom: 8,
-    lineHeight: 18,
+    marginBottom: 11,
+    lineHeight: 20,
   },
   generateButton: {
     backgroundColor: '#6366f1',
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
   },
   generateButtonDisabled: {
