@@ -322,8 +322,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
    */
   export const resetPassword = async (email) => {
     try {
+      const redirectTo = Platform.OS === 'web' 
+        ? `${window.location.origin}/reset-password`
+        : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`;
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`,
+        redirectTo: redirectTo,
       });
 
       if (error) throw error;
@@ -413,5 +417,59 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     } catch (error) {
       console.error('[authService] Refresh user data error:', error.message);
       return { user: null, profile: null, error: error.message };
+    }
+  };
+
+  /**
+   * Handle email confirmation token from URL
+   * Automatically verifies OTP when user clicks email confirmation link
+   */
+  export const handleEmailConfirmationToken = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        console.log('[authService] Email token handling only supported on web');
+        return { error: null }; // Not applicable for mobile
+      }
+
+      console.log('[authService] Checking for email confirmation token in URL...');
+      
+      // Supabase stores the token in the URL hash
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      
+      const accessToken = params.get('access_token');
+      const refreshToken = params.get('refresh_token');
+      const tokenType = params.get('type');
+
+      if (!accessToken) {
+        console.log('[authService] No token found in URL');
+        return { error: null };
+      }
+
+      console.log('[authService] Found token in URL, type:', tokenType);
+
+      // Create a new session with the token
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (error) {
+        console.error('[authService] Error verifying email token:', error.message);
+        return { error: error.message };
+      }
+
+      console.log('[authService] Email confirmation verified successfully!');
+      console.log('[authService] User:', data.user?.email);
+
+      // Clean up the URL by removing the hash
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      return { user: data.user, session: data.session, error: null };
+    } catch (error) {
+      console.error('[authService] Email token handling error:', error.message);
+      return { error: error.message };
     }
   };

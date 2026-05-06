@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChange, getCurrentUser, signOut as authSignOut, getCurrentSession } from '../services/authService';
+import { onAuthStateChange, getCurrentUser, signOut as authSignOut, getCurrentSession, handleEmailConfirmationToken } from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -19,6 +19,13 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         console.log('[AuthContext] Initializing auth state...');
+        
+        // Handle email confirmation token if present in URL (web only)
+        console.log('[AuthContext] Checking for email confirmation token...');
+        const { error: tokenError } = await handleEmailConfirmationToken();
+        if (tokenError) {
+          console.warn('[AuthContext] Email token handling error (non-critical):', tokenError);
+        }
         
         // Check if user has completed onboarding
         const onboarding = await AsyncStorage.getItem('@onboarding_complete');
