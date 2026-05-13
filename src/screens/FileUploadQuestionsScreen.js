@@ -40,28 +40,88 @@ export default function FileUploadQuestionsScreen() {
       try {
         const response = await fetch(fileUri);
         const text = await response.text();
-        return text;
+        
+        if (!text || text.trim().length < 5) {
+          throw new Error('Text file is empty or too short');
+        }
+        
+        return { text, isEmpty: false };
       } catch (error) {
-        Alert.alert('Error', 'Failed to read text file');
+        Alert.alert('Error', 'Failed to read text file or file is empty');
         return null;
       }
     }
     
-    // For PDFs and DOCX, we'll use a simple conversion approach
-    // In production, you'd use a server-side API for proper extraction
-    if (fileNameLower.endsWith('.pdf') || fileNameLower.endsWith('.docx') || fileNameLower.endsWith('.doc')) {
+    // For DOCX files
+    if (fileNameLower.endsWith('.docx') || fileNameLower.endsWith('.doc')) {
+      try {
+        const response = await fetch(fileUri);
+        const arrayBuffer = await response.arrayBuffer();
+        
+        // Since we're in React Native, we can't directly use mammoth
+        // Show user instructions for image-containing documents
+        Alert.alert(
+          '⚠️ Important',
+          'Document files with images need special handling.\n\n' +
+          '✅ SOLUTION:\n' +
+          '1. If your document contains images:\n' +
+          '   - Use an OCR tool (Google Lens, smallpdf.com)\n' +
+          '   - Extract text and save as .txt file\n' +
+          '   - Upload the .txt file\n\n' +
+          '2. If your document is text-only:\n' +
+          '   - It should work fine\n' +
+          '   - Try again',
+          [{ text: 'OK' }]
+        );
+        
+        // Return placeholder - in real scenario, would need backend support
+        return { 
+          text: `[Document: ${fileName}]\n\nPlease ensure your document contains extractable text.`, 
+          isEmpty: true,
+          warning: true 
+        };
+      } catch (error) {
+        Alert.alert('Error', 'Failed to process document file');
+        return null;
+      }
+    }
+
+    // For PDF files
+    if (fileNameLower.endsWith('.pdf')) {
       Alert.alert(
-        'File Type',
-        'PDF and DOCX files will be processed. Please note: text extraction may be approximate and should be reviewed.',
+        '📄 PDF File Detected',
+        'PDF support in React Native requires uploading through the web version.\n\n' +
+        '✅ SOLUTION:\n' +
+        '1. Access Study Buddy on a web browser\n' +
+        '2. Upload your PDF file there\n' +
+        '3. Or convert PDF to text:\n' +
+        '   - Use ilovepdf.com or smallpdf.com\n' +
+        '   - Save as .txt file\n' +
+        '   - Upload the .txt file in this app',
         [{ text: 'OK' }]
       );
-      // For now, return a placeholder that indicates the file was selected
-      // In a production app, you'd send this to a backend API for proper extraction
-      return `[File: ${fileName}]\n\nNote: Please provide the extracted text or ensure the file contains readable text content.`;
+      return null;
     }
     
-    // For other file types, prompt user to paste content
-    Alert.alert('Unsupported File Type', `${fileNameLower} files are not directly supported. Please paste the text content manually.`);
+    // For image files
+    if (fileNameLower.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      Alert.alert(
+        '📸 Image File Detected',
+        'Direct image uploads are not yet supported.\n\n' +
+        'PLEASE:\n' +
+        '1. Convert your image to text using:\n' +
+        '   • Google Lens (take screenshot)\n' +
+        '   • Online OCR: ilovepdf.com, smallpdf.com\n' +
+        '   • Microsoft Lens\n\n' +
+        '2. Save the text as a .txt file\n' +
+        '3. Upload the .txt file instead',
+        [{ text: 'OK' }]
+      );
+      return null;
+    }
+    
+    // For unsupported file types
+    Alert.alert('Unsupported File Type', `${fileNameLower} files are not directly supported. Please use .txt, .docx, or .pdf files with text content.`);
     return null;
   };
 
@@ -73,6 +133,10 @@ export default function FileUploadQuestionsScreen() {
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/msword',
           'text/plain',
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+          'image/webp',
         ],
         copyToCacheDirectory: true,
       });
@@ -84,13 +148,29 @@ export default function FileUploadQuestionsScreen() {
           size: result.size ?? 0,
         };
 
-        const extractedText = await extractTextFromFile(file.uri, file.name);
+        const extractedData = await extractTextFromFile(file.uri, file.name);
         
-        if (extractedText) {
+        if (extractedData) {
           setSelectedFile(file);
           setFileName(file.name);
-          setFileContent(extractedText);
-          Alert.alert('Success', `File ready: ${file.name}`);
+          
+          // Check if content is empty or has warning
+          if (extractedData.isEmpty || extractedData.warning) {
+            setFileContent(''); // Don't set placeholder text
+            Alert.alert(
+              'Cannot Process File',
+              'This file appears to contain only images or is incompatible.\n\n' +
+              '📝 SOLUTION:\n' +
+              'Convert your images to text first:\n' +
+              '1. Use Google Lens\n' +
+              '2. Use online OCR tool\n' +
+              '3. Save extracted text as .txt file\n' +
+              '4. Upload the .txt file'
+            );
+          } else {
+            setFileContent(extractedData.text);
+            Alert.alert('Success', `File ready: ${file.name}\n\n${extractedData.text.length} characters extracted`);
+          }
         }
       }
     } catch (err) {
@@ -100,7 +180,20 @@ export default function FileUploadQuestionsScreen() {
 
   const handleGenerateFromFile = async () => {
     if (!fileContent.trim()) {
-      Alert.alert('Required', 'Please provide study material first');
+      Alert.alert(
+        'No Content',
+        'Please select a file with text content first.\n\n' +
+        '💡 If your file contains images:\n' +
+        '1. Use an OCR tool to extract text\n' +
+        '2. Save as .txt file\n' +
+        '3. Upload the .txt file'
+      );
+      return;
+    }
+
+    // Minimum text requirement
+    if (fileContent.trim().length < 20) {
+      Alert.alert('Insufficient Content', 'Please provide more study material (at least 20 characters)');
       return;
     }
     
@@ -110,11 +203,31 @@ export default function FileUploadQuestionsScreen() {
       return;
     }
     
-    if (questionCount > 100) {
-      Alert.alert('Too Many', 'Maximum 100 questions allowed');
+    // Warn for very large numbers but still allow them
+    if (questionCount > 250) {
+      Alert.alert(
+        'Large Question Set',
+        `You're requesting ${questionCount} questions. This may take a while. Continue?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Continue',
+            onPress: async () => {
+              await proceedWithGeneration(questionCount);
+            },
+          },
+        ]
+      );
       return;
     }
     
+    await proceedWithGeneration(questionCount);
+  };
+
+  const proceedWithGeneration = async (questionCount) => {
     if (!setTitle.trim() && !existingSet) {
       Alert.alert('Required', 'Please enter a set title');
       return;
@@ -218,7 +331,7 @@ export default function FileUploadQuestionsScreen() {
               onChangeText={setNumQuestions}
               keyboardType="number-pad"
             />
-            <Text style={styles.questionInputHint}>Min: 1 | Max: 100</Text>
+            <Text style={styles.questionInputHint}>Min: 1 | Recommended: 5-50 | Max: 250+</Text>
           </View>
         </View>
 

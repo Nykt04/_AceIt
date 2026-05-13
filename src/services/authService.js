@@ -473,3 +473,106 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       return { error: error.message };
     }
   };
+
+  /**
+   * Request a password reset link via email
+   * Sends secure password reset email to user
+   */
+  export const requestPasswordReset = async (email) => {
+    try {
+      console.log('[authService] Requesting password reset for:', email);
+
+      const redirectTo = Platform.OS === 'web'
+        ? `${window.location.origin}/reset-password`
+        : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`;
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectTo,
+      });
+
+      if (error) {
+        // Don't reveal if email exists or not (security best practice)
+        console.error('[authService] Password reset request error:', error.message);
+        throw error;
+      }
+
+      console.log('[authService] Password reset email sent');
+      return { error: null };
+    } catch (error) {
+      console.error('[authService] Password reset request error:', error.message);
+      return { error: error.message };
+    }
+  };
+
+  /**
+   * Reset password with token from email link
+   * @param {string} newPassword - New password (must be validated before calling)
+   * @param {string} accessToken - Access token from email confirmation URL
+   */
+  export const resetPasswordWithToken = async (newPassword, accessToken) => {
+    try {
+      console.log('[authService] Resetting password with token...');
+
+      const { data, error } = await supabase.auth.updateUser(
+        { password: newPassword },
+        { accessToken }
+      );
+
+      if (error) {
+        console.error('[authService] Password reset error:', error.message);
+        throw error;
+      }
+
+      console.log('[authService] Password reset successfully');
+      return { error: null };
+    } catch (error) {
+      console.error('[authService] Password reset error:', error.message);
+      return { error: error.message };
+    }
+  };
+
+  /**
+   * Change password for authenticated user
+   * Requires current password verification
+   */
+  export const changePassword = async (currentPassword, newPassword) => {
+    try {
+      console.log('[authService] Changing password for authenticated user...');
+
+      // First verify the current password by signing in with it
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: currentUser.email,
+        password: currentPassword,
+      });
+
+      if (verifyError) {
+        console.error('[authService] Current password verification failed');
+        return { error: 'Current password is incorrect' };
+      }
+
+      // Update to new password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        console.error('[authService] Password update error:', updateError.message);
+        throw updateError;
+      }
+
+      console.log('[authService] Password changed successfully');
+
+      // Record password change time for reminder system
+      await AsyncStorage.setItem('lastPasswordChangeTime', Date.now().toString());
+
+      return { error: null };
+    } catch (error) {
+      console.error('[authService] Change password error:', error.message);
+      return { error: error.message };
+    }
+  };

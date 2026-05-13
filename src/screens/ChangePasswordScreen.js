@@ -14,9 +14,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { supabase } from '../services/authService';
-import { parseAuthError, isValidPassword } from '../services/errorHandler';
+import { changePassword } from '../services/authService';
+import { parseAuthError } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
+import { validatePassword } from '../services/inputValidationService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
@@ -31,20 +32,14 @@ export default function ChangePasswordScreen() {
   const [passwordErrors, setPasswordErrors] = useState({});
   const submitScale = useRef(new Animated.Value(1)).current;
 
-  // Password validation helper
-  const validatePassword = (password) => {
+  // Password validation helper using the centralized validation service
+  const validatePasswordInput = (password) => {
+    const validation = validatePassword(password);
     const errors = {};
-    if (password.length < 6) {
-      errors.length = 'At least 6 characters';
-    }
-    if (!/[A-Z]/.test(password) && password.length > 0) {
-      errors.uppercase = 'At least one uppercase letter';
-    }
-    if (!/[a-z]/.test(password) && password.length > 0) {
-      errors.lowercase = 'At least one lowercase letter';
-    }
-    if (!/[0-9]/.test(password) && password.length > 0) {
-      errors.number = 'At least one number';
+    if (!validation.valid && validation.errors) {
+      validation.errors.forEach((error, index) => {
+        errors[`error${index}`] = error;
+      });
     }
     return errors;
   };
@@ -53,7 +48,7 @@ export default function ChangePasswordScreen() {
     setNewPassword(value);
     if (value.length > 0) {
       setShowPasswordRequirements(true);
-      const errors = validatePassword(value);
+      const errors = validatePasswordInput(value);
       setPasswordErrors(errors);
     } else {
       setShowPasswordRequirements(false);
@@ -78,10 +73,14 @@ export default function ChangePasswordScreen() {
       showError('Passwords Mismatch', 'New passwords do not match. Please check and try again.');
       return;
     }
-    if (!isValidPassword(newPassword)) {
-      showError('Weak Password', 'Password must be at least 6 characters long');
+
+    // Use centralized password validation
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      showError('Weak Password', `Password requirements:\n• ${passwordValidation.errors.join('\n• ')}`);
       return;
     }
+
     if (currentPassword === newPassword) {
       showError('Same Password', 'New password must be different from your current password');
       return;
@@ -104,23 +103,16 @@ export default function ChangePasswordScreen() {
 
     try {
       console.log('[ChangePassword] Updating password...');
-      // Update password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
+      // Use the new secure changePassword function
+      const { error } = await changePassword(currentPassword, newPassword);
 
-      if (error) throw error;
+      if (error) {
+        showError('Password Change Failed', error);
+        setLoading(false);
+        return;
+      }
 
       console.log('[ChangePassword] Password changed successfully');
-      
-      // Save the timestamp of the password change
-      try {
-        await AsyncStorage.setItem('lastPasswordChangeTime', Date.now().toString());
-        console.log('[ChangePassword] Password change timestamp saved');
-      } catch (storageError) {
-        console.error('[ChangePassword] Error saving timestamp:', storageError);
-      }
-      
       showSuccess('Success', 'Your password has been changed successfully! 🎉');
       
       // Clear form after successful change
@@ -198,23 +190,28 @@ export default function ChangePasswordScreen() {
                 <View style={styles.passwordRequirements}>
                   <Text style={styles.requirementsTitle}>Password Requirements:</Text>
                   <View style={styles.requirementItem}>
-                    <Text style={newPassword.length >= 6 ? styles.requirementMet : styles.requirementUnmet}>
-                      {newPassword.length >= 6 ? '✓' : '○'} At least 6 characters
+                    <Text style={newPassword.length >= 8 ? styles.requirementMet : styles.requirementUnmet}>
+                      {newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Text style={/[A-Z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
-                      {/[A-Z]/.test(newPassword) ? '✓' : '○'} One uppercase letter
+                      {/[A-Z]/.test(newPassword) ? '✓' : '○'} One uppercase letter (A-Z)
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Text style={/[a-z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
-                      {/[a-z]/.test(newPassword) ? '✓' : '○'} One lowercase letter
+                      {/[a-z]/.test(newPassword) ? '✓' : '○'} One lowercase letter (a-z)
                     </Text>
                   </View>
                   <View style={styles.requirementItem}>
                     <Text style={/[0-9]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
-                      {/[0-9]/.test(newPassword) ? '✓' : '○'} One number
+                      {/[0-9]/.test(newPassword) ? '✓' : '○'} One number (0-9)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Text style={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                      {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '○'} One special character (!@#$%...)
                     </Text>
                   </View>
                 </View>

@@ -49,8 +49,15 @@ export default function FileUploadQuestionsScreen() {
 
     try {
       console.log(`[FileUploadScreen] Starting extraction for file: ${file.name}`);
-      const extractedText = await extractTextFromFile(file);
+      const result = await extractTextFromFile(file);
 
+      // Handle the result object with {text, isEmpty, warning}
+      if (result.isEmpty) {
+        const errorMsg = result.warning || 'The file appears to be empty or contains no readable text.';
+        throw new Error(errorMsg);
+      }
+
+      const extractedText = result.text || '';
       if (!extractedText || extractedText.trim().length === 0) {
         throw new Error('The file appears to be empty. Please check the file and try again.');
       }
@@ -96,12 +103,12 @@ export default function FileUploadQuestionsScreen() {
       return;
     }
 
-    if (questionCount > 100) {
-      handleError(
-        new Error('Maximum 100 questions allowed'),
-        'FileUploadScreen'
+    // Warn for very large numbers but still allow them
+    if (questionCount > 250) {
+      const shouldContinue = window.confirm(
+        `You're requesting ${questionCount} questions. This may take a while and use more API tokens. Continue?`
       );
-      return;
+      if (!shouldContinue) return;
     }
 
     if (!setTitle.trim() && !existingSet) {
@@ -231,7 +238,7 @@ export default function FileUploadQuestionsScreen() {
               ) : (
                 <>
                   <Text style={styles.filePickerButtonIcon}>📄</Text>
-                  <Text style={styles.filePickerButtonText}>Tap to select DOCX or TXT file</Text>
+                  <Text style={styles.filePickerButtonText}>Tap to select DOCX, PDF,  or TXT file</Text>
                   <Text style={styles.filePickerHint}>Max 10MB</Text>
                 </>
               )}
@@ -268,7 +275,7 @@ export default function FileUploadQuestionsScreen() {
               onChangeText={setNumQuestions}
               keyboardType="number-pad"
             />
-            <Text style={styles.questionInputHint}>Min: 1 | Max: 100</Text>
+            <Text style={styles.questionInputHint}>Min: 1 | Recommended: 5-50 | Max: 250+</Text>
           </View>
         </View>
 
@@ -289,7 +296,7 @@ export default function FileUploadQuestionsScreen() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+          accept=".docx,.txt,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/pdf"
           style={{ display: 'none' }}
           onChange={handleFileSelect}
         />

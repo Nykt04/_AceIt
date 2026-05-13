@@ -20,6 +20,8 @@ import Sidebar from '../components/Sidebar';
 import { signIn, signUp, signInWithGoogle, sendWelcomeEmail } from '../services/authService';
 import { parseAuthError, isValidEmail, isValidPassword } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
+import { checkRateLimit, recordFailedAttempt, clearAttempts } from '../services/rateLimitService';
+import { validateEmail, validatePassword, validateFullName } from '../services/inputValidationService';
 
 export default function LoginSignupScreen() {
   const navigation = useNavigation();
@@ -151,30 +153,38 @@ export default function LoginSignupScreen() {
   };
 
   const handleSubmit = async () => {
-    // Validation
-    if (!email.trim()) {
-      showError('Required Field', 'Please enter your email address');
+    // Check rate limiting first (for login attempts)
+    const { allowed, error: rateLimitError } = await checkRateLimit(email.toLowerCase());
+    if (!rateLimitError && !allowed) {
+      showError('Too Many Attempts', rateLimitError);
       return;
     }
 
-    if (!isValidEmail(email)) {
-      showError('Invalid Email', 'Please enter a valid email address (e.g., user@example.com)');
+    // Validate email input
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      showError('Invalid Email', emailValidation.error);
       return;
     }
 
+    // Validate password input
     if (!password.trim()) {
       showError('Required Field', 'Please enter your password');
       return;
     }
 
     if (!isLogin) {
-      if (!name.trim()) {
-        showError('Required Field', 'Please enter your name');
+      // Validate name input for signup
+      const nameValidation = validateFullName(name);
+      if (!nameValidation.valid) {
+        showError('Invalid Name', nameValidation.error);
         return;
       }
 
-      if (!isValidPassword(password)) {
-        showError('Weak Password', 'Password must be at least 6 characters long');
+      // Validate password strength for signup
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        showError('Weak Password', `Password requirements:\n• ${passwordValidation.errors.join('\n• ')}`);
         return;
       }
 
@@ -201,23 +211,32 @@ export default function LoginSignupScreen() {
 
     try {
       let result;
+      const normalizedEmail = email.toLowerCase().trim();
 
       if (isLogin) {
         console.log('[LoginSignup] Attempting login...');
-        result = await signIn(email, password);
+        result = await signIn(normalizedEmail, password);
       } else {
         console.log('[LoginSignup] Attempting signup...');
-        result = await signUp(email, password, name);
+        result = await signUp(normalizedEmail, password, name);
       }
 
       if (result.error) {
         setLoading(false);
+        
+        // Record failed attempt for rate limiting (only on login)
+        if (isLogin) {
+          await recordFailedAttempt(normalizedEmail);
+        }
+
         const { title, message } = parseAuthError(result.error);
         console.error(`[LoginSignup] ${isLogin ? 'Login' : 'Signup'} error:`, result.error);
         showError(title, message);
       } else {
         if (isLogin) {
           console.log('[LoginSignup] Login successful');
+          // Clear failed attempts on successful login
+          await clearAttempts(normalizedEmail);
           setLoading(false);
           // Clear form fields
           setEmail('');
@@ -232,7 +251,7 @@ export default function LoginSignupScreen() {
           console.log('[LoginSignup] Signup successful, waiting for email confirmation');
           showSuccess('Signup Successful', 'Please check your email to verify your account');
           setAwaitingConfirmation(true);
-          setConfirmationEmail(email);
+          setConfirmationEmail(normalizedEmail);
           setLoading(false);
         }
       }
