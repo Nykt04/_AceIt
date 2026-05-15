@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { NotificationProvider, useNotification } from './src/context/NotificationContext';
 import { setNotificationHandler } from './src/services/notificationService';
+import soundManager from './src/services/soundService';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { NotificationDisplay } from './src/components/NotificationDisplay';
 import HomeScreen from './src/screens/HomeScreen';
@@ -19,6 +20,7 @@ import AIGenerateScreen from './src/screens/AIGenerateScreen';
 import AboutScreen from './src/screens/AboutScreen';
 import LoginSignupScreen from './src/screens/LoginSignupScreen';
 import TermsAndConditionsScreen from './src/screens/TermsAndConditionsScreen';
+import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import HelpSupportScreen from './src/screens/HelpSupportScreen';
@@ -130,6 +132,7 @@ function RootNavigator() {
                     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
                     <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
                     <Stack.Screen name="TermsAndConditionsView" component={TermsAndConditionsScreen} />
+                    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
                   </>
                 )}
             </Stack.Navigator>
@@ -138,6 +141,20 @@ function RootNavigator() {
 }
 
 export default function App() {
+    useEffect(() => {
+        // Initialize sound manager on app start
+        soundManager.initialize().catch(error => {
+            console.warn('Failed to initialize sound manager:', error);
+        });
+        
+        return () => {
+            // Cleanup on app unmount
+            soundManager.cleanup().catch(error => {
+                console.warn('Failed to cleanup sound manager:', error);
+            });
+        };
+    }, []);
+
     return (
         <ErrorBoundary>
             <AuthProvider>

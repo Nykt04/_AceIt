@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Dimensions, Animated, Alert, Platform } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { useStudy } from '../context/StudyContext';
@@ -230,7 +231,13 @@ function QuizView({ terms, questions, onExit }) {
     if (answered) return;
     setSelected(idx);
     setAnswered(true);
-    if (idx === correctIdx) setScore((s) => s + 1);
+    const isCorrect = idx === correctIdx;
+    if (isCorrect) {
+      setScore((s) => s + 1);
+      soundManager.playCorrectAnswer();
+    } else {
+      soundManager.playWrongAnswer();
+    }
     
     // Animate option selection
     const animValue = getOptionAnim(idx);

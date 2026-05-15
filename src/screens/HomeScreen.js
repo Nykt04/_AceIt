@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
 import { Alert } from 'react-native';
+import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
@@ -193,6 +194,7 @@ export default function HomeScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <Navbar onMenuPress={() => {
                 console.log('[HomeScreen] Menu button clicked, opening sidebar');
+                soundManager.playButtonClick();
                 setSidebarOpen(true);
             }} />
             <Sidebar isOpen={sidebarOpen} onClose={() => {
@@ -219,7 +221,10 @@ export default function HomeScreen() {
                         <View style={styles.quickActionsContainer}>
                             <TouchableOpacity 
                                 style={[styles.quickActionCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-                                onPress={() => navigation.navigate('CreateSet')}
+                                onPress={() => {
+                                    soundManager.playButtonClick();
+                                    navigation.navigate('CreateSet');
+                                }}
                                 activeOpacity={0.8}
                             >
                                 <Text style={styles.quickActionIcon}>✏️</Text>
@@ -229,7 +234,10 @@ export default function HomeScreen() {
                             
                             <TouchableOpacity 
                                 style={[styles.quickActionCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-                                onPress={() => navigation.navigate('AIGenerate')}
+                                onPress={() => {
+                                    soundManager.playButtonClick();
+                                    navigation.navigate('AIGenerate');
+                                }}
                                 activeOpacity={0.8}
                             >
                                 <Text style={styles.quickActionIcon}>✨</Text>
@@ -239,7 +247,10 @@ export default function HomeScreen() {
                             
                             <TouchableOpacity 
                                 style={[styles.quickActionCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-                                onPress={() => navigation.navigate('FileUploadQuestions')}
+                                onPress={() => {
+                                    soundManager.playButtonClick();
+                                    navigation.navigate('FileUploadQuestions');
+                                }}
                                 activeOpacity={0.8}
                             >
                                 <Text style={styles.quickActionIcon}>📄</Text>
@@ -267,7 +278,10 @@ export default function HomeScreen() {
                 <Animated.View style={{ transform: [{ scale: fabScale1 }] }}>
                     <TouchableOpacity
                         style={styles.fab}
-                        onPress={() => navigation.navigate('AIGenerate')}
+                        onPress={() => {
+                            soundManager.playButtonClick();
+                            navigation.navigate('AIGenerate');
+                        }}
                         onPressIn={() => handleFabPressIn(fabScale1)}
                         onPressOut={() => handleFabPressOut(fabScale1)}
                         activeOpacity={1}
@@ -279,7 +293,10 @@ export default function HomeScreen() {
                 <Animated.View style={{ transform: [{ scale: fabScale2 }] }}>
                     <TouchableOpacity
                         style={[styles.fab, styles.fabPrimary]}
-                        onPress={() => navigation.navigate('CreateSet')}
+                        onPress={() => {
+                            soundManager.playButtonClick();
+                            navigation.navigate('CreateSet');
+                        }}
                         onPressIn={() => handleFabPressIn(fabScale2)}
                         onPressOut={() => handleFabPressOut(fabScale2)}
                         activeOpacity={1}

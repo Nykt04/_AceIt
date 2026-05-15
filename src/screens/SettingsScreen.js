@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase, deleteAccount } from '../services/authService';
 import { parseAuthError } from '../services/errorHandler';
 import { showSuccess, showError } from '../services/notificationService';
+import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
@@ -31,7 +32,43 @@ export default function SettingsScreen() {
   const [notifications, setNotifications] = useState(true);
   const [offlineMode, setOfflineMode] = useState(false);
   const [autoSave, setAutoSave] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundVolume, setSoundVolume] = useState(0.7);
   const [showPasswordReminder, setShowPasswordReminder] = useState(false);
+
+  // Load sound settings from AsyncStorage
+  useEffect(() => {
+    loadSoundSettings();
+  }, []);
+
+  const loadSoundSettings = async () => {
+    try {
+      const savedSoundEnabled = await AsyncStorage.getItem('soundEnabled');
+      const savedVolume = await AsyncStorage.getItem('soundVolume');
+      
+      if (savedSoundEnabled !== null) {
+        setSoundEnabled(JSON.parse(savedSoundEnabled));
+      }
+      if (savedVolume !== null) {
+        setSoundVolume(parseFloat(savedVolume));
+      }
+    } catch (error) {
+      console.error('[Settings] Error loading sound settings:', error);
+    }
+  };
+
+  const handleSoundToggle = async (value) => {
+    setSoundEnabled(value);
+    soundManager.setSoundEnabled(value);
+    try {
+      await AsyncStorage.setItem('soundEnabled', JSON.stringify(value));
+      if (value) {
+        await soundManager.playSuccess();
+      }
+    } catch (error) {
+      console.error('[Settings] Error saving sound setting:', error);
+    }
+  };
 
   // Check if password change reminder should be shown
   useFocusEffect(
@@ -285,7 +322,17 @@ export default function SettingsScreen() {
               theme={theme}
             />
           </View>
-          
+          <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
+            <SettingRow
+              icon="🔊"
+              title="Sound Effects"
+              description="Enable audio feedback"
+              value={soundEnabled}
+              onToggle={handleSoundToggle}
+              isToggle
+              theme={theme}
+            />
+          </View>
         </View>
 
         {/* App Section */}
@@ -310,6 +357,17 @@ export default function SettingsScreen() {
             <SettingRow
               title="Terms & Conditions"
               description="Review our terms"
+              theme={theme}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+            activeOpacity={0.7}
+          >
+            <SettingRow
+              title="Privacy Policy"
+              description="Review our privacy policy"
               theme={theme}
             />
           </TouchableOpacity>
