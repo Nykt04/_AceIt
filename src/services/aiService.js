@@ -81,7 +81,7 @@ const generateWithOpenAICompatible = async (apiKey, topic, count, types) => {
   const model =
     process.env.EXPO_PUBLIC_OPENROUTER_MODEL ||
     extra().openrouterModel ||
-    (isOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
+    (isOpenRouter ? 'mistralai/mistral-7b-instruct' : 'gpt-4o-mini');
 
   const response = await fetch(apiUrl, {
     method: 'POST',
@@ -181,7 +181,7 @@ const generateWithTextContent = async (apiKey, textContent, count) => {
     const model =
       process.env.EXPO_PUBLIC_OPENROUTER_MODEL ||
       extra().openrouterModel ||
-      (isOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini');
+      (isOpenRouter ? 'mistralai/mistral-7b-instruct' : 'gpt-4o-mini');
 
     console.log(`[AIService] Using model: ${model}`);
 
