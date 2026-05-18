@@ -81,7 +81,7 @@ const generateWithOpenAICompatible = async (apiKey, topic, count, types) => {
   const model =
     process.env.EXPO_PUBLIC_OPENROUTER_MODEL ||
     extra().openrouterModel ||
-    (isOpenRouter ? 'mistralai/mistral-7b-instruct' : 'gpt-4o-mini');
+    (isOpenRouter ? 'deepseek/deepseek-chat' : 'gpt-4o-mini');
 
   const response = await fetch(apiUrl, {
     method: 'POST',

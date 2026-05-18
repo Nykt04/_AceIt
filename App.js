@@ -6,7 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StudyProvider } from './src/context/StudyContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { ThemeProvider } from './src/context/ThemeContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NotificationProvider, useNotification } from './src/context/NotificationContext';
 import { setNotificationHandler } from './src/services/notificationService';
 import soundManager from './src/services/soundService';
@@ -35,6 +35,7 @@ const Stack = createNativeStackNavigator();
 function RootNavigator() {
     const { isAuthenticated, loading, onboardingComplete } = useAuth();
     const { addNotification } = useNotification();
+    const { theme } = useTheme();
     const [initialState, setInitialState] = useState(undefined);
     const [isReady, setIsReady] = useState(false);
     const navigationRef = React.useRef(null);
@@ -66,8 +67,8 @@ function RootNavigator() {
 
     if (loading || !isReady) {
         return (
-            <View style={styles.boot}>
-                <ActivityIndicator size="large" color="#6366f1" />
+            <View style={[styles.boot, { backgroundColor: theme.background }]}>
+                <ActivityIndicator size="large" color={theme.primaryAccent} />
             </View>
         );
     }
@@ -90,7 +91,7 @@ function RootNavigator() {
                 initialRouteName={!onboardingComplete ? "About" : (isAuthenticated ? "Home" : "LoginSignup")}
                 screenOptions={{
                     headerShown: false,
-                    contentStyle: { backgroundColor: '#0f172a' },
+                    contentStyle: { backgroundColor: theme.background },
                     animation: 'slide_from_right',
                     gestureEnabled: !onboardingComplete ? false : true,
                 }}
@@ -159,18 +160,26 @@ export default function App() {
         <ErrorBoundary>
             <AuthProvider>
                 <ThemeProvider>
-                    <StudyProvider>
-                        <NotificationProvider>
-                            <StatusBar style="light" />
-                            <View style={styles.app}>
-                                <RootNavigator />
-                                <NotificationDisplay />
-                            </View>
-                        </NotificationProvider>
-                    </StudyProvider>
+                    <AppContent />
                 </ThemeProvider>
             </AuthProvider>
         </ErrorBoundary>
+    );
+}
+
+function AppContent() {
+    const { theme, isDarkMode } = useTheme();
+
+    return (
+        <StudyProvider>
+            <NotificationProvider>
+                <StatusBar style={isDarkMode ? "light" : "dark"} />
+                <View style={[styles.app, { backgroundColor: theme.background }]}>
+                    <RootNavigator />
+                    <NotificationDisplay />
+                </View>
+            </NotificationProvider>
+        </StudyProvider>
     );
 }
 

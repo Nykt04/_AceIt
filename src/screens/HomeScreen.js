@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Animated, Platform, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
@@ -8,7 +8,224 @@ import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
-const AnimatedCard = ({ item, index, navigation, onDelete, theme }) => {
+const createStyles = (theme) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    scrollContent: { flexGrow: 1, paddingBottom: 100 },
+    
+    // Header
+    header: { 
+        paddingHorizontal: 20, 
+        paddingTop: 20, 
+        paddingBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.secondary,
+    },
+    title: { 
+        fontSize: 32, 
+        fontWeight: '800', 
+        color: theme.text,
+        marginBottom: 4,
+    },
+    subtitle: { 
+        fontSize: 16, 
+        color: theme.textSecondary,
+        fontWeight: '500',
+    },
+    
+    // Study Sets List
+    list: { 
+        padding: 16, 
+        gap: 12,
+    },
+    card: {
+        backgroundColor: theme.secondary,
+        borderRadius: 16,
+        padding: 18,
+        marginBottom: 12,
+        borderWidth: 1.5,
+        borderColor: theme.border,
+        shadowColor: theme.background,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    cardTitle: { 
+        fontSize: 20, 
+        fontWeight: '700', 
+        color: theme.text,
+    },
+    cardDesc: { 
+        fontSize: 15, 
+        color: theme.textTertiary, 
+        marginTop: 8,
+        fontWeight: '500',
+    },
+    cardMeta: { 
+        fontSize: 14, 
+        color: theme.textSecondary, 
+        marginTop: 10,
+        fontWeight: '500',
+    },
+    
+    // Empty State
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        paddingVertical: 48,
+    },
+    emptyIllustration: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: theme.secondary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 24,
+        borderWidth: 2,
+        borderColor: theme.border,
+        shadowColor: theme.primaryAccent,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 4,
+    },
+    emptyIcon: {
+        fontSize: 64,
+    },
+    emptyTitle: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: theme.text,
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    emptyDescription: {
+        fontSize: 17,
+        color: theme.textTertiary,
+        textAlign: 'center',
+        marginBottom: 32,
+        lineHeight: 26,
+    },
+    
+    // Quick Actions
+    quickActionsContainer: {
+        width: '100%',
+        marginBottom: 32,
+        gap: 12,
+    },
+    quickActionCard: {
+        backgroundColor: theme.secondary,
+        borderRadius: 14,
+        padding: 18,
+        borderWidth: 1.5,
+        borderColor: theme.border,
+        alignItems: 'center',
+        shadowColor: theme.background,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    quickActionIcon: {
+        fontSize: 40,
+        marginBottom: 12,
+    },
+    quickActionTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.text,
+        marginBottom: 6,
+    },
+    quickActionDesc: {
+        fontSize: 14,
+        color: theme.textSecondary,
+        textAlign: 'center',
+    },
+    
+    // Tips Section
+    tipsContainer: {
+        backgroundColor: theme.secondary,
+        borderRadius: 14,
+        padding: 18,
+        borderWidth: 1.5,
+        borderColor: theme.border,
+        shadowColor: theme.background,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 3,
+    },
+    tipsTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.text,
+        marginBottom: 12,
+    },
+    tipItem: {
+        fontSize: 15,
+        color: theme.textTertiary,
+        marginBottom: 8,
+        lineHeight: 22,
+    },
+    
+    // FAB
+    fabRow: { 
+        position: 'absolute', 
+        bottom: 24, 
+        left: 16, 
+        right: 16, 
+        flexDirection: 'row', 
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    fab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.textSecondary,
+        paddingVertical: 16,
+        paddingHorizontal: 22,
+        borderRadius: 14,
+        marginLeft: 12,
+        shadowColor: theme.background,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: theme.textSecondary,
+    },
+    fabIcon: { 
+        fontSize: 20, 
+        color: theme.text, 
+        marginRight: 10,
+    },
+    fabPrimary: { 
+        backgroundColor: theme.primaryAccent,
+        borderColor: theme.primaryLight,
+    },
+    fabLabel: { 
+        fontSize: 16, 
+        fontWeight: '700', 
+        color: theme.text,
+    },
+    
+    // Delete Button
+    deleteBtn: { 
+        padding: 8, 
+        marginLeft: 8,
+        borderRadius: 8,
+        backgroundColor: theme.secondary,
+    },
+    deleteText: { 
+        fontSize: 20,
+    },
+});
+
+const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(50)).current;
     const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -105,6 +322,7 @@ export default function HomeScreen() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const fabScale1 = useRef(new Animated.Value(1)).current;
     const fabScale2 = useRef(new Animated.Value(1)).current;
+    const styles = useMemo(() => createStyles(theme), [theme]);
 
     useEffect(() => {
         console.log('[HomeScreen] studySets updated', studySets.map((s) => s.id));
@@ -176,6 +394,7 @@ export default function HomeScreen() {
                 }}
                 onDelete={handleDelete}
                 theme={theme}
+                styles={styles}
             />
         );
     };
@@ -309,220 +528,3 @@ export default function HomeScreen() {
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0f172a' },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    scrollContent: { flexGrow: 1, paddingBottom: 100 },
-    
-    // Header
-    header: { 
-        paddingHorizontal: 20, 
-        paddingTop: 20, 
-        paddingBottom: 24,
-        borderBottomWidth: 1,
-        borderBottomColor: '#1e293b',
-    },
-    title: { 
-        fontSize: 32, 
-        fontWeight: '800', 
-        color: '#f8fafc',
-        marginBottom: 4,
-    },
-    subtitle: { 
-        fontSize: 16, 
-        color: '#94a3b8',
-        fontWeight: '500',
-    },
-    
-    // Study Sets List
-    list: { 
-        padding: 16, 
-        gap: 12,
-    },
-    card: {
-        backgroundColor: '#1e293b',
-        borderRadius: 16,
-        padding: 18,
-        marginBottom: 12,
-        borderWidth: 1.5,
-        borderColor: '#334155',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
-    },
-    cardTitle: { 
-        fontSize: 20, 
-        fontWeight: '700', 
-        color: '#f8fafc',
-    },
-    cardDesc: { 
-        fontSize: 15, 
-        color: '#cbd5e1', 
-        marginTop: 8,
-        fontWeight: '500',
-    },
-    cardMeta: { 
-        fontSize: 14, 
-        color: '#94a3b8', 
-        marginTop: 10,
-        fontWeight: '500',
-    },
-    
-    // Empty State
-    emptyContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingVertical: 48,
-    },
-    emptyIllustration: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: '#1e293b',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
-        borderWidth: 2,
-        borderColor: '#334155',
-        shadowColor: '#6366f1',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    emptyIcon: {
-        fontSize: 64,
-    },
-    emptyTitle: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#f8fafc',
-        textAlign: 'center',
-        marginBottom: 12,
-    },
-    emptyDescription: {
-        fontSize: 17,
-        color: '#cbd5e1',
-        textAlign: 'center',
-        marginBottom: 32,
-        lineHeight: 26,
-    },
-    
-    // Quick Actions
-    quickActionsContainer: {
-        width: '100%',
-        marginBottom: 32,
-        gap: 12,
-    },
-    quickActionCard: {
-        backgroundColor: '#1e293b',
-        borderRadius: 14,
-        padding: 18,
-        borderWidth: 1.5,
-        borderColor: '#334155',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 3,
-    },
-    quickActionIcon: {
-        fontSize: 40,
-        marginBottom: 12,
-    },
-    quickActionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#f8fafc',
-        marginBottom: 6,
-    },
-    quickActionDesc: {
-        fontSize: 14,
-        color: '#94a3b8',
-        textAlign: 'center',
-    },
-    
-    // Tips Section
-    tipsContainer: {
-        backgroundColor: '#1e293b',
-        borderRadius: 14,
-        padding: 18,
-        borderWidth: 1.5,
-        borderColor: '#334155',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 3,
-    },
-    tipsTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#f8fafc',
-        marginBottom: 12,
-    },
-    tipItem: {
-        fontSize: 15,
-        color: '#cbd5e1',
-        marginBottom: 8,
-        lineHeight: 22,
-    },
-    
-    // FAB
-    fabRow: { 
-        position: 'absolute', 
-        bottom: 24, 
-        left: 16, 
-        right: 16, 
-        flexDirection: 'row', 
-        justifyContent: 'flex-end',
-        gap: 12,
-    },
-    fab: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#334155',
-        paddingVertical: 16,
-        paddingHorizontal: 22,
-        borderRadius: 14,
-        marginLeft: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-        borderWidth: 1,
-        borderColor: '#475569',
-    },
-    fabIcon: { 
-        fontSize: 20, 
-        color: '#fff', 
-        marginRight: 10,
-    },
-    fabPrimary: { 
-        backgroundColor: '#6366f1',
-        borderColor: '#818cf8',
-    },
-    fabLabel: { 
-        fontSize: 16, 
-        fontWeight: '700', 
-        color: '#fff',
-    },
-    
-    // Delete Button
-    deleteBtn: { 
-        padding: 8, 
-        marginLeft: 8,
-        borderRadius: 8,
-        backgroundColor: '#1e293b',
-    },
-    deleteText: { 
-        fontSize: 20,
-    },
-});

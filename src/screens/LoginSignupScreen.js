@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { signIn, signUp, signInWithGoogle, sendWelcomeEmail } from '../services/authService';
@@ -26,6 +27,7 @@ import { validateEmail, validatePassword, validateFullName } from '../services/i
 export default function LoginSignupScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -43,7 +45,271 @@ export default function LoginSignupScreen() {
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
 
-  // If user logs in while waiting for confirmation, clear the confirmation state
+  // Create dynamic styles based on theme
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      padding: 20,
+      justifyContent: 'space-between',
+    },
+    headerSection: {
+      alignItems: 'center',
+      marginBottom: 32,
+      marginTop: 20,
+    },
+    mainTitle: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+    toggleContainer: {
+      flexDirection: 'row',
+      marginBottom: 32,
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      padding: 4,
+    },
+    toggleButton: {
+      flex: 1,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderRadius: 10,
+    },
+    toggleActive: {
+      backgroundColor: theme.primaryAccent,
+    },
+    toggleText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textTertiary,
+    },
+    toggleTextActive: {
+      color: theme.text,
+    },
+    form: {
+      marginBottom: 24,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    inputError: {
+      borderColor: theme.error,
+      borderWidth: 2,
+    },
+    errorText: {
+      fontSize: 12,
+      color: theme.error,
+      marginTop: 6,
+      marginLeft: 4,
+      fontWeight: '500',
+    },
+    forgotPassword: {
+      fontSize: 14,
+      color: theme.primaryAccent,
+      fontWeight: '600',
+      textAlign: 'right',
+      marginBottom: 20,
+    },
+    submitButton: {
+      backgroundColor: theme.primaryAccent,
+      paddingVertical: 16,
+      borderRadius: 12,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    submitButtonDisabled: {
+      opacity: 0.7,
+    },
+    submitText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    divider: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginVertical: 24,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.border,
+    },
+    dividerText: {
+      color: theme.textTertiary,
+      marginHorizontal: 16,
+      fontSize: 14,
+    },
+    socialButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.secondary,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    socialIcon: {
+      fontSize: 18,
+      marginRight: 8,
+    },
+    socialText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    footer: {
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    footerText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    footerLink: {
+      color: theme.primaryAccent,
+      fontWeight: '700',
+    },
+    confirmationContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+    },
+    confirmationContent: {
+      alignItems: 'center',
+      width: '100%',
+    },
+    checkmarkCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: theme.secondary,
+      borderWidth: 2,
+      borderColor: theme.primaryAccent,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 32,
+    },
+    checkmarkIcon: {
+      fontSize: 48,
+    },
+    confirmationTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    confirmationSubtitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.primaryAccent,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    confirmationMessage: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      marginBottom: 32,
+      lineHeight: 20,
+    },
+    loaderContainer: {
+      alignItems: 'center',
+      marginBottom: 40,
+    },
+    loaderText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginTop: 16,
+      fontWeight: '500',
+    },
+    resendButton: {
+      paddingVertical: 12,
+      paddingHorizontal: 32,
+      borderRadius: 8,
+      borderWidth: 2,
+      borderColor: theme.primaryAccent,
+    },
+    resendText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.primaryAccent,
+    },
+    // Success Screen Styles
+    successContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: theme.background,
+      paddingHorizontal: 20,
+    },
+    successContent: {
+      alignItems: 'center',
+    },
+    successIconCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: theme.success,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 24,
+      shadowColor: theme.success,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    successIcon: {
+      fontSize: 48,
+    },
+    successTitle: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: theme.text,
+      marginBottom: 12,
+    },
+    successMessage: {
+      fontSize: 16,
+      color: theme.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    successSubtext: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      textAlign: 'center',
+    },
+  });
   useEffect(() => {
     if (user && awaitingConfirmation) {
       console.log('[LoginSignup] User confirmed and logged in!');
@@ -310,7 +576,7 @@ export default function LoginSignupScreen() {
             </Text>
             
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#6366f1" />
+              <ActivityIndicator size="large" color={theme.primaryAccent} />
               <Text style={styles.loaderText}>Waiting for confirmation...</Text>
             </View>
 
@@ -350,7 +616,7 @@ export default function LoginSignupScreen() {
             </Text>
             
             <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color="#6366f1" />
+              <ActivityIndicator size="large" color={theme.primaryAccent} />
               <Text style={styles.loaderText}>Please wait...</Text>
             </View>
 
@@ -373,7 +639,7 @@ export default function LoginSignupScreen() {
   // Show success screen after login
   if (showSuccessScreen) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: '#0f172a' }]}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.successContainer}>
           <Animated.View 
             style={[
@@ -439,7 +705,7 @@ export default function LoginSignupScreen() {
                 <TextInput
                   style={[styles.input, errors.name ? styles.inputError : null]}
                   placeholder="Enter your full name"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textTertiary}
                   value={name}
                   onChangeText={handleNameChange}
                   onBlur={handleNameBlur}
@@ -454,7 +720,7 @@ export default function LoginSignupScreen() {
               <TextInput
                 style={[styles.input, errors.email ? styles.inputError : null]}
                 placeholder="Enter your email"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={theme.textTertiary}
                 value={email}
                 onChangeText={handleEmailChange}
                 onBlur={handleEmailBlur}
@@ -470,7 +736,7 @@ export default function LoginSignupScreen() {
               <TextInput
                 style={[styles.input, errors.password ? styles.inputError : null]}
                 placeholder="Enter your password"
-                placeholderTextColor="#64748b"
+                placeholderTextColor={theme.textTertiary}
                 value={password}
                 onChangeText={handlePasswordChange}
                 onBlur={handlePasswordBlur}
@@ -486,7 +752,7 @@ export default function LoginSignupScreen() {
                 <TextInput
                   style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
                   placeholder="Confirm your password"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textTertiary}
                   value={confirmPassword}
                   onChangeText={handleConfirmPasswordChange}
                   onBlur={handleConfirmPasswordBlur}
@@ -551,268 +817,3 @@ export default function LoginSignupScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 20,
-    justifyContent: 'space-between',
-  },
-  headerSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-    marginTop: 20,
-  },
-  mainTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#f8fafc',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#94a3b8',
-    textAlign: 'center',
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    marginBottom: 32,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 4,
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  toggleActive: {
-    backgroundColor: '#6366f1',
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  toggleTextActive: {
-    color: '#fff',
-  },
-  form: {
-    marginBottom: 24,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#e2e8f0',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  inputError: {
-    borderColor: '#ef4444',
-    borderWidth: 2,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#ef4444',
-    marginTop: 6,
-    marginLeft: 4,
-    fontWeight: '500',
-  },
-  forgotPassword: {
-    fontSize: 14,
-    color: '#6366f1',
-    fontWeight: '600',
-    textAlign: 'right',
-    marginBottom: 20,
-  },
-  submitButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#334155',
-  },
-  dividerText: {
-    color: '#64748b',
-    marginHorizontal: 16,
-    fontSize: 14,
-  },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1e293b',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  socialIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  socialText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#e2e8f0',
-  },
-  footer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#94a3b8',
-  },
-  footerLink: {
-    color: '#6366f1',
-    fontWeight: '700',
-  },
-  confirmationContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  confirmationContent: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  checkmarkCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#1e293b',
-    borderWidth: 2,
-    borderColor: '#6366f1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  checkmarkIcon: {
-    fontSize: 48,
-  },
-  confirmationTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#f8fafc',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  confirmationSubtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6366f1',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  confirmationMessage: {
-    fontSize: 14,
-    color: '#94a3b8',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 20,
-  },
-  loaderContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  loaderText: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginTop: 16,
-    fontWeight: '500',
-  },
-  resendButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#6366f1',
-  },
-  resendText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6366f1',
-  },
-  // Success Screen Styles
-  successContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    paddingHorizontal: 20,
-  },
-  successContent: {
-    alignItems: 'center',
-  },
-  successIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  successIcon: {
-    fontSize: 48,
-  },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-  },
-  successMessage: {
-    fontSize: 16,
-    color: '#e5e7eb',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  successSubtext: {
-    fontSize: 14,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-});
