@@ -179,7 +179,6 @@ export default function SetDetailScreen() {
                                 style={styles.modeCard}
                                 onPress={() => navigation.navigate('Study', { set, mode: 'flashcards' })}
                             >
-                                <Text style={styles.modeIcon}></Text>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.modeTitle}>Flashcards</Text>
                                     <Text style={styles.modeDesc}>Flip through terms</Text>
@@ -189,7 +188,6 @@ export default function SetDetailScreen() {
                                 style={styles.modeCard}
                                 onPress={() => navigation.navigate('Study', { set, mode: 'quiz' })}
                             >
-                                <Text style={styles.modeIcon}></Text>
                                 <View style={{ flex: 1 }}>
                                     <Text style={styles.modeTitle}>Quiz</Text>
                                     <Text style={styles.modeDesc}>Multiple choice & True/False</Text>
@@ -204,7 +202,7 @@ export default function SetDetailScreen() {
                                     onPress={() => setShowFlashcardEditor(!showFlashcardEditor)}
                                 >
                                     <Text style={[styles.editorToggleText, { color: showFlashcardEditor ? '#fff' : theme.text }]}>
-                                        {showFlashcardEditor ? '✕ Close Editor' : '✏️ Edit Flashcards'}
+                                        {showFlashcardEditor ? 'Close Editor' : 'Edit Flashcards'}
                                     </Text>
                                 </TouchableOpacity>
 
@@ -286,13 +284,13 @@ export default function SetDetailScreen() {
                         style={[styles.actionBtn, styles.exportBtnPDF]} 
                         onPress={() => exportStudySet(set, 'pdf')}
                     >
-                        <Text style={styles.actionBtnText}>📄 Export as PDF</Text>
+                        <Text style={styles.actionBtnText}>Export as PDF</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                         style={[styles.actionBtn, styles.exportBtnDocx]} 
                         onPress={() => exportStudySet(set, 'docx')}
                     >
-                        <Text style={styles.actionBtnText}>📋 Export as DOCX</Text>
+                        <Text style={styles.actionBtnText}>Export as DOCX</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -383,10 +381,6 @@ const createStyles = (theme) => StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 6,
         elevation: 4,
-    },
-    modeIcon: { 
-        fontSize: 36, 
-        marginRight: 16,
     },
     modeTitle: { 
         fontSize: 20, 

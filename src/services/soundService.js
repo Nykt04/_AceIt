@@ -1,5 +1,8 @@
 import { Audio } from 'expo-av';
 
+// Detect if running in web environment
+const IS_WEB = typeof window !== 'undefined' && !window.expo;
+
 // Sound effects enumeration
 export const SoundType = {
   SUCCESS: 'success',
@@ -7,20 +10,22 @@ export const SoundType = {
   BUTTON_CLICK: 'buttonClick',
   CORRECT_ANSWER: 'correctAnswer',
   WRONG_ANSWER: 'wrongAnswer',
-  NOTIFICATION: 'notification',
-  SWIPE: 'swipe',
-  LEVEL_UP: 'levelUp',
-  TIMER_TICK: 'timerTick',
 };
 
-// Sound files - require statements bundle them with the app
-const SOUND_DATA = {
-  [SoundType.BUTTON_CLICK]: require('../../assets/sounds/clickButton.mp3'),
-  [SoundType.CORRECT_ANSWER]: require('../../assets/sounds/correct.mp3'),
-  [SoundType.WRONG_ANSWER]: require('../../assets/sounds/incorrect.mp3'),
-  [SoundType.ERROR]: require('../../assets/sounds/error.mp3'),
-  [SoundType.SUCCESS]: require('../../assets/sounds/correct.mp3'), // Use correct sound for success feedback
-};
+// Sound files - load differently for native vs web
+let SOUND_DATA = {};
+
+// Only attempt to load sound files on native platforms
+if (!IS_WEB) {
+  // This block only runs on native (React Native) environments
+  SOUND_DATA = {
+    [SoundType.BUTTON_CLICK]: require('../../assets/sounds/clickButton.mp3'),
+    [SoundType.CORRECT_ANSWER]: require('../../assets/sounds/correct.mp3'),
+    [SoundType.WRONG_ANSWER]: require('../../assets/sounds/incorrect.mp3'),
+    [SoundType.ERROR]: require('../../assets/sounds/error.mp3'),
+    [SoundType.SUCCESS]: require('../../assets/sounds/correct.mp3'),
+  };
+}
 
 class SoundManager {
   constructor() {
@@ -40,13 +45,19 @@ class SoundManager {
     this.initPromise = (async () => {
       try {
         console.log('[SoundManager] Initializing audio...');
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          interruptionMode: Audio.InterruptionMode.DoNotMix,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-        });
-        console.log('[SoundManager] Audio mode set');
+        
+        // Skip Audio setup on web
+        if (!IS_WEB) {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            interruptionMode: Audio.InterruptionMode.DoNotMix,
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: false,
+          });
+          console.log('[SoundManager] Audio mode set');
+        } else {
+          console.log('[SoundManager] Running in web environment - sounds will be muted');
+        }
 
         // Load all sounds using require statements
         for (const [soundType, soundModule] of Object.entries(SOUND_DATA)) {
@@ -56,14 +67,14 @@ class SoundManager {
             this.sounds[soundType] = sound;
             console.log(`✓ [SoundManager] Loaded sound: ${soundType}`);
           } catch (error) {
-            console.warn(`⚠ [SoundManager] Failed to load sound ${soundType}:`, error);
+            console.warn(`⚠ [SoundManager] Failed to load sound ${soundType}:`, error?.message || error);
           }
         }
 
         this.initialized = true;
-        console.log(`✓ [SoundManager] Initialized! Enabled: ${this.soundEnabled}, Volume: ${this.volume}`);
+        console.log(`✓ [SoundManager] Initialized! Enabled: ${this.soundEnabled}, Volume: ${this.volume}, Web: ${IS_WEB}`);
       } catch (error) {
-        console.warn('⚠ [SoundManager] Failed to initialize audio:', error);
+        console.warn('⚠ [SoundManager] Failed to initialize audio:', error?.message || error);
         this.initialized = true; // Mark as initialized even if there's an error to prevent retry loops
       }
     })();
@@ -133,22 +144,6 @@ class SoundManager {
 
   async playWrongAnswer() {
     await this.play(SoundType.WRONG_ANSWER);
-  }
-
-  async playNotification() {
-    await this.play(SoundType.NOTIFICATION);
-  }
-
-  async playSwipe() {
-    await this.play(SoundType.SWIPE);
-  }
-
-  async playLevelUp() {
-    await this.play(SoundType.LEVEL_UP);
-  }
-
-  async playTimerTick() {
-    await this.play(SoundType.TIMER_TICK);
   }
 
   setSoundEnabled(enabled) {

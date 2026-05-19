@@ -362,7 +362,7 @@ export default function FileUploadQuestionsScreen() {
           {loading ? (
             <ActivityIndicator color="#f5f5f5" size="large" />
           ) : (
-            <Text style={styles.generateButtonText}>✨ Generate Questions</Text>
+            <Text style={styles.generateButtonText}>Generate Questions</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

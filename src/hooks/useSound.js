@@ -29,10 +29,6 @@ export const useSound = () => {
     playError: () => soundManager.playError(),
     playCorrectAnswer: () => soundManager.playCorrectAnswer(),
     playWrongAnswer: () => soundManager.playWrongAnswer(),
-    playNotification: () => soundManager.playNotification(),
-    playSwipe: () => soundManager.playSwipe(),
-    playLevelUp: () => soundManager.playLevelUp(),
-    playTimerTick: () => soundManager.playTimerTick(),
     setSoundEnabled: (enabled) => soundManager.setSoundEnabled(enabled),
     setVolume: (volume) => soundManager.setVolume(volume),
   };

@@ -11,11 +11,13 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import { useTheme } from '../context/ThemeContext';
 
 export default function QuizSettingsScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { set } = route.params || {};
+  const { theme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [numQuestions, setNumQuestions] = useState(5);
   const [shuffleQuestions, setShuffleQuestions] = useState(true);
@@ -44,6 +46,9 @@ export default function QuizSettingsScreen() {
     });
   };
 
+  const maxQuestions = set.questions.length;
+  const styles = createStyles(theme);
+
   if (!set || !set.questions || set.questions.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
@@ -61,8 +66,6 @@ export default function QuizSettingsScreen() {
       </SafeAreaView>
     );
   }
-
-  const maxQuestions = set.questions.length;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -129,7 +132,7 @@ export default function QuizSettingsScreen() {
             <Switch
               value={shuffleQuestions}
               onValueChange={setShuffleQuestions}
-              trackColor={{ false: '#334155', true: '#6366f1' }}
+              trackColor={{ false: theme.tertiary, true: theme.primaryAccent }}
               thumbColor="#fff"
             />
           </View>
@@ -142,7 +145,7 @@ export default function QuizSettingsScreen() {
             <Switch
               value={showAnswers}
               onValueChange={setShowAnswers}
-              trackColor={{ false: '#334155', true: '#6366f1' }}
+              trackColor={{ false: theme.tertiary, true: theme.primaryAccent }}
               thumbColor="#fff"
             />
           </View>
@@ -155,7 +158,7 @@ export default function QuizSettingsScreen() {
             <Switch
               value={timedMode}
               onValueChange={setTimedMode}
-              trackColor={{ false: '#334155', true: '#6366f1' }}
+              trackColor={{ false: theme.tertiary, true: theme.primaryAccent }}
               thumbColor="#fff"
             />
           </View>
@@ -220,223 +223,225 @@ export default function QuizSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  back: {
-    fontSize: 16,
-    color: '#94a3b8',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#f8fafc',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 18,
-    color: '#64748b',
-  },
-  backButton: {
-    marginTop: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#e2e8f0',
-  },
-  infoBox: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 28,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
-  },
-  setTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#f8fafc',
-    marginBottom: 8,
-  },
-  availableText: {
-    fontSize: 14,
-    color: '#94a3b8',
-  },
-  section: {
-    marginBottom: 28,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#e2e8f0',
-  },
-  sectionValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#6366f1',
-  },
-  sliderContainer: {
-    marginBottom: 16,
-  },
-  quickSelectRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  quickSelectButton: {
-    flex: 1,
-    backgroundColor: '#1e293b',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  quickSelectActive: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  quickSelectDisabled: {
-    opacity: 0.5,
-  },
-  quickSelectText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#94a3b8',
-  },
-  quickSelectTextActive: {
-    color: '#fff',
-  },
-  optionItem: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  optionContent: {
-    flex: 1,
-  },
-  optionLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#e2e8f0',
-    marginBottom: 4,
-  },
-  optionDesc: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  timedModeSettings: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#6366f1',
-  },
-  timedModeLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#e2e8f0',
-    marginBottom: 12,
-  },
-  timeSelectRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  timeButton: {
-    flex: 1,
-    backgroundColor: '#334155',
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#475569',
-  },
-  timeButtonActive: {
-    backgroundColor: '#6366f1',
-    borderColor: '#6366f1',
-  },
-  timeButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94a3b8',
-  },
-  timeButtonTextActive: {
-    color: '#fff',
-  },
-  summaryBox: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    borderTopWidth: 2,
-    borderTopColor: '#6366f1',
-  },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#e2e8f0',
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  summaryLabel: {
-    fontSize: 13,
-    color: '#94a3b8',
-  },
-  summaryValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6366f1',
-  },
-  startButton: {
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  startButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-});
+function createStyles(theme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    scrollContent: {
+      padding: 20,
+      paddingBottom: 40,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 24,
+    },
+    back: {
+      fontSize: 16,
+      color: theme.textSecondary,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    emptyText: {
+      fontSize: 18,
+      color: theme.textTertiary,
+    },
+    backButton: {
+      marginTop: 20,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      backgroundColor: theme.secondary,
+      borderRadius: 8,
+    },
+    backButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    infoBox: {
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 28,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.primaryAccent,
+    },
+    setTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    availableText: {
+      fontSize: 14,
+      color: theme.textSecondary,
+    },
+    section: {
+      marginBottom: 28,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    sectionValue: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.primaryAccent,
+    },
+    sliderContainer: {
+      marginBottom: 16,
+    },
+    quickSelectRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    quickSelectButton: {
+      flex: 1,
+      backgroundColor: theme.secondary,
+      borderRadius: 10,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    quickSelectActive: {
+      backgroundColor: theme.primaryAccent,
+      borderColor: theme.primaryAccent,
+    },
+    quickSelectDisabled: {
+      opacity: 0.5,
+    },
+    quickSelectText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    quickSelectTextActive: {
+      color: '#fff',
+    },
+    optionItem: {
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    optionContent: {
+      flex: 1,
+    },
+    optionLabel: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    optionDesc: {
+      fontSize: 12,
+      color: theme.textTertiary,
+    },
+    timedModeSettings: {
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      padding: 16,
+      marginTop: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: theme.primaryAccent,
+    },
+    timedModeLabel: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 12,
+    },
+    timeSelectRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    timeButton: {
+      flex: 1,
+      backgroundColor: theme.tertiary,
+      borderRadius: 8,
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    timeButtonActive: {
+      backgroundColor: theme.primaryAccent,
+      borderColor: theme.primaryAccent,
+    },
+    timeButtonText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    timeButtonTextActive: {
+      color: '#fff',
+    },
+    summaryBox: {
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+      borderTopWidth: 2,
+      borderTopColor: theme.primaryAccent,
+    },
+    summaryTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 12,
+    },
+    summaryRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    summaryLabel: {
+      fontSize: 13,
+      color: theme.textSecondary,
+    },
+    summaryValue: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.primaryAccent,
+    },
+    startButton: {
+      backgroundColor: theme.primaryAccent,
+      borderRadius: 12,
+      paddingVertical: 16,
+      alignItems: 'center',
+    },
+    startButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#fff',
+    },
+  });
+}

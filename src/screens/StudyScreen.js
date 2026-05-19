@@ -1,14 +1,18 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Dimensions, Animated, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, FlatList, Dimensions, Animated, Alert, Platform, ScrollView } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { useStudy } from '../context/StudyContext';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 function FlashcardView({ terms, questions }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  
   const cards = useMemo(() => {
     const fromTerms = (terms || []).map((t, i) => ({ id: `t-${i}`, front: t.term, back: t.definition, type: 'term' }));
     const fromQuestions = (questions || []).map((q, i) => ({
@@ -140,6 +144,9 @@ function FlashcardView({ terms, questions }) {
 }
 
 function QuizResults({ score, total, pct, onDone }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -174,6 +181,9 @@ function QuizResults({ score, total, pct, onDone }) {
 }
 
 function QuizView({ terms, questions, onExit }) {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  
   const items = useMemo(() => {
     return (questions || []).map((q, i) => ({ ...q, id: q.id || `q-${i}` }));
   }, [questions]);
@@ -274,47 +284,58 @@ function QuizView({ terms, questions, onExit }) {
   }
 
   return (
-    <Animated.View style={[styles.quizWrap, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <Text style={styles.progress}>Question {current + 1} of {items.length}</Text>
-      <Text style={styles.quizQuestion}>{item.question}</Text>
-      <View style={styles.options}>
-        {options.map((opt, idx) => {
-          const isCorrect = idx === correctIdx;
-          const isWrong = selected === idx && !isCorrect;
-          const showResult = answered && (isCorrect || isWrong);
-          const animValue = getOptionAnim(idx);
-          return (
-            <Animated.View key={idx} style={{ transform: [{ scale: animValue }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.optionBtn,
-                  showResult && isCorrect && styles.optionCorrect,
-                  showResult && isWrong && styles.optionWrong,
-                ]}
-                onPress={() => onSelect(idx)}
-                disabled={answered}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.optionText}>{opt}</Text>
-              </TouchableOpacity>
+    <View style={[styles.quizWrap]}>
+      <Animated.ScrollView 
+        style={[{ opacity: fadeAnim }]}
+        scrollEnabled={true}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.quizScrollContent}
+      >
+        <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
+          <Text style={styles.progress}>Question {current + 1} of {items.length}</Text>
+          <Text style={styles.quizQuestion}>{item.question}</Text>
+          <View style={styles.options}>
+            {options.map((opt, idx) => {
+              const isCorrect = idx === correctIdx;
+              const isWrong = selected === idx && !isCorrect;
+              const showResult = answered && (isCorrect || isWrong);
+              const animValue = getOptionAnim(idx);
+              return (
+                <Animated.View key={idx} style={{ transform: [{ scale: animValue }] }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.optionBtn,
+                      showResult && isCorrect && styles.optionCorrect,
+                      showResult && isWrong && styles.optionWrong,
+                    ]}
+                    onPress={() => onSelect(idx)}
+                    disabled={answered}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.optionText}>{opt}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            })}
+          </View>
+          {answered && item.explanation && (
+            <Animated.View style={{ opacity: fadeAnim }}>
+              <View style={styles.explanationBox}>
+                <Text style={styles.explanationTitle}>Explanation:</Text>
+                <Text style={styles.explanationText}>{item.explanation}</Text>
+              </View>
             </Animated.View>
-          );
-        })}
-      </View>
+          )}
+        </Animated.View>
+      </Animated.ScrollView>
       {answered && (
         <Animated.View style={{ opacity: fadeAnim }}>
-          {item.explanation && (
-            <View style={styles.explanationBox}>
-              <Text style={styles.explanationTitle}>💡 Explanation:</Text>
-              <Text style={styles.explanationText}>{item.explanation}</Text>
-            </View>
-          )}
           <TouchableOpacity style={styles.nextBtn} onPress={next} activeOpacity={0.8}>
             <Text style={styles.nextBtnText}>{current + 1 >= items.length - 1 ? 'See results' : 'Next'}</Text>
           </TouchableOpacity>
         </Animated.View>
       )}
-    </Animated.View>
+    </View>
   );
 }
 
@@ -322,6 +343,8 @@ export default function StudyScreen() {
   const route = useRoute();
   const navigation = useNavigation();
   const { set, mode } = route.params || {};
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const terms = set?.terms || [];
   const questions = set?.questions || [];
@@ -378,260 +401,272 @@ export default function StudyScreen() {
       ) : (
         <QuizView terms={terms} questions={questions} onExit={() => navigation.goBack()} />
       )}
-      <View style={{ alignItems: 'center', marginTop: 24 }}>
-        <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
-          <Text style={styles.deleteText}>Delete set</Text>
-        </TouchableOpacity>
-      </View>
+      {mode === 'flashcards' && (
+        <View style={{ alignItems: 'center', marginTop: 24 }}>
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+            <Text style={styles.deleteText}>Delete set</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 16, 
-    paddingVertical: 14,
-    borderBottomWidth: 1.5, 
-    borderBottomColor: '#1e293b',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  back: { 
-    fontSize: 17, 
-    color: '#94a3b8',
-    fontWeight: '700',
-  },
-  headerTitle: { 
-    fontSize: 19, 
-    fontWeight: '800', 
-    color: '#f8fafc' 
-  },
-  centered: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  emptyText: { 
-    fontSize: 17, 
-    color: '#cbd5e1',
-    fontWeight: '600',
-  },
-  backLink: { 
-    marginTop: 14, 
-    color: '#6366f1', 
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  progress: { 
-    fontSize: 15, 
-    color: '#94a3b8', 
-    textAlign: 'center', 
-    marginBottom: 14,
-    fontWeight: '600',
-  },
-  flashcardWrap: { 
-    flex: 1, 
-    padding: 20, 
-    justifyContent: 'center' 
-  },
-  flashcardContainer: { 
-    position: 'relative', 
-    alignItems: 'center', 
-    justifyContent: 'center' 
-  },
-  flashcard: { 
-    backgroundColor: '#1e293b', 
-    borderRadius: 24, 
-    padding: 32, 
-    minHeight: 240, 
-    justifyContent: 'center', 
-    width: '100%', 
-    backfaceVisibility: 'hidden',
-    borderWidth: 1.5,
-    borderColor: '#334155',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  flashcardFront: { 
-    position: 'absolute' 
-  },
-  flashcardBack: { 
-    position: 'absolute' 
-  },
-  flashcardTouch: { 
-    width: '100%', 
-    minHeight: 240, 
-    justifyContent: 'center' 
-  },
-  cardSide: { 
-    fontSize: 20, 
-    color: '#f8fafc', 
-    textAlign: 'center', 
-    lineHeight: 28,
-    fontWeight: '600',
-  },
-  flashcardNav: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginTop: 28, 
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  navBtn: { 
-    flex: 1,
-    paddingVertical: 14, 
-    paddingHorizontal: 20,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#334155',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  navBtnText: { 
-    fontSize: 16, 
-    color: '#6366f1', 
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  navBtnDisabled: { 
-    color: '#475569' 
-  },
-  quizWrap: { 
-    flex: 1, 
-    padding: 20 
-  },
-  quizQuestion: { 
-    fontSize: 19, 
-    color: '#f8fafc', 
-    fontWeight: '800', 
-    marginBottom: 28, 
-    lineHeight: 28 
-  },
-  options: { 
-    marginBottom: 12 
-  },
-  optionBtn: { 
-    backgroundColor: '#1e293b', 
-    borderRadius: 16, 
-    padding: 18, 
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: '#334155',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  optionCorrect: { 
-    backgroundColor: '#166534',
-    borderColor: '#22c55e',
-  },
-  optionWrong: { 
-    backgroundColor: '#991b1b',
-    borderColor: '#f87171',
-  },
-  optionText: { 
-    fontSize: 16, 
-    color: '#f8fafc',
-    fontWeight: '600',
-  },
-  explanationBox: {
-    backgroundColor: '#1e293b',
-    borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  explanationTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6366f1',
-    marginBottom: 8,
-  },
-  explanationText: {
-    fontSize: 15,
-    color: '#cbd5e1',
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-  nextBtn: { 
-    marginTop: 28, 
-    backgroundColor: '#6366f1', 
-    paddingVertical: 16, 
-    borderRadius: 14, 
-    alignItems: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  nextBtnText: { 
-    fontSize: 17, 
-    fontWeight: '700', 
-    color: '#fff' 
-  },
-  scoreTitle: { 
-    fontSize: 21, 
-    color: '#94a3b8', 
-    marginBottom: 12,
-    fontWeight: '700',
-  },
-  scoreValue: { 
-    fontSize: 48, 
-    fontWeight: '900', 
-    color: '#f8fafc' 
-  },
-  scorePct: { 
-    fontSize: 28, 
-    color: '#6366f1', 
-    marginTop: 8,
-    fontWeight: '800',
-  },
-  doneBtn: { 
-    marginTop: 32, 
-    paddingVertical: 16, 
-    paddingHorizontal: 36, 
-    backgroundColor: '#6366f1', 
-    borderRadius: 14,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  doneBtnText: { 
-    fontSize: 17, 
-    fontWeight: '700', 
-    color: '#fff',
-    textAlign: 'center',
-  },
-  deleteBtn: { 
-    marginVertical: 20, 
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  deleteText: { 
-    fontSize: 16, 
-    color: '#f87171',
-    fontWeight: '700',
-  },
-});
+function createStyles(theme) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
+    header: { 
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      justifyContent: 'space-between', 
+      paddingHorizontal: 16, 
+      paddingVertical: 14,
+      borderBottomWidth: 1.5, 
+      borderBottomColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    back: { 
+      fontSize: 17, 
+      color: theme.textSecondary,
+      fontWeight: '700',
+    },
+    headerTitle: { 
+      fontSize: 19, 
+      fontWeight: '800', 
+      color: theme.text 
+    },
+    centered: { 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center' 
+    },
+    emptyText: { 
+      fontSize: 17, 
+      color: theme.textTertiary,
+      fontWeight: '600',
+    },
+    backLink: { 
+      marginTop: 14, 
+      color: theme.primaryAccent, 
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    progress: { 
+      fontSize: 15, 
+      color: theme.textSecondary, 
+      textAlign: 'center', 
+      marginBottom: 14,
+      fontWeight: '600',
+    },
+    flashcardWrap: { 
+      flex: 1, 
+      padding: 20, 
+      justifyContent: 'center' 
+    },
+    flashcardContainer: { 
+      position: 'relative', 
+      alignItems: 'center', 
+      justifyContent: 'center' 
+    },
+    flashcard: { 
+      backgroundColor: theme.secondary, 
+      borderRadius: 24, 
+      padding: 32, 
+      minHeight: 240, 
+      justifyContent: 'center', 
+      width: '100%', 
+      backfaceVisibility: 'hidden',
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    flashcardFront: { 
+      position: 'absolute' 
+    },
+    flashcardBack: { 
+      position: 'absolute' 
+    },
+    flashcardTouch: { 
+      width: '100%', 
+      minHeight: 240, 
+      justifyContent: 'center' 
+    },
+    cardSide: { 
+      fontSize: 20, 
+      color: theme.text, 
+      textAlign: 'center', 
+      lineHeight: 28,
+      fontWeight: '600',
+    },
+    flashcardNav: { 
+      flexDirection: 'row', 
+      justifyContent: 'space-between', 
+      marginTop: 28, 
+      paddingHorizontal: 20,
+      gap: 12,
+    },
+    navBtn: { 
+      flex: 1,
+      paddingVertical: 14, 
+      paddingHorizontal: 20,
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    navBtnText: { 
+      fontSize: 16, 
+      color: theme.primaryAccent, 
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    navBtnDisabled: { 
+      color: theme.textTertiary 
+    },
+    quizWrap: { 
+      flex: 1, 
+      padding: 20,
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+    },
+    quizScrollContent: {
+      paddingBottom: 20,
+    },
+    quizQuestion: { 
+      fontSize: 19, 
+      color: theme.text, 
+      fontWeight: '800', 
+      marginBottom: 28, 
+      lineHeight: 28 
+    },
+    options: { 
+      marginBottom: 12 
+    },
+    optionBtn: { 
+      backgroundColor: theme.secondary, 
+      borderRadius: 16, 
+      padding: 18, 
+      marginBottom: 12,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    optionCorrect: { 
+      backgroundColor: '#166534',
+      borderColor: '#22c55e',
+    },
+    optionWrong: { 
+      backgroundColor: '#991b1b',
+      borderColor: '#f87171',
+    },
+    optionText: { 
+      fontSize: 16, 
+      color: theme.text,
+      fontWeight: '600',
+    },
+    explanationBox: {
+      backgroundColor: theme.secondary,
+      borderLeftWidth: 4,
+      borderLeftColor: theme.primaryAccent,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 16,
+      marginTop: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      maxHeight: 200,
+    },
+    explanationTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.primaryAccent,
+      marginBottom: 8,
+    },
+    explanationText: {
+      fontSize: 15,
+      color: theme.textTertiary,
+      lineHeight: 22,
+      fontWeight: '500',
+    },
+    nextBtn: { 
+      marginHorizontal: 0,
+      marginBottom: 0,
+      backgroundColor: theme.primaryAccent, 
+      paddingVertical: 16, 
+      borderRadius: 14, 
+      alignItems: 'center',
+      shadowColor: theme.primaryAccent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    nextBtnText: { 
+      fontSize: 17, 
+      fontWeight: '700', 
+      color: '#fff' 
+    },
+    scoreTitle: { 
+      fontSize: 21, 
+      color: theme.textSecondary, 
+      marginBottom: 12,
+      fontWeight: '700',
+    },
+    scoreValue: { 
+      fontSize: 48, 
+      fontWeight: '900', 
+      color: theme.text 
+    },
+    scorePct: { 
+      fontSize: 28, 
+      color: theme.primaryAccent, 
+      marginTop: 8,
+      fontWeight: '800',
+    },
+    doneBtn: { 
+      marginTop: 32, 
+      paddingVertical: 16, 
+      paddingHorizontal: 36, 
+      backgroundColor: theme.primaryAccent, 
+      borderRadius: 14,
+      shadowColor: theme.primaryAccent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    doneBtnText: { 
+      fontSize: 17, 
+      fontWeight: '700', 
+      color: '#fff',
+      textAlign: 'center',
+    },
+    deleteBtn: { 
+      marginVertical: 20, 
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
+    deleteText: { 
+      fontSize: 16, 
+      color: theme.error,
+      fontWeight: '700',
+    },
+  });
+}
