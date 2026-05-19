@@ -99,6 +99,8 @@ export default function CreateSetScreen() {
     }
   };
 
+  const styles = createStyles(theme);
+
   return (
     <SafeAreaView style={styles.container}>
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
@@ -119,7 +121,7 @@ export default function CreateSetScreen() {
           <TextInput
             style={styles.titleInput}
             placeholder="Set title"
-            placeholderTextColor="#64748b"
+            placeholderTextColor={theme.textTertiary}
             value={title}
             onChangeText={setTitle}
             autoCapitalize="words"
@@ -127,7 +129,7 @@ export default function CreateSetScreen() {
           <TextInput
             style={styles.descInput}
             placeholder="Description (optional)"
-            placeholderTextColor="#64748b"
+            placeholderTextColor={theme.textTertiary}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -139,14 +141,14 @@ export default function CreateSetScreen() {
                 <TextInput
                   style={styles.termInput}
                   placeholder="Term"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textTertiary}
                   value={item.term}
                   onChangeText={(v) => updateTerm(index, 'term', v)}
                 />
                 <TextInput
                   style={styles.termInput}
                   placeholder="Definition"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textTertiary}
                   value={item.definition}
                   onChangeText={(v) => updateTerm(index, 'definition', v)}
                 />
@@ -167,8 +169,8 @@ export default function CreateSetScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+const createStyles = (theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
   flex: { flex: 1 },
   header: { 
     flexDirection: 'row', 
@@ -177,30 +179,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18, 
     paddingVertical: 16, 
     borderBottomWidth: 1.5, 
-    borderBottomColor: '#1e293b',
+    borderBottomColor: theme.border,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   cancel: { 
     fontSize: 18, 
-    color: '#94a3b8',
+    color: theme.textSecondary,
     fontWeight: '700',
   },
   headerTitle: { 
     fontSize: 26, 
     fontWeight: '800', 
-    color: '#f8fafc',
+    color: theme.text,
   },
   save: { 
     fontSize: 18, 
     fontWeight: '700', 
-    color: '#6366f1',
+    color: theme.primaryAccent,
   },
   saveDisabled: { 
-    color: '#64748b',
+    color: theme.textTertiary,
   },
   scroll: { flex: 1 },
   scrollContent: { 
@@ -208,41 +210,41 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   titleInput: { 
-    backgroundColor: '#1e293b', 
+    backgroundColor: theme.secondary, 
     borderRadius: 14, 
     padding: 16, 
     fontSize: 20, 
     fontWeight: '700',
-    color: '#f8fafc', 
+    color: theme.text, 
     marginBottom: 14,
     borderWidth: 1.5,
-    borderColor: '#334155',
-    shadowColor: '#000',
+    borderColor: theme.border,
+    shadowColor: theme.primaryAccent,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   descInput: { 
-    backgroundColor: '#1e293b', 
+    backgroundColor: theme.secondary, 
     borderRadius: 14, 
     padding: 16, 
     fontSize: 16, 
-    color: '#f8fafc', 
+    color: theme.text, 
     minHeight: 100, 
     marginBottom: 28,
     borderWidth: 1.5,
-    borderColor: '#334155',
-    shadowColor: '#000',
+    borderColor: theme.border,
+    shadowColor: theme.primaryAccent,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   sectionTitle: { 
     fontSize: 20, 
     fontWeight: '800', 
-    color: '#f8fafc', 
+    color: theme.text, 
     marginBottom: 16,
   },
   termRow: { 
@@ -255,17 +257,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   termInput: { 
-    backgroundColor: '#1e293b', 
+    backgroundColor: theme.secondary, 
     borderRadius: 12, 
     padding: 14, 
     fontSize: 16, 
-    color: '#f8fafc', 
+    color: theme.text, 
     marginBottom: 10,
     borderWidth: 1.5,
-    borderColor: '#334155',
-    shadowColor: '#000',
+    borderColor: theme.border,
+    shadowColor: theme.primaryAccent,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 3,
     elevation: 1,
   },
@@ -273,13 +275,13 @@ const styles = StyleSheet.create({
     width: 48, 
     height: 48, 
     borderRadius: 12, 
-    backgroundColor: '#ef4444', 
+    backgroundColor: theme.error, 
     alignItems: 'center', 
     justifyContent: 'center',
     marginTop: 4,
-    shadowColor: '#ef4444',
+    shadowColor: theme.error,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 3,
   },
@@ -293,19 +295,19 @@ const styles = StyleSheet.create({
     paddingVertical: 16, 
     alignItems: 'center', 
     borderWidth: 2, 
-    borderColor: '#334155', 
+    borderColor: theme.primaryAccent, 
     borderRadius: 14, 
     borderStyle: 'dashed',
-    backgroundColor: '#1e293b',
-    shadowColor: '#6366f1',
+    backgroundColor: theme.isDark ? theme.secondary : '#f9fafb',
+    shadowColor: theme.primaryAccent,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
   addTermText: { 
     fontSize: 17, 
-    color: '#6366f1', 
+    color: theme.primaryAccent, 
     fontWeight: '700',
   },
 });

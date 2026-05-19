@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Ale
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
+import { exportStudySet } from '../services/exportService';
 import EditableFlashcard from '../components/EditableFlashcard';
 
 export default function SetDetailScreen() {
@@ -22,6 +23,7 @@ export default function SetDetailScreen() {
     }, [studySets, setFromParams]);
 
     if (!set) {
+        const styles = createStyles(theme);
         return (
             <SafeAreaView style={styles.container}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 20 }}>
@@ -155,6 +157,8 @@ export default function SetDetailScreen() {
         await updateStudySet(set.id, { terms: updatedTerms });
     };
 
+    const styles = createStyles(theme);
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -277,6 +281,21 @@ export default function SetDetailScreen() {
                     </View>
                 )}
 
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity 
+                        style={[styles.actionBtn, styles.exportBtnPDF]} 
+                        onPress={() => exportStudySet(set, 'pdf')}
+                    >
+                        <Text style={styles.actionBtnText}>📄 Export as PDF</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.actionBtn, styles.exportBtnDocx]} 
+                        onPress={() => exportStudySet(set, 'docx')}
+                    >
+                        <Text style={styles.actionBtnText}>📋 Export as DOCX</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
                     <Text style={styles.deleteText}>Delete set</Text>
                 </TouchableOpacity>
@@ -286,15 +305,15 @@ export default function SetDetailScreen() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#0f172a' },
+const createStyles = (theme) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.background },
     header: { 
         flexDirection: 'row', 
         justifyContent: 'space-between', 
         paddingHorizontal: 16, 
         paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#1e293b',
+        borderBottomColor: theme.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -303,9 +322,10 @@ const styles = StyleSheet.create({
     },
     back: { 
         fontSize: 18, 
-        color: '#94a3b8',
+        color: theme.textSecondary,
         fontWeight: '600',
-    },orHeaderRow: {
+    },
+    headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -316,7 +336,7 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 14,
         borderRadius: 8,
-        shadowColor: '#000',
+        shadowColor: theme.primaryAccent,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 3,
@@ -325,43 +345,42 @@ const styles = StyleSheet.create({
     addTermBtnText: {
         fontSize: 13,
         fontWeight: '700',
-        color: '#fff0', 
-        color: '#6366f1',
+        color: theme.primaryAccent,
     },
     scroll: { flex: 1 },
     scrollContent: { padding: 20, paddingBottom: 40 },
     title: { 
         fontSize: 28, 
         fontWeight: '800', 
-        color: '#f8fafc',
+        color: theme.text,
         marginBottom: 8,
     },
     desc: { 
         fontSize: 16, 
-        color: '#cbd5e1', 
+        color: theme.textSecondary, 
         marginTop: 8,
-        fontWeight: '2',
+        fontWeight: '500',
         lineHeight: 24,
     },
     meta: { 
         fontSize: 14, 
-        color: '#64748b', 
+        color: theme.textTertiary, 
         marginTop: 12,
         fontWeight: '600',
     },
     modes: { marginTop: 32 },
     modeCard: {
-        backgroundColor: '#1e293b',
+        backgroundColor: theme.secondary,
         borderRadius: 16,
         padding: 20,
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 14,
         borderWidth: 1.5,
-        borderColor: '#334155',
-        shadowColor: '#000',
+        borderColor: theme.border,
+        shadowColor: theme.primaryAccent,
         shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.1,
         shadowRadius: 6,
         elevation: 4,
     },
@@ -372,48 +391,48 @@ const styles = StyleSheet.create({
     modeTitle: { 
         fontSize: 20, 
         fontWeight: '700', 
-        color: '#f8fafc', 
+        color: theme.text, 
         flex: 1,
     },
     modeDesc: { 
         fontSize: 14, 
-        color: '#94a3b8',
+        color: theme.textSecondary,
         marginTop: 4,
     },
     empty: { 
         marginTop: 32, 
         alignItems: 'center',
-        backgroundColor: '#1e293b',
+        backgroundColor: theme.secondary,
         borderRadius: 16,
         padding: 32,
         borderWidth: 1,
-        borderColor: '#334155',
-        shadowColor: '#000',
+        borderColor: theme.border,
+        shadowColor: theme.primaryAccent,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.08,
         shadowRadius: 4,
         elevation: 2,
     },
     emptyText: { 
         fontSize: 18, 
-        color: '#cbd5e1',
+        color: theme.textSecondary,
         fontWeight: '600',
     },
     emptyHint: { 
         fontSize: 15, 
-        color: '#94a3b8', 
+        color: theme.textTertiary, 
         marginTop: 12,
         textAlign: 'center',
     },
     aiBtn: { 
         marginTop: 20, 
-        backgroundColor: '#6366f1', 
+        backgroundColor: theme.primaryAccent, 
         paddingVertical: 14, 
         paddingHorizontal: 24, 
         borderRadius: 12,
-        shadowColor: '#6366f1',
+        shadowColor: theme.primaryAccent,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.25,
         shadowRadius: 8,
         elevation: 4,
     },
@@ -423,18 +442,42 @@ const styles = StyleSheet.create({
         color: '#fff',
         textAlign: 'center',
     },
+    actionButtons: {
+        marginTop: 24,
+        gap: 12,
+    },
+    actionBtn: {
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        borderWidth: 1,
+    },
+    exportBtnPDF: {
+        backgroundColor: theme.primaryAccent,
+        borderColor: theme.primaryAccent,
+    },
+    exportBtnDocx: {
+        backgroundColor: theme.primaryAccent,
+        borderColor: theme.primaryAccent,
+    },
+    actionBtnText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#fff',
+    },
     deleteBtn: { 
         marginTop: 36, 
         alignItems: 'center',
         paddingVertical: 14,
-        backgroundColor: '#1e293b',
+        backgroundColor: theme.isDark ? theme.secondary : '#fee2e2',
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#334155',
+        borderColor: theme.error,
     },
     deleteText: { 
         fontSize: 16, 
-        color: '#f87171',
+        color: theme.error,
         fontWeight: '700',
     },
     flashcardEditorSection: {
@@ -443,7 +486,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 0,
         paddingBottom: 20,
         borderTopWidth: 1.5,
-        borderTopColor: '#1e293b',
+        borderTopColor: theme.border,
     },
     editorToggle: {
         paddingVertical: 14,
@@ -451,7 +494,8 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
         marginBottom: 24,
-        shadowColor: '#000',
+        backgroundColor: theme.primaryAccent,
+        shadowColor: theme.primaryAccent,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.15,
         shadowRadius: 4,
@@ -469,6 +513,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         marginBottom: 20,
+        color: theme.text,
     },
     emptyEditorMessage: {
         alignItems: 'center',
@@ -477,10 +522,12 @@ const styles = StyleSheet.create({
     emptyEditorText: {
         fontSize: 16,
         fontWeight: '500',
+        color: theme.textSecondary,
     },
     sectionDivider: {
         fontSize: 14,
         fontWeight: '600',
         marginBottom: 16,
+        color: theme.text,
     },
 });

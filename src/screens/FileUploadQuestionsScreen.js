@@ -15,11 +15,13 @@ import * as DocumentPicker from 'expo-document-picker';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { useStudy } from '../context/StudyContext';
+import { useTheme } from '../context/ThemeContext';
 import { generateQuestionsFromText } from '../services/aiService';
 
 export default function FileUploadQuestionsScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { theme } = useTheme();
   const existingSet = route.params?.existingSet;
   const { addStudySet, updateStudySet } = useStudy();
   
@@ -30,6 +32,8 @@ export default function FileUploadQuestionsScreen() {
   const [numQuestions, setNumQuestions] = useState('5');
   const [loading, setLoading] = useState(false);
   const [setTitle, setSetTitle] = useState(existingSet?.title ?? '');
+
+  const styles = createStyles(theme);
 
   // Extract text from file content
   const extractTextFromFile = async (fileUri, fileName) => {
@@ -285,7 +289,7 @@ export default function FileUploadQuestionsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Enter set title"
-              placeholderTextColor="#64748b"
+              placeholderTextColor={theme.textTertiary}
               value={setTitle}
               onChangeText={setSetTitle}
             />
@@ -326,7 +330,7 @@ export default function FileUploadQuestionsScreen() {
             <TextInput
               style={styles.questionInput}
               placeholder="Enter desired number"
-              placeholderTextColor="#64748b"
+              placeholderTextColor={theme.textTertiary}
               value={numQuestions}
               onChangeText={setNumQuestions}
               keyboardType="number-pad"
@@ -356,7 +360,7 @@ export default function FileUploadQuestionsScreen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" size="large" />
+            <ActivityIndicator color="#f5f5f5" size="large" />
           ) : (
             <Text style={styles.generateButtonText}>✨ Generate Questions</Text>
           )}
@@ -366,10 +370,10 @@ export default function FileUploadQuestionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.background,
   },
   scrollContent: {
     padding: 24,
@@ -379,17 +383,17 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: theme.border,
   },
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#f8fafc',
+    color: theme.text,
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 15,
-    color: '#94a3b8',
+    color: theme.textSecondary,
     lineHeight: 22,
   },
   section: {
@@ -398,28 +402,28 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#e2e8f0',
+    color: theme.textSecondary,
     marginBottom: 14,
     letterSpacing: 0.3,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 18,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.border,
     fontSize: 16,
-    color: '#f8fafc',
+    color: theme.text,
   },
   fileBox: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderRadius: 14,
     paddingVertical: 48,
     paddingHorizontal: 24,
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#334155',
+    borderColor: theme.border,
     borderStyle: 'dashed',
     marginBottom: 18,
   },
@@ -430,21 +434,21 @@ const styles = StyleSheet.create({
   fileText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#e2e8f0',
+    color: theme.text,
     marginBottom: 8,
   },
   fileHint: {
     fontSize: 13,
-    color: '#64748b',
+    color: theme.textTertiary,
   },
   fileSize: {
     fontSize: 13,
-    color: '#6366f1',
+    color: theme.primaryAccent,
     marginTop: 12,
     fontWeight: '600',
   },
   selectButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.primaryAccent,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
@@ -453,10 +457,10 @@ const styles = StyleSheet.create({
   selectButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#f5f5f5',
   },
   questionInputContainer: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -464,40 +468,40 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 18,
     fontSize: 16,
-    color: '#f8fafc',
+    color: theme.text,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.border,
     borderRadius: 10,
   },
   questionInputHint: {
     fontSize: 13,
-    color: '#94a3b8',
+    color: theme.textSecondary,
     marginTop: 12,
     paddingHorizontal: 2,
     fontWeight: '500',
   },
   infoBox: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderRadius: 12,
     padding: 20,
     borderLeftWidth: 5,
-    borderLeftColor: '#6366f1',
+    borderLeftColor: theme.primaryAccent,
     marginBottom: 32,
   },
   infoTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#e2e8f0',
+    color: theme.text,
     marginBottom: 16,
   },
   infoText: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: theme.textSecondary,
     marginBottom: 11,
     lineHeight: 20,
   },
   generateButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.primaryAccent,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
@@ -508,6 +512,6 @@ const styles = StyleSheet.create({
   generateButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#f5f5f5',
   },
 });

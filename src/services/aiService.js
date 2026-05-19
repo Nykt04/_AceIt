@@ -29,13 +29,14 @@ const buildMessages = (topic, count, types) => {
     {
       role: 'system',
       content: `You are a helpful study assistant. Generate quiz questions in valid JSON only. No markdown, no code blocks, no extra text.
-For multiple choice: use format { "type": "multiple_choice", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0 }
-For true/false: use format { "type": "true_false", "question": "...", "correctAnswer": true } or "correctAnswer": false
+For multiple choice: use format { "type": "multiple_choice", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "Why this is correct..." }
+For true/false: use format { "type": "true_false", "question": "...", "correctAnswer": true, "explanation": "Why this is correct..." } or "correctAnswer": false
+IMPORTANT: Include "explanation" field for every question that explains why the correct answer is right.
 Return a JSON array of question objects.`,
     },
     {
       role: 'user',
-      content: `Generate ${count} ${typeStr} questions about: ${topic}. Return only a JSON array.`,
+      content: `Generate ${count} ${typeStr} questions about: ${topic}. Include clear explanations for why each correct answer is right. Return only a JSON array.`,
     },
   ];
 };
@@ -60,6 +61,7 @@ const normalizeQuestions = (questions) =>
     options: q.options || [],
     correctIndex: q.correctIndex ?? (q.correctAnswer === true ? 0 : 1),
     correctAnswer: q.correctAnswer,
+    explanation: q.explanation || 'No explanation provided',
   }));
 
 const generateWithOpenAICompatible = async (apiKey, topic, count, types) => {
@@ -81,7 +83,7 @@ const generateWithOpenAICompatible = async (apiKey, topic, count, types) => {
   const model =
     process.env.EXPO_PUBLIC_OPENROUTER_MODEL ||
     extra().openrouterModel ||
-    (isOpenRouter ? 'deepseek/deepseek-chat' : 'gpt-4o-mini');
+    (isOpenRouter ? 'deepseek/deepseek-chat' : 'deepseek/deepseek-chat');
 
   const response = await fetch(apiUrl, {
     method: 'POST',
@@ -148,13 +150,15 @@ const buildMessagesFromText = (textContent, count) => {
     {
       role: 'system',
       content: `You are a helpful study assistant. Generate quiz questions based on provided text in valid JSON only. No markdown, no code blocks, no extra text.
-For multiple choice: use format { "type": "multiple_choice", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0 }
-For true/false: use format { "type": "true_false", "question": "...", "correctAnswer": true } or "correctAnswer": false
-Create questions that test understanding of the key concepts in the text. Return a JSON array of question objects.`,
+For multiple choice: use format { "type": "multiple_choice", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "Why this is correct..." }
+For true/false: use format { "type": "true_false", "question": "...", "correctAnswer": true, "explanation": "Why this is correct..." } or "correctAnswer": false
+Create questions that test understanding of the key concepts in the text.
+IMPORTANT: Include "explanation" field for every question that explains why the correct answer is right based on the provided text.
+Return a JSON array of question objects.`,
     },
     {
       role: 'user',
-      content: `Here is the study material:\n\n${textContent}\n\nGenerate ${count} questions (mix of multiple choice and true/false) based on this text. Focus on important concepts and facts mentioned. Return only a JSON array.`,
+      content: `Here is the study material:\n\n${textContent}\n\nGenerate ${count} questions (mix of multiple choice and true/false) based on this text. Focus on important concepts and facts mentioned. Include detailed explanations for each question explaining why the correct answer is right. Return only a JSON array.`,
     },
   ];
 };
@@ -181,7 +185,7 @@ const generateWithTextContent = async (apiKey, textContent, count) => {
     const model =
       process.env.EXPO_PUBLIC_OPENROUTER_MODEL ||
       extra().openrouterModel ||
-      (isOpenRouter ? 'mistralai/mistral-7b-instruct' : 'gpt-4o-mini');
+      (isOpenRouter ? 'deepseek/deepseek-chat' : 'deepseek/deepseek-chat');
 
     console.log(`[AIService] Using model: ${model}`);
 

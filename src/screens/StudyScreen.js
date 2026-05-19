@@ -303,6 +303,12 @@ function QuizView({ terms, questions, onExit }) {
       </View>
       {answered && (
         <Animated.View style={{ opacity: fadeAnim }}>
+          {item.explanation && (
+            <View style={styles.explanationBox}>
+              <Text style={styles.explanationTitle}>💡 Explanation:</Text>
+              <Text style={styles.explanationText}>{item.explanation}</Text>
+            </View>
+          )}
           <TouchableOpacity style={styles.nextBtn} onPress={next} activeOpacity={0.8}>
             <Text style={styles.nextBtnText}>{current + 1 >= items.length - 1 ? 'See results' : 'Next'}</Text>
           </TouchableOpacity>
@@ -543,6 +549,28 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     color: '#f8fafc',
     fontWeight: '600',
+  },
+  explanationBox: {
+    backgroundColor: '#1e293b',
+    borderLeftWidth: 4,
+    borderLeftColor: '#6366f1',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  explanationTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6366f1',
+    marginBottom: 8,
+  },
+  explanationText: {
+    fontSize: 15,
+    color: '#cbd5e1',
+    lineHeight: 22,
+    fontWeight: '500',
   },
   nextBtn: { 
     marginTop: 28, 

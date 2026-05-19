@@ -169,12 +169,13 @@ export default function App() {
 
 function AppContent() {
     const { theme, isDarkMode } = useTheme();
+    const dynamicStyles = styles(theme);
 
     return (
         <StudyProvider>
             <NotificationProvider>
                 <StatusBar style={isDarkMode ? "light" : "dark"} />
-                <View style={[styles.app, { backgroundColor: theme.background }]}>
+                <View style={dynamicStyles.app}>
                     <RootNavigator />
                     <NotificationDisplay />
                 </View>
@@ -183,10 +184,10 @@ function AppContent() {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = (theme) => StyleSheet.create({
     boot: {
         flex: 1,
-        backgroundColor: '#0f172a',
+        backgroundColor: theme.background,
         justifyContent: 'center',
         alignItems: 'center',
     },

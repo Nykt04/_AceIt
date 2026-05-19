@@ -313,7 +313,6 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>Preferences</Text>
           <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
             <SettingRow
-              icon="🌓"
               title="Dark Mode"
               description={isDarkMode ? "Using dark theme" : "Using light theme"}
               value={isDarkMode}
@@ -335,7 +334,6 @@ export default function SettingsScreen() {
           </View>
           <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
             <SettingRow
-              icon="🔊"
               title="Sound Effects"
               description="Enable audio feedback"
               value={soundEnabled}
@@ -518,13 +516,13 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   logoutButton: {
-    backgroundColor: '#334155',
+    backgroundColor: '#6366f1',
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 1.5,
-    borderColor: '#475569',
+    borderColor: '#818cf8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,

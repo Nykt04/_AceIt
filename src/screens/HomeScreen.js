@@ -496,7 +496,7 @@ export default function HomeScreen() {
             <View style={styles.fabRow}>
                 <Animated.View style={{ transform: [{ scale: fabScale1 }] }}>
                     <TouchableOpacity
-                        style={styles.fab}
+                        style={[styles.fab, styles.fabPrimary]}
                         onPress={() => {
                             soundManager.playButtonClick();
                             navigation.navigate('AIGenerate');
@@ -505,8 +505,7 @@ export default function HomeScreen() {
                         onPressOut={() => handleFabPressOut(fabScale1)}
                         activeOpacity={1}
                     >
-                        <Text style={styles.fabIcon}>✨</Text>
-                        <Text style={styles.fabLabel}>AI Generate</Text>
+                            <Text style={styles.fabLabel}>AI Generate</Text>
                     </TouchableOpacity>
                 </Animated.View>
                 <Animated.View style={{ transform: [{ scale: fabScale2 }] }}>

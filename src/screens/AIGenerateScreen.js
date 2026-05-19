@@ -2,11 +2,12 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, Switch, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
+import { useTheme } from '../context/ThemeContext';
 import { generateQuestions } from '../services/aiService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
-const AnimatedCountButton = ({ value, selected, onPress }) => {
+const AnimatedCountButton = ({ value, selected, onPress, styles }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePress = () => {
@@ -42,6 +43,7 @@ const AnimatedCountButton = ({ value, selected, onPress }) => {
 export default function AIGenerateScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { theme } = useTheme();
   const existingSet = route.params?.existingSet;
   const { addStudySet, updateStudySet } = useStudy();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -99,6 +101,8 @@ export default function AIGenerateScreen() {
     }
   };
 
+  const styles = createStyles(theme);
+
   return (
     <SafeAreaView style={styles.container}>
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
@@ -115,7 +119,7 @@ export default function AIGenerateScreen() {
         <TextInput
           style={styles.input}
           placeholder="e.g. World War 2, Python basics, Spanish verbs"
-          placeholderTextColor="#64748b"
+          placeholderTextColor={theme.textTertiary}
           value={topic}
           onChangeText={setTopic}
           editable={!existingSet}
@@ -128,22 +132,23 @@ export default function AIGenerateScreen() {
               value={n}
               selected={count === n}
               onPress={() => setCount(n)}
+              styles={styles}
             />
           ))}
         </View>
         <Text style={styles.label}>Question types</Text>
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>Multiple choice</Text>
-          <Switch value={multipleChoice} onValueChange={setMultipleChoice} trackColor={{ false: '#334155', true: '#6366f1' }} thumbColor="#fff" />
+          <Switch value={multipleChoice} onValueChange={setMultipleChoice} trackColor={{ false: theme.border, true: theme.primaryAccent }} thumbColor="#f5f5f5" />
         </View>
         <View style={styles.switchRow}>
           <Text style={styles.switchLabel}>True or False</Text>
-          <Switch value={trueFalse} onValueChange={setTrueFalse} trackColor={{ false: '#334155', true: '#6366f1' }} thumbColor="#fff" />
+          <Switch value={trueFalse} onValueChange={setTrueFalse} trackColor={{ false: theme.border, true: theme.primaryAccent }} thumbColor="#f5f5f5" />
         </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Animated.View style={{ transform: [{ scale: generateBtnScale }] }}>
           <TouchableOpacity style={[styles.generateBtn, loading && styles.generateBtnDisabled]} onPress={generate} disabled={loading} activeOpacity={0.9}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.generateText}>✨ Generate questions</Text>}
+            {loading ? <ActivityIndicator color="#f5f5f5" /> : <Text style={styles.generateText}>Generate questions</Text>}
           </TouchableOpacity>
         </Animated.View>
       
@@ -152,25 +157,25 @@ export default function AIGenerateScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+const createStyles = (theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  cancel: { fontSize: 16, color: '#94a3b8' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: '#f8fafc' },
+  cancel: { fontSize: 16, color: theme.textSecondary },
+  headerTitle: { fontSize: 17, fontWeight: '600', color: theme.text },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
-  label: { fontSize: 14, fontWeight: '600', color: '#94a3b8', marginBottom: 8, marginTop: 16 },
-  input: { backgroundColor: '#1e293b', borderRadius: 12, padding: 16, fontSize: 16, color: '#f8fafc' },
+  label: { fontSize: 14, fontWeight: '600', color: theme.textSecondary, marginBottom: 8, marginTop: 16 },
+  input: { backgroundColor: theme.secondary, borderRadius: 12, padding: 16, fontSize: 16, color: theme.text, borderWidth: 1, borderColor: theme.border },
   countRow: { flexDirection: 'row', marginTop: 8 },
-  countBtn: { flex: 1, backgroundColor: '#1e293b', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginRight: 10 },
-  countBtnActive: { backgroundColor: '#6366f1' },
-  countText: { fontSize: 16, color: '#94a3b8', fontWeight: '600' },
-  countTextActive: { color: '#fff' },
+  countBtn: { flex: 1, backgroundColor: theme.secondary, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginRight: 10, borderWidth: 1, borderColor: theme.border },
+  countBtnActive: { backgroundColor: theme.primaryAccent, borderColor: theme.primaryAccent },
+  countText: { fontSize: 16, color: theme.textSecondary, fontWeight: '600' },
+  countTextActive: { color: '#f5f5f5' },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingVertical: 8 },
-  switchLabel: { fontSize: 16, color: '#e2e8f0' },
-  error: { color: '#f87171', marginTop: 12, fontSize: 14 },
-  generateBtn: { marginTop: 28, backgroundColor: '#6366f1', paddingVertical: 18, borderRadius: 14, alignItems: 'center' },
+  switchLabel: { fontSize: 16, color: theme.text },
+  error: { color: theme.error, marginTop: 12, fontSize: 14 },
+  generateBtn: { marginTop: 28, backgroundColor: theme.primaryAccent, paddingVertical: 18, borderRadius: 14, alignItems: 'center', shadowColor: theme.primaryAccent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
   generateBtnDisabled: { opacity: 0.7 },
-  generateText: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  hint: { marginTop: 16, fontSize: 12, color: '#64748b', textAlign: 'center' },
+  generateText: { fontSize: 17, fontWeight: '700', color: '#f5f5f5' },
+  hint: { marginTop: 16, fontSize: 12, color: theme.textTertiary, textAlign: 'center' },
 });

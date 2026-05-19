@@ -14,11 +14,13 @@ import {
   Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 
 export default function HelpSupportScreen() {
   const navigation = useNavigation();
+  const { theme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -83,6 +85,8 @@ export default function HelpSupportScreen() {
     Alert.alert('Copied', `${text} has been copied`);
   };
 
+  const styles = createStyles(theme);
+
   return (
     <SafeAreaView style={styles.container}>
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
@@ -135,7 +139,7 @@ export default function HelpSupportScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="What do you need help with?"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textTertiary}
                   value={subject}
                   onChangeText={setSubject}
                   editable={!loading}
@@ -147,7 +151,7 @@ export default function HelpSupportScreen() {
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   placeholder="Describe your issue or question..."
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textTertiary}
                   multiline
                   numberOfLines={6}
                   value={message}
@@ -174,41 +178,35 @@ export default function HelpSupportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.background,
   },
   scrollContent: {
-    flexGrow: 1,
     padding: 20,
+    paddingBottom: 100,
+    flexGrow: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 30,
-    marginTop: 10,
+    marginBottom: 32,
   },
-  backButton: {
-    paddingRight: 15,
-  },
-  backText: {
-    fontSize: 24,
-    color: '#6366f1',
-    fontWeight: '600',
+  headerIcon: {
+    fontSize: 48,
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.text,
   },
   content: {
     flex: 1,
   },
   infoBox: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
+    borderLeftColor: theme.primaryAccent,
     padding: 16,
     borderRadius: 8,
     marginBottom: 30,
@@ -216,17 +214,17 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6366f1',
+    color: theme.primaryAccent,
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#e2e8f0',
+    color: theme.text,
     marginBottom: 4,
   },
   infoSubtext: {
     fontSize: 12,
-    color: '#cbd5e1',
+    color: theme.textSecondary,
   },
   faqSection: {
     marginBottom: 30,
@@ -234,26 +232,26 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.text,
     marginBottom: 16,
   },
   faqItem: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.border,
   },
   faqQuestion: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e2e8f0',
+    color: theme.text,
     marginBottom: 8,
   },
   faqAnswer: {
     fontSize: 13,
-    color: '#cbd5e1',
+    color: theme.textSecondary,
     lineHeight: 18,
   },
   form: {
@@ -262,7 +260,7 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.text,
     marginBottom: 20,
   },
   inputGroup: {
@@ -271,17 +269,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e2e8f0',
+    color: theme.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.border,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: '#fff',
+    color: theme.text,
     fontSize: 16,
     fontFamily: 'System',
   },
@@ -290,11 +288,16 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   submitButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.primaryAccent,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 20,
+    shadowColor: theme.primaryAccent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   submitButtonDisabled: {
     opacity: 0.6,
