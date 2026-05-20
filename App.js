@@ -102,12 +102,17 @@ function RootNavigator() {
                     <Stack.Screen 
                         name="About" 
                         component={AboutScreen}
-                        options={{ gestureEnabled: false }}
+                        options={{ gestureEnabled: false, animationEnabled: false }}
                     />
                     <Stack.Screen 
                         name="TermsAndConditions" 
                         component={TermsAndConditionsScreen}
-                        options={{ gestureEnabled: false }}
+                        options={{ gestureEnabled: false, animationEnabled: false }}
+                    />
+                    <Stack.Screen 
+                        name="PrivacyPolicy" 
+                        component={PrivacyPolicyScreen}
+                        options={{ gestureEnabled: false, animationEnabled: false }}
                     />
                   </>
                 )}

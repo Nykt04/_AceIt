@@ -64,6 +64,14 @@ const normalizeQuestions = (questions) =>
     explanation: q.explanation || 'No explanation provided',
   }));
 
+const calculateMaxTokens = (count) => {
+  // Estimate: ~80-120 tokens per question with explanation
+  // Add buffer for JSON structure and system overhead
+  const baseTokens = count * 100;
+  const buffer = 500;
+  return Math.min(Math.max(baseTokens + buffer, 2000), 4000);
+};
+
 const generateWithOpenAICompatible = async (apiKey, topic, count, types) => {
   const isOpenRouter = apiKey.startsWith('sk-or-v1-');
   const apiUrl = isOpenRouter
@@ -85,14 +93,16 @@ const generateWithOpenAICompatible = async (apiKey, topic, count, types) => {
     extra().openrouterModel ||
     (isOpenRouter ? 'deepseek/deepseek-chat' : 'deepseek/deepseek-chat');
 
+  const maxTokens = calculateMaxTokens(count);
+
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       model,
       messages: buildMessages(topic, count, types),
-      temperature: 0.7,
-      max_tokens: 2000,
+      temperature: 0.5,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -187,7 +197,8 @@ const generateWithTextContent = async (apiKey, textContent, count) => {
       extra().openrouterModel ||
       (isOpenRouter ? 'deepseek/deepseek-chat' : 'deepseek/deepseek-chat');
 
-    console.log(`[AIService] Using model: ${model}`);
+    const maxTokens = calculateMaxTokens(count);
+    console.log(`[AIService] Using model: ${model}, max_tokens: ${maxTokens}`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -195,8 +206,8 @@ const generateWithTextContent = async (apiKey, textContent, count) => {
       body: JSON.stringify({
         model,
         messages: buildMessagesFromText(textContent, count),
-        temperature: 0.7,
-        max_tokens: 3000,
+        temperature: 0.5,
+        max_tokens: maxTokens,
       }),
     });
 
@@ -241,9 +252,20 @@ const generateWithTextContent = async (apiKey, textContent, count) => {
     const questions = parseJsonFromResponse(content);
     
     if (!Array.isArray(questions) || questions.length === 0) {
-      const error = new Error(`Generated ${questions?.length || 0} questions, but expected ${count}`);
-      logError('generateWithTextContent', error, { generatedCount: questions?.length });
+      const error = new Error(
+        `Generated ${questions?.length || 0} questions, but expected ${count}. ` +
+        `This may happen with very large requests. Try requesting fewer questions (max 50) or provide more detailed source material.`
+      );
+      logError('generateWithTextContent', error, { generatedCount: questions?.length, requestedCount: count });
       throw error;
+    }
+
+    // If fewer questions than requested, log warning but still return what we got
+    if (questions.length < count) {
+      console.warn(
+        `[AIService] Generated ${questions.length} questions instead of ${count}. ` +
+        `The AI may need more context or the request was too large.`
+      );
     }
 
     console.log(`[AIService] Successfully generated ${questions.length} questions`);

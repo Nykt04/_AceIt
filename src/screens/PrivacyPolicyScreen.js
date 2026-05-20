@@ -7,13 +7,65 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { showError } from '../services/notificationService';
 
 export default function PrivacyPolicyScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { isAuthenticated, completeOnboarding } = useAuth();
+  const [accepted, setAccepted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [agreeError, setAgreeError] = useState(false);
+
+  useEffect(() => {
+    console.log('[PrivacyPolicy] Screen mounted. isAuthenticated:', isAuthenticated);
+  }, [isAuthenticated]);
+
+  const handleAccept = async () => {
+    if (!isAuthenticated && !accepted) {
+      setAgreeError(true);
+      showError('Policy Not Accepted', 'Please click the checkbox to agree to the Privacy Policy');
+      setTimeout(() => setAgreeError(false), 3000);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (!isAuthenticated) {
+        // Onboarding flow - complete onboarding and navigate to LoginSignup
+        console.log('[PrivacyPolicy] Completing onboarding...');
+        await completeOnboarding();
+        console.log('[PrivacyPolicy] Onboarding completed, navigating to LoginSignup...');
+        navigation.replace('LoginSignup');
+      } else {
+        // Authenticated user viewing privacy policy - navigate to Home
+        setLoading(false);
+        navigation.replace('Home');
+      }
+    } catch (error) {
+      console.error('[PrivacyPolicy] Error accepting privacy policy:', error);
+      showError('Error', 'Failed to save acceptance. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleDecline = () => {
+    if (isAuthenticated) {
+      navigation.goBack();
+      return;
+    }
+
+    showError(
+      'Policy Not Accepted',
+      'You must accept the Privacy Policy to use Study Buddy. Please click "I Agree" to continue.'
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -32,7 +84,7 @@ export default function PrivacyPolicyScreen() {
         scrollEventThrottle={16}
       >
         {/* Header */}
-        <View style={styles.headerSection}>
+        <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Privacy Policy</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             Your privacy matters to us
@@ -142,23 +194,118 @@ export default function PrivacyPolicyScreen() {
           </Text>
         </View>
 
-        {/* Button */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.acceptButton,
-              {
-                backgroundColor: theme.primaryAccent,
-              },
-            ]}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.buttonText, { color: '#fff' }]}>
-              I Understand
+        {/* Checkbox (only for onboarding) */}
+        {!isAuthenticated && (
+          <View style={styles.checkboxContainer}>
+            <TouchableOpacity
+              style={[
+                styles.checkbox,
+                {
+                  backgroundColor: accepted ? theme.primaryAccent : theme.secondary,
+                  borderColor: theme.border,
+                  borderWidth: agreeError ? 2 : 1,
+                  borderColor: agreeError ? '#ef4444' : theme.border,
+                },
+              ]}
+              onPress={() => {
+                setAccepted(!accepted);
+                setAgreeError(false);
+              }}
+            >
+              {accepted && <Text style={[styles.checkmark, { color: theme.background }]}>✓</Text>}
+            </TouchableOpacity>
+            <Text style={[styles.checkboxLabel, { color: theme.text }]}>
+              I have read and agree to the Privacy Policy
             </Text>
-          </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Error Message */}
+        {agreeError && !isAuthenticated && (
+          <View style={[styles.errorMessage, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]}>
+            <Text style={[styles.errorText, { color: '#dc2626' }]}>
+              ⚠️ Please agree to the Privacy Policy to continue
+            </Text>
+          </View>
+        )}
+
+        {/* Buttons */}
+        <View>
+          {!isAuthenticated && (
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.goBackButton,
+                  { backgroundColor: theme.secondary, borderColor: theme.border },
+                ]}
+                onPress={() => navigation.navigate('TermsAndConditions')}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.buttonText, { color: theme.text }]}>← Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.continueButton,
+                  {
+                    backgroundColor: accepted ? theme.primaryAccent : theme.tertiary,
+                    opacity: accepted ? 1 : 0.5,
+                  },
+                ]}
+                onPress={handleAccept}
+                disabled={!accepted || loading}
+                activeOpacity={0.7}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.buttonText, { color: '#fff' }]}>
+                    Continue to Login/Signup →
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {isAuthenticated && (
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.goBackButton,
+                  { backgroundColor: theme.secondary, borderColor: theme.border },
+                ]}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.buttonText, { color: theme.text }]}>← Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.acceptButton,
+                  {
+                    backgroundColor: theme.primaryAccent,
+                  },
+                ]}
+                onPress={handleAccept}
+                disabled={loading}
+                activeOpacity={0.7}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.buttonText, { color: '#fff' }]}>
+                    I Understand
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -175,17 +322,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    marginBottom: 24,
+    paddingHorizontal: 0,
+    borderBottomWidth: 0,
   },
   backButton: {
     fontSize: 18,
     fontWeight: '600',
     padding: 8,
-  },
-  headerSection: {
-    marginBottom: 24,
+    marginBottom: 12,
   },
   title: {
     fontSize: 28,
@@ -193,33 +338,73 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: '500',
   },
   contentBox: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: 20,
     borderWidth: 1,
   },
   sectionHeading: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 18,
+    fontSize: 20,
+    fontWeight: '600',
+    marginTop: 16,
     marginBottom: 8,
   },
   content: {
-    fontSize: 14,
+    fontSize: 17,
     lineHeight: 22,
     marginBottom: 12,
   },
   lastUpdated: {
-    fontSize: 12,
+    fontSize: 16,
     fontStyle: 'italic',
-    marginTop: 24,
+    marginTop: 20,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: '#e5e7eb',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 24,
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(99, 102, 241, 0.05)',
+    borderRadius: 8,
+    paddingLeft: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  checkmark: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+  },
+  errorMessage: {
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -229,10 +414,21 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 50,
+  },
+  goBackButton: {
+    borderWidth: 1,
+  },
+  continueButton: {
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   acceptButton: {
     elevation: 3,
@@ -242,7 +438,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    textAlign: 'center',
+    flexWrap: 'wrap',
   },
 });

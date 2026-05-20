@@ -41,12 +41,9 @@ export default function TermsAndConditionsScreen() {
     setLoading(true);
     try {
       if (!isAuthenticated) {
-        // Onboarding flow - complete onboarding and navigate to LoginSignup
-        console.log('[TermsAndConditions] Completing onboarding...');
-        await completeOnboarding();
-        console.log('[TermsAndConditions] Onboarding completed, navigating to LoginSignup...');
-        // Navigate to LoginSignup screen
-        navigation.replace('LoginSignup');
+        // Onboarding flow - navigate to Privacy Policy
+        console.log('[TermsAndConditions] Navigating to Privacy Policy...');
+        navigation.navigate('PrivacyPolicy');
       } else {
         // Authenticated user viewing T&C - navigate to Home
         setLoading(false);
@@ -202,7 +199,7 @@ export default function TermsAndConditionsScreen() {
                   styles.goBackButton,
                   { backgroundColor: theme.secondary, borderColor: theme.border },
                 ]}
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.navigate('About')}
                 disabled={loading}
                 activeOpacity={0.7}
               >
@@ -226,7 +223,7 @@ export default function TermsAndConditionsScreen() {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={[styles.buttonText, { color: '#fff' }]}>
-                    Continue to Login/Signup →
+                    Continue to Privacy & Policies →
                   </Text>
                 )}
               </TouchableOpacity>
@@ -378,11 +375,12 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+    minHeight: 50,
   },
   goBackButton: {
     borderWidth: 1,
@@ -394,7 +392,9 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   buttonText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '600',
+    textAlign: 'center',
+    flexWrap: 'wrap',
   },
 });
