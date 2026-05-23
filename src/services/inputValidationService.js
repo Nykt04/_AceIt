@@ -8,13 +8,11 @@ export const validateEmail = (email) => {
     return { valid: false, error: 'Email is required' };
   }
 
-  const trimmedEmail = email.trim().toLowerCase();
+  const trimmedEmail = email.trim();
   
-  // Simple but effective email validation
-  // Checks for: characters before @, @ symbol, characters after @, at least one dot, and at least 2 chars after final dot
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailRegex.test(trimmedEmail)) {
+  // Very permissive validation - just check for @ symbol
+  // Supabase will handle stricter validation
+  if (!trimmedEmail.includes('@')) {
     return { valid: false, error: 'Please enter a valid email address' };
   }
 
@@ -64,6 +62,31 @@ export const validatePassword = (password) => {
   return {
     valid: errors.length === 0,
     errors,
+  };
+};
+
+/**
+ * Get password requirement checks
+ * @param {string} password - Password to check
+ * @returns {{hasMinLength: boolean, hasUpperCase: boolean, hasLowerCase: boolean, hasNumber: boolean, hasSpecialChar: boolean}}
+ */
+export const getPasswordRequirementStatus = (password) => {
+  if (!password) {
+    return {
+      hasMinLength: false,
+      hasUpperCase: false,
+      hasLowerCase: false,
+      hasNumber: false,
+      hasSpecialChar: false,
+    };
+  }
+
+  return {
+    hasMinLength: password.length >= 8,
+    hasUpperCase: /[A-Z]/.test(password),
+    hasLowerCase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
   };
 };
 

@@ -54,6 +54,17 @@ export const parseAuthError = (error) => {
     };
   }
 
+  // Rate limiting (check BEFORE generic email check)
+  if (
+    errorMessage.includes('rate') ||
+    errorMessage.includes('too many')
+  ) {
+    return {
+      title: 'Too Many Attempts',
+      message: 'You have made too many attempts. Please wait a few minutes and try again.',
+    };
+  }
+
   if (errorMessage.includes('email')) {
     return {
       title: 'Invalid Email',
@@ -89,17 +100,6 @@ export const parseAuthError = (error) => {
     return {
       title: 'Connection Error',
       message: 'Unable to connect to the server. Please try again later.',
-    };
-  }
-
-  // Rate limiting
-  if (
-    errorMessage.includes('rate') ||
-    errorMessage.includes('too many')
-  ) {
-    return {
-      title: 'Too Many Attempts',
-      message: 'You have made too many attempts. Please wait a few minutes and try again.',
     };
   }
 

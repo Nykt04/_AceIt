@@ -23,7 +23,7 @@ import { signIn, signUp, signInWithGoogle, sendWelcomeEmail, requestPasswordRese
 import { parseAuthError, isValidEmail, isValidPassword } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
 import { checkRateLimit, recordFailedAttempt, clearAttempts } from '../services/rateLimitService';
-import { validateEmail, validatePassword, validateFullName } from '../services/inputValidationService';
+import { validateEmail, validatePassword, validateFullName, getPasswordRequirementStatus } from '../services/inputValidationService';
 
 export default function LoginSignupScreen() {
   const navigation = useNavigation();
@@ -47,9 +47,39 @@ export default function LoginSignupScreen() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetCooldown, setResetCooldown] = useState(0); // Cooldown timer in seconds
+  const [showPassword, setShowPassword] = useState(false); // Toggle password visibility
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // Toggle confirm password visibility
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    hasMinLength: false,
+    hasUpperCase: false,
+    hasLowerCase: false,
+    hasNumber: false,
+    hasSpecialChar: false,
+  });
+  const resetCooldownTimerRef = useRef(null); // Ref to track cooldown timer
   const submitScale = useRef(new Animated.Value(1)).current;
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
+
+  // Initialize password reset cooldown from localStorage on component mount
+  useEffect(() => {
+    const storedResetTime = localStorage.getItem('lastPasswordResetTime');
+    if (storedResetTime) {
+      const resetTime = parseInt(storedResetTime, 10);
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - resetTime) / 1000);
+      const COOLDOWN_DURATION = 600; // 10 minutes in seconds
+      
+      if (elapsedSeconds < COOLDOWN_DURATION) {
+        const remainingSeconds = COOLDOWN_DURATION - elapsedSeconds;
+        console.log('[LoginSignup] Password reset cooldown restored from storage:', remainingSeconds, 's remaining');
+        setResetCooldown(remainingSeconds);
+      } else {
+        // Cooldown has expired, clear it
+        localStorage.removeItem('lastPasswordResetTime');
+      }
+    }
+  }, []);
 
   // Create dynamic styles based on theme
   const styles = StyleSheet.create({
@@ -134,6 +164,67 @@ export default function LoginSignupScreen() {
       marginTop: 6,
       marginLeft: 4,
       fontWeight: '500',
+    },
+    passwordInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      position: 'relative',
+    },
+    passwordInput: {
+      flex: 1,
+      paddingRight: 50,
+    },
+    passwordToggleButton: {
+      position: 'absolute',
+      right: 12,
+      padding: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    passwordToggleText: {
+      fontSize: 18,
+      color: theme.textSecondary,
+    },
+    requirementsContainer: {
+      marginTop: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: theme.secondary,
+      borderRadius: 8,
+      borderLeftWidth: 3,
+      borderLeftColor: theme.primaryAccent,
+    },
+    requirementsTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    requirementItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 6,
+    },
+    requirementCheckmark: {
+      fontSize: 14,
+      fontWeight: '700',
+      marginRight: 8,
+      minWidth: 16,
+    },
+    requirementMet: {
+      color: '#10b981',
+    },
+    requirementUnmet: {
+      color: theme.error,
+    },
+    requirementText: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      flex: 1,
+    },
+    requirementMetText: {
+      color: '#10b981',
+      fontWeight: '600',
     },
     forgotPassword: {
       fontSize: 14,
@@ -458,16 +549,16 @@ export default function LoginSignupScreen() {
   };
 
   const handleEmailBlur = () => {
-    let error = '';
-    if (email.trim() && !isValidEmail(email)) {
-      error = '❌ Please enter a valid email (e.g., user@example.com)';
-    }
-    setErrors(prev => ({ ...prev, email: error }));
+    // Don't validate on blur - only validate on form submission
+    // This prevents false rejections while typing
   };
 
-  // Real-time password validation (only on blur)
+  // Real-time password validation and requirements tracking
   const handlePasswordChange = (value) => {
     setPassword(value);
+    // Update password requirements in real-time
+    const requirements = getPasswordRequirementStatus(value);
+    setPasswordRequirements(requirements);
   };
 
   const handlePasswordBlur = () => {
@@ -645,20 +736,41 @@ export default function LoginSignupScreen() {
   };
 
   // Cooldown timer effect
+  // Handle password reset cooldown countdown
   useEffect(() => {
-    let interval;
-    if (resetCooldown > 0) {
-      interval = setInterval(() => {
-        setResetCooldown(prev => {
-          const newValue = prev - 1;
-          if (newValue <= 0) {
-            clearInterval(interval);
-          }
-          return newValue;
-        });
-      }, 1000);
+    if (resetCooldown <= 0) {
+      if (resetCooldownTimerRef.current) {
+        clearInterval(resetCooldownTimerRef.current);
+        resetCooldownTimerRef.current = null;
+      }
+      return;
     }
-    return () => clearInterval(interval);
+
+    // Clear existing timer if any
+    if (resetCooldownTimerRef.current) {
+      clearInterval(resetCooldownTimerRef.current);
+    }
+
+    // Start countdown
+    resetCooldownTimerRef.current = setInterval(() => {
+      setResetCooldown(prev => {
+        const newValue = prev - 1;
+        if (newValue <= 0) {
+          clearInterval(resetCooldownTimerRef.current);
+          resetCooldownTimerRef.current = null;
+          localStorage.removeItem('lastPasswordResetTime');
+          return 0;
+        }
+        return newValue;
+      });
+    }, 1000);
+
+    return () => {
+      if (resetCooldownTimerRef.current) {
+        clearInterval(resetCooldownTimerRef.current);
+        resetCooldownTimerRef.current = null;
+      }
+    };
   }, [resetCooldown]);
 
   const handleForgotPasswordRequest = async () => {
@@ -681,9 +793,12 @@ export default function LoginSignupScreen() {
       if (error) {
         console.error('[LoginSignup] Password reset error:', error);
         showError('Password Reset Failed', error);
-        // Set cooldown on rate limit errors
+        // Set cooldown on rate limit errors and store timestamp
         if (error.includes('rate limit')) {
-          setResetCooldown(600); // 10 minutes
+          const COOLDOWN_DURATION = 600; // 10 minutes
+          setResetCooldown(COOLDOWN_DURATION);
+          localStorage.setItem('lastPasswordResetTime', Date.now().toString());
+          console.log('[LoginSignup] Password reset cooldown stored in localStorage for 10 minutes');
         }
       } else {
         console.log('[LoginSignup] Password reset email sent successfully');
@@ -691,6 +806,7 @@ export default function LoginSignupScreen() {
         setResetSent(true);
         setResetEmail('');
         setResetCooldown(60); // 1 minute cooldown between attempts
+        localStorage.setItem('lastPasswordResetTime', Date.now().toString());
         // Close modal after 2 seconds
         setTimeout(() => {
           setShowForgotPasswordModal(false);
@@ -888,32 +1004,97 @@ export default function LoginSignupScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={[styles.input, errors.password ? styles.inputError : null]}
-                placeholder="Enter your password"
-                placeholderTextColor={theme.textTertiary}
-                value={password}
-                onChangeText={handlePasswordChange}
-                onBlur={handlePasswordBlur}
-                secureTextEntry
-                editable={!loading}
-              />
+              <View style={styles.passwordInputContainer}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput, errors.password ? styles.inputError : null]}
+                  placeholder="Enter your password"
+                  placeholderTextColor={theme.textTertiary}
+                  value={password}
+                  onChangeText={handlePasswordChange}
+                  onBlur={handlePasswordBlur}
+                  secureTextEntry={!showPassword}
+                  editable={!loading}
+                />
+                <TouchableOpacity
+                  style={styles.passwordToggleButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  disabled={!password}
+                >
+                  <Text style={styles.passwordToggleText}>{showPassword ? '👁' : '⌣'}</Text>
+                </TouchableOpacity>
+              </View>
               {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+              
+              {/* Password Requirements Display (Signup Only) */}
+              {!isLogin && password && (
+                <View style={styles.requirementsContainer}>
+                  <Text style={styles.requirementsTitle}>Password Requirements:</Text>
+                  <View style={styles.requirementItem}>
+                    <Text style={[styles.requirementCheckmark, passwordRequirements.hasMinLength ? styles.requirementMet : styles.requirementUnmet]}>
+                      {passwordRequirements.hasMinLength ? '✓' : '✗'}
+                    </Text>
+                    <Text style={[styles.requirementText, passwordRequirements.hasMinLength ? styles.requirementMetText : null]}>
+                      At least 8 characters
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Text style={[styles.requirementCheckmark, passwordRequirements.hasUpperCase ? styles.requirementMet : styles.requirementUnmet]}>
+                      {passwordRequirements.hasUpperCase ? '✓' : '✗'}
+                    </Text>
+                    <Text style={[styles.requirementText, passwordRequirements.hasUpperCase ? styles.requirementMetText : null]}>
+                      At least one uppercase letter (A-Z)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Text style={[styles.requirementCheckmark, passwordRequirements.hasLowerCase ? styles.requirementMet : styles.requirementUnmet]}>
+                      {passwordRequirements.hasLowerCase ? '✓' : '✗'}
+                    </Text>
+                    <Text style={[styles.requirementText, passwordRequirements.hasLowerCase ? styles.requirementMetText : null]}>
+                      At least one lowercase letter (a-z)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Text style={[styles.requirementCheckmark, passwordRequirements.hasNumber ? styles.requirementMet : styles.requirementUnmet]}>
+                      {passwordRequirements.hasNumber ? '✓' : '✗'}
+                    </Text>
+                    <Text style={[styles.requirementText, passwordRequirements.hasNumber ? styles.requirementMetText : null]}>
+                      At least one number (0-9)
+                    </Text>
+                  </View>
+                  <View style={styles.requirementItem}>
+                    <Text style={[styles.requirementCheckmark, passwordRequirements.hasSpecialChar ? styles.requirementMet : styles.requirementUnmet]}>
+                      {passwordRequirements.hasSpecialChar ? '✓' : '✗'}
+                    </Text>
+                    <Text style={[styles.requirementText, passwordRequirements.hasSpecialChar ? styles.requirementMetText : null]}>
+                      At least one special character (!@#$%^&*...)
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
 
             {!isLogin && (
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Confirm Password</Text>
-                <TextInput
-                  style={[styles.input, errors.confirmPassword ? styles.inputError : null]}
-                  placeholder="Confirm your password"
-                  placeholderTextColor={theme.textTertiary}
-                  value={confirmPassword}
-                  onChangeText={handleConfirmPasswordChange}
-                  onBlur={handleConfirmPasswordBlur}
-                  secureTextEntry
-                  editable={!loading}
-                />
+                <View style={styles.passwordInputContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput, errors.confirmPassword ? styles.inputError : null]}
+                    placeholder="Confirm your password"
+                    placeholderTextColor={theme.textTertiary}
+                    value={confirmPassword}
+                    onChangeText={handleConfirmPasswordChange}
+                    onBlur={handleConfirmPasswordBlur}
+                    secureTextEntry={!showConfirmPassword}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordToggleButton}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={!confirmPassword}
+                  >
+                    <Text style={styles.passwordToggleText}>{showConfirmPassword ? '👁' : '⌣'}</Text>
+                  </TouchableOpacity>
+                </View>
                 {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
               </View>
             )}
