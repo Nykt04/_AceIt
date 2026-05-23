@@ -22,13 +22,6 @@ export function AuthProvider({ children }) {
       try {
         console.log('[AuthContext] Initializing auth state...');
         
-        // First check if there's a stored isPasswordReset flag (from previous load)
-        const storedResetFlag = await AsyncStorage.getItem('isPasswordReset');
-        if (storedResetFlag === 'true' && mounted) {
-          console.log('[AuthContext] Found stored password reset flag');
-          setIsPasswordReset(true);
-        }
-        
         // Check for password reset token first (recovery flow)
         console.log('[AuthContext] Checking for password reset token...');
         const resetResult = await handlePasswordResetToken();
@@ -75,8 +68,7 @@ export function AuthProvider({ children }) {
         console.log('[AuthContext] Setting up auth listener...');
         subscription = onAuthStateChange((newSession) => {
           console.log('[AuthContext] Auth state changed, session exists:', !!newSession, 'user:', !!newSession?.user);
-          // Don't update session state if we're in password reset mode
-          if (mounted && !resetResult.isReset) {
+          if (mounted) {
             setSession(newSession);
             if (newSession?.user) {
               setUser(newSession.user);
@@ -85,8 +77,6 @@ export function AuthProvider({ children }) {
               setUser(null);
               console.log('[AuthContext] User logged out');
             }
-          } else if (mounted && resetResult.isReset) {
-            console.log('[AuthContext] Ignoring auth state change during password reset flow');
           }
         });
         console.log('[AuthContext] Auth listener set up');
