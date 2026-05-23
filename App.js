@@ -138,7 +138,7 @@ function RootNavigator() {
                     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
                     <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
                     <Stack.Screen name="TermsAndConditionsView" component={TermsAndConditionsScreen} />
-                    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+                    <Stack.Screen name="PrivacyPolicyView" component={PrivacyPolicyScreen} />
                   </>
                 )}
             </Stack.Navigator>

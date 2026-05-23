@@ -371,7 +371,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('PrivacyPolicy')}
+            onPress={() => navigation.navigate('PrivacyPolicyView')}
             activeOpacity={0.7}
           >
             <SettingRow
