@@ -12,13 +12,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { signIn, signUp, signInWithGoogle, sendWelcomeEmail } from '../services/authService';
+import { signIn, signUp, signInWithGoogle, sendWelcomeEmail, requestPasswordReset } from '../services/authService';
 import { parseAuthError, isValidEmail, isValidPassword } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
 import { checkRateLimit, recordFailedAttempt, clearAttempts } from '../services/rateLimitService';
@@ -41,6 +42,10 @@ export default function LoginSignupScreen() {
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errors, setErrors] = useState({ email: '', password: '', name: '', confirmPassword: '' });
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const submitScale = useRef(new Animated.Value(1)).current;
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
@@ -309,6 +314,88 @@ export default function LoginSignupScreen() {
       color: theme.textSecondary,
       textAlign: 'center',
     },
+    // Forgot Password Modal Styles
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: theme.background,
+      borderRadius: 16,
+      padding: 24,
+      width: '85%',
+      maxWidth: 400,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 12,
+    },
+    modalTitle: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    modalSubtitle: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      marginBottom: 24,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    modalInputGroup: {
+      marginBottom: 20,
+    },
+    modalInput: {
+      backgroundColor: theme.secondary,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    modalButtonContainer: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 24,
+    },
+    modalButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    modalButtonPrimary: {
+      backgroundColor: theme.primaryAccent,
+    },
+    modalButtonSecondary: {
+      backgroundColor: theme.secondary,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    modalButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    modalButtonTextPrimary: {
+      color: theme.text,
+    },
+    modalButtonTextSecondary: {
+      color: theme.text,
+    },
+    successMessage: {
+      fontSize: 14,
+      color: theme.success,
+      textAlign: 'center',
+      marginBottom: 16,
+      fontWeight: '600',
+    },
   });
   useEffect(() => {
     if (user && awaitingConfirmation) {
@@ -556,6 +643,45 @@ export default function LoginSignupScreen() {
     }
   };
 
+  const handleForgotPasswordRequest = async () => {
+    // Validate email
+    const emailValidation = validateEmail(resetEmail);
+    if (!emailValidation.valid) {
+      showError('Invalid Email', emailValidation.error);
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      const { error } = await requestPasswordReset(resetEmail.toLowerCase().trim());
+      if (error) {
+        console.error('[LoginSignup] Password reset error:', error);
+        showError('Password Reset Failed', 'Unable to send reset email. Please try again.');
+      } else {
+        console.log('[LoginSignup] Password reset email sent successfully');
+        showSuccess('Email Sent', 'Check your email for password reset instructions');
+        setResetSent(true);
+        setResetEmail('');
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          setShowForgotPasswordModal(false);
+          setResetSent(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('[LoginSignup] Password reset exception:', error);
+      showError('Error', 'An unexpected error occurred. Please try again.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const closeForgotPasswordModal = () => {
+    setShowForgotPasswordModal(false);
+    setResetEmail('');
+    setResetSent(false);
+  };
+
   // Show confirmation waiting screen
   if (awaitingConfirmation) {
     return (
@@ -764,7 +890,7 @@ export default function LoginSignupScreen() {
             )}
 
             {isLogin && (
-              <TouchableOpacity onPress={() => Alert.alert('Info', 'Password reset feature coming soon!')}>
+              <TouchableOpacity onPress={() => setShowForgotPasswordModal(true)}>
                 <Text style={styles.forgotPassword}>Forgot password?</Text>
               </TouchableOpacity>
             )}
@@ -814,6 +940,73 @@ export default function LoginSignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showForgotPasswordModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeForgotPasswordModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {!resetSent ? (
+              <>
+                <Text style={styles.modalTitle}>Reset Password</Text>
+                <Text style={styles.modalSubtitle}>
+                  Enter your email address and we'll send you a link to reset your password.
+                </Text>
+                <View style={styles.modalInputGroup}>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Enter your email"
+                    placeholderTextColor={theme.textTertiary}
+                    value={resetEmail}
+                    onChangeText={setResetEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    editable={!resetLoading}
+                  />
+                </View>
+                <View style={styles.modalButtonContainer}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonSecondary]}
+                    onPress={closeForgotPasswordModal}
+                    disabled={resetLoading}
+                  >
+                    <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonPrimary]}
+                    onPress={handleForgotPasswordRequest}
+                    disabled={resetLoading}
+                  >
+                    <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>
+                      {resetLoading ? '...' : 'Send Link'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 48, marginBottom: 16 }}>✅</Text>
+                  <Text style={styles.modalTitle}>Check Your Email</Text>
+                </View>
+                <Text style={styles.successMessage}>
+                  Password reset link sent to {resetEmail}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 16 }]}
+                  onPress={closeForgotPasswordModal}
+                >
+                  <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>Done</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
