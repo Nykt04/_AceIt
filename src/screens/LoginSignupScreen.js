@@ -46,6 +46,7 @@ export default function LoginSignupScreen() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0); // Cooldown timer in seconds
   const submitScale = useRef(new Animated.Value(1)).current;
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
@@ -643,7 +644,30 @@ export default function LoginSignupScreen() {
     }
   };
 
+  // Cooldown timer effect
+  useEffect(() => {
+    let interval;
+    if (resetCooldown > 0) {
+      interval = setInterval(() => {
+        setResetCooldown(prev => {
+          const newValue = prev - 1;
+          if (newValue <= 0) {
+            clearInterval(interval);
+          }
+          return newValue;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resetCooldown]);
+
   const handleForgotPasswordRequest = async () => {
+    // Check cooldown
+    if (resetCooldown > 0) {
+      showError('Please Wait', `Try again in ${resetCooldown} seconds`);
+      return;
+    }
+
     // Validate email
     const emailValidation = validateEmail(resetEmail);
     if (!emailValidation.valid) {
@@ -656,12 +680,17 @@ export default function LoginSignupScreen() {
       const { error } = await requestPasswordReset(resetEmail.toLowerCase().trim());
       if (error) {
         console.error('[LoginSignup] Password reset error:', error);
-        showError('Password Reset Failed', 'Unable to send reset email. Please try again.');
+        showError('Password Reset Failed', error);
+        // Set cooldown on rate limit errors
+        if (error.includes('rate limit')) {
+          setResetCooldown(600); // 10 minutes
+        }
       } else {
         console.log('[LoginSignup] Password reset email sent successfully');
         showSuccess('Email Sent', 'Check your email for password reset instructions');
         setResetSent(true);
         setResetEmail('');
+        setResetCooldown(60); // 1 minute cooldown between attempts
         // Close modal after 2 seconds
         setTimeout(() => {
           setShowForgotPasswordModal(false);
@@ -977,12 +1006,16 @@ export default function LoginSignupScreen() {
                     <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.modalButton, styles.modalButtonPrimary]}
+                    style={[
+                      styles.modalButton,
+                      styles.modalButtonPrimary,
+                      (resetLoading || resetCooldown > 0) && { opacity: 0.6 }
+                    ]}
                     onPress={handleForgotPasswordRequest}
-                    disabled={resetLoading}
+                    disabled={resetLoading || resetCooldown > 0}
                   >
                     <Text style={[styles.modalButtonText, styles.modalButtonTextPrimary]}>
-                      {resetLoading ? '...' : 'Send Link'}
+                      {resetLoading ? '...' : resetCooldown > 0 ? `Wait ${resetCooldown}s` : 'Send Link'}
                     </Text>
                   </TouchableOpacity>
                 </View>

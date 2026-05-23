@@ -486,21 +486,42 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         ? `${window.location.origin}/reset-password`
         : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`;
 
+      console.log('[authService] Password reset redirect URL:', redirectTo);
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectTo,
       });
 
       if (error) {
-        // Don't reveal if email exists or not (security best practice)
-        console.error('[authService] Password reset request error:', error.message);
+        console.error('[authService] Password reset request error - Full details:', {
+          message: error.message,
+          status: error.status,
+          code: error.code,
+          fullError: error
+        });
         throw error;
       }
 
-      console.log('[authService] Password reset email sent');
+      console.log('[authService] Password reset email sent successfully');
       return { error: null };
     } catch (error) {
-      console.error('[authService] Password reset request error:', error.message);
-      return { error: error.message };
+      let userFriendlyMessage = 'Password reset service temporarily unavailable. Please try again.';
+      
+      // Handle rate limit error
+      if (error.message?.includes('rate limit') || error.status === 429) {
+        userFriendlyMessage = 'Too many password reset attempts. Please wait 10 minutes before trying again.';
+      }
+      // Handle user not found
+      else if (error.message?.includes('not found') || error.message?.includes('User not found')) {
+        userFriendlyMessage = 'No account found with this email address.';
+      }
+      // Handle other email errors
+      else if (error.message?.includes('email')) {
+        userFriendlyMessage = 'Unable to send reset email. Please verify your email address and try again.';
+      }
+      
+      console.error('[authService] Password reset request exception:', error);
+      return { error: userFriendlyMessage };
     }
   };
 

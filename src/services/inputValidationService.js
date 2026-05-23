@@ -4,18 +4,21 @@
  * @returns {{valid: boolean, error?: string}}
  */
 export const validateEmail = (email) => {
-  // RFC 5322 simplified regex for email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  // More permissive RFC 5322 compliant regex that accepts most valid email formats
+  // Accepts: alphanumeric, dots, hyphens, underscores, plus signs in local part
+  const emailRegex = /^[a-zA-Z0-9._+\-]+@[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
 
   if (!email || email.trim().length === 0) {
     return { valid: false, error: 'Email is required' };
   }
 
-  if (!emailRegex.test(email)) {
+  // Trim whitespace and check again
+  const trimmedEmail = email.trim();
+  if (!emailRegex.test(trimmedEmail)) {
     return { valid: false, error: 'Please enter a valid email address' };
   }
 
-  if (email.length > 254) {
+  if (trimmedEmail.length > 254) {
     return { valid: false, error: 'Email is too long (max 254 characters)' };
   }
 
