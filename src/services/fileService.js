@@ -1,6 +1,19 @@
 import mammoth from 'mammoth';
 import { logError } from './notificationService';
-import Tesseract from 'tesseract.js';
+// Dynamically import Tesseract to avoid build issues with expo web export
+let Tesseract = null;
+const loadTesseract = async () => {
+  if (!Tesseract) {
+    try {
+      const module = await import('tesseract.js');
+      Tesseract = module.default;
+    } catch (error) {
+      console.warn('[FileService] Failed to load Tesseract.js:', error.message);
+      return null;
+    }
+  }
+  return Tesseract;
+};
 
 /**
  * Extract images from DOCX file and perform OCR
@@ -36,8 +49,16 @@ const extractTextFromImagesInDOCX = async (arrayBuffer) => {
         const imageData = await file.async('blob');
         const imageUrl = URL.createObjectURL(imageData);
 
+        // Dynamically load Tesseract
+        const TesseractModule = await loadTesseract();
+        if (!TesseractModule) {
+          console.warn('[FileService] Tesseract.js not available, skipping OCR');
+          URL.revokeObjectURL(imageUrl);
+          continue;
+        }
+
         // Use the default worker
-        const worker = await Tesseract.createWorker();
+        const worker = await TesseractModule.createWorker();
         const result = await worker.recognize(imageUrl);
         const ocrText = result.data.text;
         await worker.terminate();
