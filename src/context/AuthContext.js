@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChange, getCurrentUser, signOut as authSignOut, getCurrentSession, handleEmailConfirmationToken } from '../services/authService';
+import { onAuthStateChange, getCurrentUser, signOut as authSignOut, getCurrentSession, handleEmailConfirmationToken, handlePasswordResetToken } from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -10,6 +10,8 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
+  const [passwordResetToken, setPasswordResetToken] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -19,6 +21,21 @@ export function AuthProvider({ children }) {
     (async () => {
       try {
         console.log('[AuthContext] Initializing auth state...');
+        
+        // Check for password reset token first (recovery flow)
+        console.log('[AuthContext] Checking for password reset token...');
+        const resetResult = await handlePasswordResetToken();
+        if (resetResult.isReset && mounted) {
+          console.log('[AuthContext] Password reset mode detected');
+          setIsPasswordReset(true);
+          setPasswordResetToken(resetResult.token);
+          if (resetResult.user) {
+            setUser(resetResult.user);
+          }
+          if (resetResult.session) {
+            setSession(resetResult.session);
+          }
+        }
         
         // Handle email confirmation token if present in URL (web only)
         console.log('[AuthContext] Checking for email confirmation token...');
@@ -38,11 +55,11 @@ export function AuthProvider({ children }) {
         const { session: currentSession, error: sessionError } = await getCurrentSession();
         console.log('[AuthContext] Current session:', !!currentSession);
         
-        if (currentSession && mounted) {
+        if (currentSession && mounted && !resetResult.isReset) {
           setSession(currentSession);
           setUser(currentSession.user);
           console.log('[AuthContext] User initialized from session:', currentSession.user?.id);
-        } else if (mounted) {
+        } else if (mounted && !resetResult.isReset) {
           setSession(null);
           setUser(null);
         }
@@ -155,6 +172,8 @@ export function AuthProvider({ children }) {
     error,
     onboardingComplete,
     isAuthenticated: !!user,
+    isPasswordReset,
+    passwordResetToken,
     signOut,
     completeOnboarding,
   };

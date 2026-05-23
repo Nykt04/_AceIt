@@ -475,6 +475,69 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   };
 
   /**
+   * Handle password reset token from email link
+   * Checks if URL contains a recovery token (for password reset)
+   * Returns token and user info if found
+   */
+  export const handlePasswordResetToken = async () => {
+    try {
+      if (Platform.OS !== 'web') {
+        console.log('[authService] Password reset token handling only supported on web');
+        return { isReset: false, token: null, error: null };
+      }
+
+      console.log('[authService] Checking for password reset token in URL...');
+      
+      // Supabase stores the token in the URL hash
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      
+      const accessToken = params.get('access_token');
+      const tokenType = params.get('type');
+
+      if (!accessToken || tokenType !== 'recovery') {
+        console.log('[authService] No recovery token found in URL');
+        return { isReset: false, token: null, error: null };
+      }
+
+      console.log('[authService] Found password reset token in URL');
+
+      // Create a session with the recovery token
+      const { data, error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: params.get('refresh_token') || '',
+      });
+
+      if (error) {
+        console.error('[authService] Error verifying password reset token:', error.message);
+        return { isReset: false, token: null, error: error.message };
+      }
+
+      console.log('[authService] Password reset token verified successfully!');
+      
+      // Clean up the URL by removing the hash
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      // Store the token in localStorage for use in ChangePasswordScreen
+      await AsyncStorage.setItem('passwordResetToken', accessToken);
+      await AsyncStorage.setItem('isPasswordReset', 'true');
+
+      return { 
+        isReset: true, 
+        token: accessToken, 
+        user: data.user, 
+        session: data.session,
+        error: null 
+      };
+    } catch (error) {
+      console.error('[authService] Password reset token handling error:', error.message);
+      return { isReset: false, token: null, error: error.message };
+    }
+  };
+
+  /**
    * Request a password reset link via email
    * Sends secure password reset email to user
    */

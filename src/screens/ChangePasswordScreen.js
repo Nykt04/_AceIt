@@ -13,8 +13,8 @@ import {
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
-import { changePassword } from '../services/authService';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { changePassword, resetPasswordWithToken } from '../services/authService';
 import { parseAuthError } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
 import { validatePassword } from '../services/inputValidationService';
@@ -23,6 +23,9 @@ import Sidebar from '../components/Sidebar';
 
 export default function ChangePasswordScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const isReset = route.params?.isReset || false;
+  
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,6 +34,25 @@ export default function ChangePasswordScreen() {
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
   const submitScale = useRef(new Animated.Value(1)).current;
+  const [resetToken, setResetToken] = useState(null);
+
+  // Load reset token from storage if in reset mode
+  useEffect(() => {
+    if (isReset) {
+      const loadResetToken = async () => {
+        try {
+          const token = await AsyncStorage.getItem('passwordResetToken');
+          if (token) {
+            setResetToken(token);
+            console.log('[ChangePassword] Reset token loaded from storage');
+          }
+        } catch (error) {
+          console.error('[ChangePassword] Error loading reset token:', error);
+        }
+      };
+      loadResetToken();
+    }
+  }, [isReset]);
 
   // Password validation helper using the centralized validation service
   const validatePasswordInput = (password) => {
@@ -56,7 +78,33 @@ export default function ChangePasswordScreen() {
     }
   };
 
-  const handleChangePassword = async () => {
+  const handlePasswordUpdate = async () => {
+    // Validation for reset mode (no current password required)
+    if (isReset) {
+      if (!newPassword.trim()) {
+        showError('Required Field', 'Please enter a new password');
+        return;
+      }
+      if (!confirmPassword.trim()) {
+        showError('Required Field', 'Please confirm your new password');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        showError('Passwords Mismatch', 'Passwords do not match. Please check and try again.');
+        return;
+      }
+
+      // Use centralized password validation
+      const passwordValidation = validatePassword(newPassword);
+      if (!passwordValidation.valid) {
+        showError('Weak Password', `Password requirements:\n• ${passwordValidation.errors.join('\n• ')}`);
+        return;
+      }
+
+      return await handleResetPassword();
+    }
+
+    // Validation for normal change mode (requires current password)
     if (!currentPassword.trim()) {
       showError('Required Field', 'Please enter your current password');
       return;
@@ -86,6 +134,10 @@ export default function ChangePasswordScreen() {
       return;
     }
 
+    return await handleChangePassword();
+  };
+
+  const handleChangePassword = async () => {
     setLoading(true);
     Animated.sequence([
       Animated.timing(submitScale, {
@@ -103,7 +155,6 @@ export default function ChangePasswordScreen() {
 
     try {
       console.log('[ChangePassword] Updating password...');
-      // Use the new secure changePassword function
       const { error } = await changePassword(currentPassword, newPassword);
 
       if (error) {
@@ -133,90 +184,163 @@ export default function ChangePasswordScreen() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!resetToken) {
+      showError('Invalid Reset', 'Password reset token not found. Please request a new password reset link.');
+      return;
+    }
+
+    setLoading(true);
+    Animated.sequence([
+      Animated.timing(submitScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(submitScale, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    try {
+      console.log('[ChangePassword] Resetting password with token...');
+      const { error } = await resetPasswordWithToken(newPassword, resetToken);
+
+      if (error) {
+        showError('Password Reset Failed', error);
+        setLoading(false);
+        return;
+      }
+
+      console.log('[ChangePassword] Password reset successfully');
+      showSuccess('Success', 'Your password has been reset successfully! 🎉');
+      
+      // Clear storage and form
+      await AsyncStorage.removeItem('passwordResetToken');
+      await AsyncStorage.removeItem('isPasswordReset');
+      
+      setTimeout(() => {
+        setNewPassword('');
+        setConfirmPassword('');
+        setPasswordErrors({});
+        setShowPasswordRequirements(false);
+        // Navigate to login screen
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'LoginSignup' }],
+        });
+      }, 1500);
+    } catch (error) {
+      console.error('[ChangePassword] Reset error:', error);
+      const { title, message } = parseAuthError(error.message);
+      showError(title, message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <Navbar onMenuPress={() => setSidebarOpen(true)} />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {!isReset && <Navbar onMenuPress={() => setSidebarOpen(true)} />}
+      {!isReset && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Password Change Reminder Banner */}
-          <View style={styles.reminderBanner}>
-            <Text style={styles.reminderIcon}>🔐</Text>
+          {/* Password Change/Reset Reminder Banner */}
+          <View style={[styles.reminderBanner, isReset && styles.reminderBannerReset]}>
+            <Text style={styles.reminderIcon}>{isReset ? '🔑' : '🔐'}</Text>
             <View style={styles.reminderContent}>
-              <Text style={styles.reminderTitle}>Keep Your Account Secure</Text>
+              <Text style={styles.reminderTitle}>
+                {isReset ? 'Reset Your Password' : 'Keep Your Account Secure'}
+              </Text>
               <Text style={styles.reminderMessage}>
-                We recommend changing your password every 3-6 months to maintain your account security.
+                {isReset 
+                  ? 'Create a new password to regain access to your account.' 
+                  : 'We recommend changing your password every 3-6 months to maintain your account security.'}
               </Text>
             </View>
           </View>
 
           <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Text style={styles.backText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.title}>Change Password</Text>
+            {!isReset && (
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Text style={styles.backText}>←</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={styles.title}>
+              {isReset ? 'Reset Password' : 'Change Password'}
+            </Text>
           </View>
 
           <View style={styles.content}>
-            <Text style={styles.description}>Enter your current password and choose a new one</Text>
+            <Text style={styles.description}>
+              {isReset 
+                ? 'Enter a new password to regain access to your account'
+                : 'Enter your current password and choose a new one'}
+            </Text>
 
             <View style={styles.form}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Current Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your current password"
-                  placeholderTextColor="#64748b"
-                  secureTextEntry
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  editable={!loading}
-                />
-              </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>New Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter new password"
-                placeholderTextColor="#64748b"
-                secureTextEntry
-                value={newPassword}
-                onChangeText={handleNewPasswordChange}
-                editable={!loading}
-              />
-              
-              {showPasswordRequirements && (
-                <View style={styles.passwordRequirements}>
-                  <Text style={styles.requirementsTitle}>Password Requirements:</Text>
-                  <View style={styles.requirementItem}>
-                    <Text style={newPassword.length >= 8 ? styles.requirementMet : styles.requirementUnmet}>
-                      {newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
-                    </Text>
-                  </View>
-                  <View style={styles.requirementItem}>
-                    <Text style={/[A-Z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
-                      {/[A-Z]/.test(newPassword) ? '✓' : '○'} One uppercase letter (A-Z)
-                    </Text>
-                  </View>
-                  <View style={styles.requirementItem}>
-                    <Text style={/[a-z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
-                      {/[a-z]/.test(newPassword) ? '✓' : '○'} One lowercase letter (a-z)
-                    </Text>
-                  </View>
-                  <View style={styles.requirementItem}>
-                    <Text style={/[0-9]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
-                      {/[0-9]/.test(newPassword) ? '✓' : '○'} One number (0-9)
-                    </Text>
-                  </View>
-                  <View style={styles.requirementItem}>
-                    <Text style={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
-                      {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '○'} One special character (!@#$%...)
-                    </Text>
-                  </View>
+              {/* Only show current password field if NOT in reset mode */}
+              {!isReset && (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Current Password</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your current password"
+                    placeholderTextColor="#64748b"
+                    secureTextEntry
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    editable={!loading}
+                  />
                 </View>
               )}
-            </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>New Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter new password"
+                  placeholderTextColor="#64748b"
+                  secureTextEntry
+                  value={newPassword}
+                  onChangeText={handleNewPasswordChange}
+                  editable={!loading}
+                />
+                
+                {showPasswordRequirements && (
+                  <View style={styles.passwordRequirements}>
+                    <Text style={styles.requirementsTitle}>Password Requirements:</Text>
+                    <View style={styles.requirementItem}>
+                      <Text style={newPassword.length >= 8 ? styles.requirementMet : styles.requirementUnmet}>
+                        {newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
+                      </Text>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <Text style={/[A-Z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                        {/[A-Z]/.test(newPassword) ? '✓' : '○'} One uppercase letter (A-Z)
+                      </Text>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <Text style={/[a-z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                        {/[a-z]/.test(newPassword) ? '✓' : '○'} One lowercase letter (a-z)
+                      </Text>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <Text style={/[0-9]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                        {/[0-9]/.test(newPassword) ? '✓' : '○'} One number (0-9)
+                      </Text>
+                    </View>
+                    <View style={styles.requirementItem}>
+                      <Text style={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                        {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '○'} One special character (!@#$%...)
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Confirm Password</Text>
@@ -234,11 +358,13 @@ export default function ChangePasswordScreen() {
               <Animated.View style={{ transform: [{ scale: submitScale }] }}>
                 <TouchableOpacity
                   style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                  onPress={handleChangePassword}
+                  onPress={handlePasswordUpdate}
                   disabled={loading}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.submitText}>{loading ? 'Updating...' : 'Change Password'}</Text>
+                  <Text style={styles.submitText}>
+                    {loading ? 'Updating...' : (isReset ? 'Reset Password' : 'Change Password')}
+                  </Text>
                 </TouchableOpacity>
               </Animated.View>
             </View>
@@ -267,6 +393,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     flexDirection: 'row',
     alignItems: 'flex-start',
+  },
+  reminderBannerReset: {
+    borderLeftColor: '#f59e0b',
+    backgroundColor: '#1e293b',
   },
   reminderIcon: {
     fontSize: 24,

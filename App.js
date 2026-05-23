@@ -33,7 +33,7 @@ const Stack = createNativeStackNavigator();
 
 // Root Navigator - conditionally shows Onboarding, Auth, or App stack
 function RootNavigator() {
-    const { isAuthenticated, loading, onboardingComplete } = useAuth();
+    const { isAuthenticated, loading, onboardingComplete, isPasswordReset } = useAuth();
     const { addNotification } = useNotification();
     const { theme } = useTheme();
     const [initialState, setInitialState] = useState(undefined);
@@ -73,12 +73,22 @@ function RootNavigator() {
         );
     }
 
+    // Determine the initial route name
+    let initialRouteName = "LoginSignup";
+    if (!onboardingComplete) {
+        initialRouteName = "About";
+    } else if (isPasswordReset) {
+        initialRouteName = "ResetPassword";
+    } else if (isAuthenticated) {
+        initialRouteName = "Home";
+    }
+
     return (
         <NavigationContainer 
             ref={navigationRef}
-            initialState={isAuthenticated ? initialState : undefined} 
+            initialState={isAuthenticated && !isPasswordReset ? initialState : undefined} 
             onStateChange={async(state) => {
-              if (isAuthenticated) {  
+              if (isAuthenticated && !isPasswordReset) {  
                 try {
                   await AsyncStorage.setItem(NAVIGATION_STATE_KEY, JSON.stringify(state));
                 } catch (e) {
@@ -88,7 +98,7 @@ function RootNavigator() {
             }}
         >
             <Stack.Navigator 
-                initialRouteName={!onboardingComplete ? "About" : (isAuthenticated ? "Home" : "LoginSignup")}
+                initialRouteName={initialRouteName}
                 screenOptions={{
                     headerShown: false,
                     contentStyle: { backgroundColor: theme.background },
@@ -123,6 +133,18 @@ function RootNavigator() {
                     component={LoginSignupScreen}
                     options={{ gestureEnabled: false }}
                 />
+
+                {/* Password Reset Screen - Show when password reset token present */}
+                {isPasswordReset && (
+                  <Stack.Screen 
+                      name="ResetPassword" 
+                      component={ChangePasswordScreen}
+                      options={{ 
+                        gestureEnabled: false,
+                        initialParams: { isReset: true }
+                      }}
+                  />
+                )}
 
                 {/* App Screens - Only show when authenticated */}
                 {isAuthenticated && (
