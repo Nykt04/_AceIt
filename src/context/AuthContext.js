@@ -22,13 +22,18 @@ export function AuthProvider({ children }) {
       try {
         console.log('[AuthContext] Initializing auth state...');
         
-          // First check if there's a stored isPasswordReset flag (from previous load)
-          const storedResetFlag = await AsyncStorage.getItem('isPasswordReset');
-          if (storedResetFlag === 'true' && mounted) {
-            console.log('[AuthContext] Found stored password reset flag');
-            setIsPasswordReset(true);
-          }
-          
+        // First check if there's a stored isPasswordReset flag (from previous load)
+        const storedResetFlag = await AsyncStorage.getItem('isPasswordReset');
+        if (storedResetFlag === 'true' && mounted) {
+          console.log('[AuthContext] Found stored password reset flag');
+          setIsPasswordReset(true);
+        }
+        
+        // Check for password reset token first (recovery flow)
+        console.log('[AuthContext] Checking for password reset token...');
+        const resetResult = await handlePasswordResetToken();
+        if (resetResult.isReset && mounted) {
+          console.log('[AuthContext] Password reset mode detected');
           setIsPasswordReset(true);
           setPasswordResetToken(resetResult.token);
           if (resetResult.user) {
