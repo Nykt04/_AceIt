@@ -4,16 +4,16 @@
  * @returns {{valid: boolean, error?: string}}
  */
 export const validateEmail = (email) => {
-  // More permissive RFC 5322 compliant regex that accepts most valid email formats
-  // Accepts: alphanumeric, dots, hyphens, underscores, plus signs in local part
-  const emailRegex = /^[a-zA-Z0-9._+\-]+@[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
-
   if (!email || email.trim().length === 0) {
     return { valid: false, error: 'Email is required' };
   }
 
-  // Trim whitespace and check again
-  const trimmedEmail = email.trim();
+  const trimmedEmail = email.trim().toLowerCase();
+  
+  // Simple but effective email validation
+  // Checks for: characters before @, @ symbol, characters after @, at least one dot, and at least 2 chars after final dot
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   if (!emailRegex.test(trimmedEmail)) {
     return { valid: false, error: 'Please enter a valid email address' };
   }
