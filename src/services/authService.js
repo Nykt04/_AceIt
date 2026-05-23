@@ -322,9 +322,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
    */
   export const resetPassword = async (email) => {
     try {
+      // Use just the origin so the app can detect the token in the hash
+      // The token will be in the URL hash like #access_token=...&type=recovery
       const redirectTo = Platform.OS === 'web' 
-        ? `${window.location.origin}/reset-password`
-        : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`;
+        ? `${window.location.origin}`
+        : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectTo,
@@ -545,9 +547,11 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     try {
       console.log('[authService] Requesting password reset for:', email);
 
+      // Use just the origin so the app can detect the token in the hash
+      // The token will be in the URL hash like #access_token=...&type=recovery
       const redirectTo = Platform.OS === 'web'
-        ? `${window.location.origin}/reset-password`
-        : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`;
+        ? `${window.location.origin}`
+        : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}`;
 
       console.log('[authService] Password reset redirect URL:', redirectTo);
 
