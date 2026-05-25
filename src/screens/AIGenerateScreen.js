@@ -137,7 +137,10 @@ export default function AIGenerateScreen() {
           <Text style={styles.cancel}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>AI Generate</Text>
-        <View style={{ width: 60 }} />
+        <Animated.View style={{ transform: [{ scale: generateBtnScale }] }}>
+          <TouchableOpacity onPress={generate} disabled={loading} activeOpacity={0.8}>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Topic Section */}
@@ -300,9 +303,38 @@ export default function AIGenerateScreen() {
 
 const createStyles = (theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  cancel: { fontSize: 16, color: theme.textSecondary },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: theme.text },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 18, 
+    paddingVertical: 16, 
+    borderBottomWidth: 1.5, 
+    borderBottomColor: theme.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cancel: { 
+    fontSize: 18, 
+    color: theme.textSecondary,
+    fontWeight: '700',
+  },
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: '800', 
+    color: theme.text,
+  },
+  generate: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: theme.primaryAccent,
+  },
+  generateDisabled: { 
+    color: theme.textTertiary,
+  },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 60 },
   

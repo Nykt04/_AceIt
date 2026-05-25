@@ -391,7 +391,6 @@ export default function SetDetailScreen() {
                                     <ActivityIndicator size="small" color="#fff" />
                                 ) : (
                                     <>
-                                        <Text style={styles.convertBtnIcon}>✨</Text>
                                         <Text style={styles.actionBtnText}>Convert to Questions</Text>
                                     </>
                                 )}

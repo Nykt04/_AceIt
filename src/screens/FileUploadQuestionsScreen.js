@@ -289,12 +289,19 @@ export default function FileUploadQuestionsScreen() {
     <SafeAreaView style={styles.container}>
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>📄 Generate from File</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.cancel}>Cancel</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Generate from File</Text>
           <Text style={styles.headerSubtitle}>Upload DOCX, PDF, or TXT files</Text>
         </View>
+        <TouchableOpacity onPress={handleGenerateFromFile} disabled={loading} activeOpacity={0.8}>
+          <Text style={[styles.generate, loading && styles.generateDisabled]}>{loading ? '…' : 'Go'}</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
 
         {/* Set Title (if not existing set) */}
         {!existingSet && (
@@ -405,28 +412,51 @@ const createStyles = (theme) => StyleSheet.create({
     flex: 1,
     backgroundColor: theme.background,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottomWidth: 1.5,
+    borderBottomColor: theme.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  cancel: {
+    fontSize: 18,
+    color: theme.textSecondary,
+    fontWeight: '700',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: theme.text,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: theme.textSecondary,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  generate: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.primaryAccent,
+  },
+  generateDisabled: {
+    color: theme.textTertiary,
+  },
   scrollContent: {
     padding: 20,
     paddingBottom: 60,
-  },
-
-  // Header Section
-  headerSection: {
-    marginBottom: 28,
-    paddingBottom: 20,
-    borderBottomWidth: 1.5,
-    borderBottomColor: theme.border,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: theme.text,
-    marginBottom: 6,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    fontWeight: '500',
   },
 
   // Section Styling
