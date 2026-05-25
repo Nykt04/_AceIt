@@ -149,6 +149,7 @@ function QuizResults({ score, total, pct, onDone }) {
   
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -163,17 +164,95 @@ function QuizResults({ score, total, pct, onDone }) {
         duration: 500,
         useNativeDriver: true,
       }),
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
     ]).start();
-  }, [scaleAnim, fadeAnim]);
+  }, [scaleAnim, fadeAnim, rotateAnim]);
+
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const getResultMessage = () => {
+    if (pct === 100) return '🎉 Perfect Score!';
+    if (pct >= 80) return '🌟 Excellent!';
+    if (pct >= 60) return '✨ Good Job!';
+    if (pct >= 40) return '👍 Keep Going!';
+    return '📚 Keep Practicing!';
+  };
+
+  const getPerformanceColor = () => {
+    if (pct >= 80) return '#10b981';
+    if (pct >= 60) return '#f59e0b';
+    return '#ef4444';
+  };
 
   return (
     <Animated.View style={[styles.centered, { opacity: fadeAnim }]}>
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <Text style={styles.scoreTitle}>Quiz complete</Text>
-        <Text style={styles.scoreValue}>{score} / {total}</Text>
-        <Text style={styles.scorePct}>{pct}%</Text>
-        <TouchableOpacity style={styles.doneBtn} onPress={onDone} activeOpacity={0.8}>
-          <Text style={styles.doneBtnText}>Done</Text>
+        {/* Trophy Icon with Glow */}
+        <View style={styles.trophyContainer}>
+          <View style={[styles.trophyGlow, { borderColor: getPerformanceColor() }]} />
+          <Animated.View style={[styles.resultCard, { transform: [{ rotate: rotation }] }]}>
+            <Text style={styles.resultIcon}>🏆</Text>
+          </Animated.View>
+        </View>
+        
+        {/* Main Title */}
+        <Text style={styles.scoreTitle}>Quiz Complete!</Text>
+        <Text style={[styles.resultMessage, { color: getPerformanceColor() }]}>{getResultMessage()}</Text>
+        
+        {/* Score Display Cards */}
+        <View style={styles.scoreBox}>
+          <View style={[styles.scoreItem, styles.scoreItemPrimary]}>
+            <Text style={styles.scoreLabel}>Score</Text>
+            <Text style={styles.scoreValue}>{score}</Text>
+            <Text style={styles.scoreOutOf}>out of {total}</Text>
+          </View>
+          <View style={[styles.scoreItem, { borderColor: getPerformanceColor() }]}>
+            <Text style={styles.scoreLabel}>Accuracy</Text>
+            <Text style={[styles.scorePct, { color: getPerformanceColor() }]}>{pct}%</Text>
+          </View>
+        </View>
+
+        {/* Enhanced Progress Bar */}
+        <View style={styles.scoreBarContainer}>
+          <View style={[styles.scoreBarBackground]} />
+          <Animated.View style={[
+            styles.scoreBar, 
+            { 
+              width: `${pct}%`, 
+              backgroundColor: getPerformanceColor(),
+            }
+          ]} />
+        </View>
+
+        {/* Performance Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Correct</Text>
+            <Text style={[styles.statValue, { color: '#10b981' }]}>{score}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Wrong</Text>
+            <Text style={[styles.statValue, { color: '#ef4444' }]}>{total - score}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>Total</Text>
+            <Text style={[styles.statValue, { color: theme.primaryAccent }]}>{total}</Text>
+          </View>
+        </View>
+
+        {/* Back Button */}
+        <TouchableOpacity style={[styles.doneBtn, { backgroundColor: getPerformanceColor() }]} onPress={onDone} activeOpacity={0.8}>
+          <Text style={styles.doneBtnIcon}>←</Text>
+          <Text style={styles.doneBtnText}>Back to Set</Text>
         </TouchableOpacity>
       </Animated.View>
     </Animated.View>
@@ -184,8 +263,43 @@ function QuizView({ terms, questions, onExit }) {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   
+  // Shuffle function (Fisher-Yates algorithm)
+  const shuffleArray = (arr) => {
+    const shuffled = [...arr];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+  
   const items = useMemo(() => {
-    return (questions || []).map((q, i) => ({ ...q, id: q.id || `q-${i}` }));
+    // Shuffle questions and add IDs
+    const shuffledQuestions = shuffleArray(questions || []);
+    return shuffledQuestions.map((q, i) => {
+      // For multiple choice questions, also shuffle the options
+      if (q.type !== 'true_false' && q.options && q.options.length > 1) {
+        const optionsWithIdx = q.options.map((opt, idx) => ({ opt, originalIdx: idx }));
+        
+        // Fisher-Yates shuffle
+        for (let i = optionsWithIdx.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [optionsWithIdx[i], optionsWithIdx[j]] = [optionsWithIdx[j], optionsWithIdx[i]];
+        }
+        
+        // Find where the correct answer ended up
+        const newCorrectIdx = optionsWithIdx.findIndex(item => item.originalIdx === q.correctIndex);
+        
+        return {
+          ...q,
+          options: optionsWithIdx.map(item => item.opt),
+          correctIndex: newCorrectIdx,
+          id: q.id || `q-${i}`,
+        };
+      }
+      
+      return { ...q, id: q.id || `q-${i}` };
+    });
   }, [questions]);
 
   const [current, setCurrent] = useState(0);
@@ -292,8 +406,22 @@ function QuizView({ terms, questions, onExit }) {
         contentContainerStyle={styles.quizScrollContent}
       >
         <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
+          {/* Progress Bar */}
+          <View style={styles.progressBar}>
+            <View style={styles.progressBarBg} />
+            <View style={[styles.progressFill, { width: `${((current + 1) / items.length) * 100}%` }]} />
+          </View>
           <Text style={styles.progress}>Question {current + 1} of {items.length}</Text>
-          <Text style={styles.quizQuestion}>{item.question}</Text>
+          
+          {/* Question Container */}
+          <View style={styles.questionContainer}>
+            <View style={styles.questionNumberBadge}>
+              <Text style={styles.questionNumberText}>{current + 1}</Text>
+            </View>
+            <Text style={styles.quizQuestion}>{item.question}</Text>
+          </View>
+          
+          {/* Options */}
           <View style={styles.options}>
             {options.map((opt, idx) => {
               const isCorrect = idx === correctIdx;
@@ -310,18 +438,26 @@ function QuizView({ terms, questions, onExit }) {
                     ]}
                     onPress={() => onSelect(idx)}
                     disabled={answered}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <Text style={styles.optionText}>{opt}</Text>
+                    <View style={styles.optionContent}>
+                      <View style={[styles.optionIndex, showResult && isCorrect && styles.optionIndexCorrect, showResult && isWrong && styles.optionIndexWrong]}>
+                        <Text style={styles.optionIndexText}>{String.fromCharCode(65 + idx)}</Text>
+                      </View>
+                      <Text style={styles.optionText}>{opt}</Text>
+                    </View>
+                    {showResult && isCorrect && <Text style={styles.correctIcon}>✓</Text>}
+                    {showResult && isWrong && <Text style={styles.wrongIcon}>✕</Text>}
                   </TouchableOpacity>
                 </Animated.View>
               );
             })}
           </View>
+
+          {/* Explanation Box */}
           {answered && item.explanation && (
             <Animated.View style={{ opacity: fadeAnim }}>
               <View style={styles.explanationBox}>
-                <Text style={styles.explanationTitle}>Explanation:</Text>
                 <Text style={styles.explanationText}>{item.explanation}</Text>
               </View>
             </Animated.View>
@@ -462,6 +598,31 @@ function createStyles(theme) {
       marginBottom: 14,
       fontWeight: '600',
     },
+    progressBar: {
+      height: 6,
+      backgroundColor: theme.border,
+      borderRadius: 3,
+      marginBottom: 16,
+      overflow: 'hidden',
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: theme.primaryAccent,
+      borderRadius: 3,
+    },
+    questionContainer: {
+      backgroundColor: theme.secondary,
+      borderRadius: 16,
+      padding: 24,
+      marginBottom: 24,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      shadowColor: theme.primaryAccent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
     flashcardWrap: { 
       flex: 1, 
       padding: 20, 
@@ -479,17 +640,17 @@ function createStyles(theme) {
       backgroundColor: theme.secondary, 
       borderRadius: 24, 
       padding: 32, 
-      minHeight: 240, 
+      minHeight: 280, 
       justifyContent: 'center', 
       width: '100%', 
       backfaceVisibility: 'hidden',
-      borderWidth: 1.5,
-      borderColor: theme.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.25,
-      shadowRadius: 12,
-      elevation: 6,
+      borderWidth: 2,
+      borderColor: theme.primaryAccent,
+      shadowColor: theme.primaryAccent,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 8,
     },
     flashcardFront: { 
       position: 'absolute' 
@@ -503,32 +664,32 @@ function createStyles(theme) {
       justifyContent: 'center' 
     },
     cardSide: { 
-      fontSize: 20, 
+      fontSize: 22, 
       color: theme.text, 
       textAlign: 'center', 
-      lineHeight: 28,
-      fontWeight: '600',
+      lineHeight: 32,
+      fontWeight: '700',
     },
     flashcardNav: { 
       flexDirection: 'row', 
       justifyContent: 'space-between', 
-      marginTop: 24, 
+      marginTop: 28, 
       paddingHorizontal: 0,
       gap: 12,
     },
     navBtn: { 
       flex: 1,
-      paddingVertical: 14, 
+      paddingVertical: 16, 
       paddingHorizontal: 20,
       backgroundColor: theme.secondary,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      borderColor: theme.border,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: theme.primaryAccent,
+      shadowColor: theme.primaryAccent,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 3,
     },
     navBtnText: { 
       fontSize: 16, 
@@ -537,7 +698,8 @@ function createStyles(theme) {
       textAlign: 'center',
     },
     navBtnDisabled: { 
-      color: theme.textTertiary 
+      color: theme.textTertiary,
+      borderColor: theme.border,
     },
     quizWrap: { 
       flex: 1, 
@@ -548,118 +710,387 @@ function createStyles(theme) {
     quizScrollContent: {
       paddingBottom: 20,
     },
+    progressBar: {
+      height: 8,
+      backgroundColor: theme.border,
+      borderRadius: 4,
+      marginBottom: 12,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: theme.background,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    progressBarBg: {
+      position: 'absolute',
+      width: '100%',
+      height: '100%',
+      backgroundColor: theme.border,
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: theme.primaryAccent,
+      borderRadius: 4,
+    },
+    progress: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      fontWeight: '600',
+      marginBottom: 20,
+      textAlign: 'center',
+      letterSpacing: 0.3,
+    },
+    questionContainer: {
+      backgroundColor: theme.secondary,
+      borderRadius: 16,
+      padding: 20,
+      marginBottom: 24,
+      borderWidth: 1.5,
+      borderColor: theme.primaryAccent + '30',
+      shadowColor: theme.background,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    questionNumberBadge: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.primaryAccent,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    questionNumberText: {
+      fontSize: 14,
+      fontWeight: '800',
+      color: '#fff',
+    },
     quizQuestion: { 
-      fontSize: 19, 
+      fontSize: 18, 
       color: theme.text, 
-      fontWeight: '800', 
-      marginBottom: 28, 
-      lineHeight: 28 
+      fontWeight: '700', 
+      marginBottom: 0, 
+      lineHeight: 28,
     },
     options: { 
-      marginBottom: 12 
+      marginBottom: 16,
     },
     optionBtn: { 
       backgroundColor: theme.secondary, 
-      borderRadius: 16, 
-      padding: 18, 
+      borderRadius: 14, 
+      padding: 16, 
       marginBottom: 12,
-      borderWidth: 1.5,
+      borderWidth: 2,
       borderColor: theme.border,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.08,
       shadowRadius: 4,
       elevation: 2,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    optionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: 12,
+    },
+    optionIndex: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#fff',
+      backgroundColor: theme.primaryAccent,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 8,
+      minWidth: 32,
+      textAlign: 'center',
+    },
+    optionIndexText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#fff',
+    },
+    optionIndexCorrect: {
+      backgroundColor: '#22c55e',
+    },
+    optionIndexWrong: {
+      backgroundColor: '#f87171',
     },
     optionCorrect: { 
       backgroundColor: '#166534',
       borderColor: '#22c55e',
+      borderWidth: 2,
     },
     optionWrong: { 
       backgroundColor: '#991b1b',
       borderColor: '#f87171',
+      borderWidth: 2,
+    },
+    correctIcon: {
+      fontSize: 24,
+      color: '#22c55e',
+      fontWeight: '700',
+    },
+    wrongIcon: {
+      fontSize: 24,
+      color: '#f87171',
+      fontWeight: '700',
     },
     optionText: { 
-      fontSize: 16, 
+      fontSize: 15, 
       color: theme.text,
       fontWeight: '600',
+      flex: 1,
+      lineHeight: 20,
     },
     explanationBox: {
-      backgroundColor: theme.secondary,
+      backgroundColor: theme.primaryAccent + '10',
       borderLeftWidth: 4,
       borderLeftColor: theme.primaryAccent,
-      borderRadius: 12,
+      borderRadius: 14,
       padding: 16,
       marginBottom: 16,
-      marginTop: 16,
-      borderWidth: 1,
-      borderColor: theme.border,
-      maxHeight: 200,
+      marginTop: 20,
+      borderWidth: 1.5,
+      borderColor: theme.primaryAccent + '30',
+      maxHeight: 240,
+      shadowColor: theme.primaryAccent,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    explanationIcon: {
+      fontSize: 20,
+      marginBottom: 8,
     },
     explanationTitle: {
       fontSize: 14,
       fontWeight: '700',
       color: theme.primaryAccent,
-      marginBottom: 8,
+      marginBottom: 10,
     },
     explanationText: {
-      fontSize: 15,
-      color: theme.textTertiary,
-      lineHeight: 22,
+      fontSize: 14,
+      color: theme.text,
+      lineHeight: 21,
       fontWeight: '500',
     },
     nextBtn: { 
       marginHorizontal: 0,
-      marginBottom: 0,
+      marginBottom: 20,
       backgroundColor: theme.primaryAccent, 
-      paddingVertical: 16, 
+      paddingVertical: 16,
+      paddingHorizontal: 20,
       borderRadius: 14, 
       alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
       shadowColor: theme.primaryAccent,
-      shadowOffset: { width: 0, height: 4 },
+      shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowRadius: 12,
+      elevation: 6,
     },
     nextBtnText: { 
-      fontSize: 17, 
+      fontSize: 16, 
       fontWeight: '700', 
       color: '#fff' 
     },
     scoreTitle: { 
-      fontSize: 21, 
-      color: theme.textSecondary, 
+      fontSize: 28, 
+      color: theme.text, 
       marginBottom: 12,
+      marginTop: 24,
+      fontWeight: '800',
+      textAlign: 'center',
+    },
+    resultMessage: {
+      fontSize: 20,
+      color: theme.primaryAccent,
+      marginBottom: 32,
       fontWeight: '700',
+      textAlign: 'center',
+    },
+    trophyContainer: {
+      position: 'relative',
+      alignItems: 'center',
+      marginBottom: 12,
+      width: 140,
+      height: 140,
+      alignSelf: 'center',
+    },
+    trophyGlow: {
+      position: 'absolute',
+      width: 140,
+      height: 140,
+      borderRadius: 70,
+      borderWidth: 3,
+      borderColor: theme.primaryAccent,
+      opacity: 0.3,
+    },
+    resultCard: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: theme.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 3,
+      borderColor: theme.primaryAccent,
+      shadowColor: theme.primaryAccent,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.4,
+      shadowRadius: 16,
+      elevation: 12,
+    },
+    resultIcon: {
+      fontSize: 72,
+    },
+    scoreBox: {
+      flexDirection: 'row',
+      gap: 14,
+      marginBottom: 28,
+    },
+    scoreItemPrimary: {
+      backgroundColor: theme.primaryAccent + '15',
+      borderColor: theme.primaryAccent,
+    },
+    scoreItem: {
+      flex: 1,
+      backgroundColor: theme.secondary,
+      borderRadius: 16,
+      padding: 20,
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: theme.border,
+      shadowColor: theme.background,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    scoreLabel: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      fontWeight: '600',
+      marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
     },
     scoreValue: { 
-      fontSize: 48, 
+      fontSize: 40, 
       fontWeight: '900', 
-      color: theme.text 
+      color: theme.text,
+      lineHeight: 44,
+    },
+    scoreOutOf: {
+      fontSize: 12,
+      color: theme.textTertiary,
+      fontWeight: '600',
+      marginTop: 4,
     },
     scorePct: { 
-      fontSize: 28, 
+      fontSize: 40, 
       color: theme.primaryAccent, 
-      marginTop: 8,
+      fontWeight: '900',
+      lineHeight: 44,
+    },
+    scoreBarContainer: {
+      height: 12,
+      backgroundColor: theme.border,
+      borderRadius: 6,
+      marginBottom: 24,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.border,
+      shadowColor: theme.background,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    scoreBarBackground: {
+      position: 'absolute',
+      width: '100%',
+      height: '100%',
+      backgroundColor: theme.border,
+    },
+    scoreBar: {
+      height: '100%',
+      borderRadius: 6,
+    },
+    statsContainer: {
+      flexDirection: 'row',
+      backgroundColor: theme.secondary,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 24,
+      borderWidth: 1.5,
+      borderColor: theme.border,
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      shadowColor: theme.background,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    statItem: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    statLabel: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      fontWeight: '600',
+      marginBottom: 6,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    statValue: {
+      fontSize: 28,
       fontWeight: '800',
+      textAlign: 'center',
+    },
+    divider: {
+      width: 1,
+      height: 30,
+      backgroundColor: theme.border,
     },
     doneBtn: { 
-      marginTop: 32, 
-      paddingVertical: 16, 
-      paddingHorizontal: 36, 
       backgroundColor: theme.primaryAccent, 
-      borderRadius: 14,
+      paddingVertical: 16, 
+      paddingHorizontal: 32,
+      borderRadius: 14, 
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 8,
+      justifyContent: 'center',
       shadowColor: theme.primaryAccent,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.35,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    doneBtnIcon: {
+      fontSize: 20,
+      color: '#fff',
+      fontWeight: '700',
     },
     doneBtnText: { 
-      fontSize: 17, 
+      fontSize: 18, 
       fontWeight: '700', 
-      color: '#fff',
-      textAlign: 'center',
+      color: '#fff' 
     },
     deleteBtn: { 
       marginVertical: 20, 

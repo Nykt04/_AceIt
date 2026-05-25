@@ -23,6 +23,11 @@ export default function CreateSetScreen() {
   const [showQuestionsEditor, setShowQuestionsEditor] = useState(false);
   const addTermScale = useRef(new Animated.Value(1)).current;
   const saveBtnScale = useRef(new Animated.Value(1)).current;
+  
+  // Input refs for Enter key support
+  const titleInputRef = useRef(null);
+  const descriptionInputRef = useRef(null);
+  const termInputRefs = useRef({});
 
   const addTerm = () => {
     Animated.sequence([
@@ -125,6 +130,9 @@ export default function CreateSetScreen() {
             value={title}
             onChangeText={setTitle}
             autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={() => descriptionInputRef.current?.focus()}
+            ref={titleInputRef}
           />
           <TextInput
             style={styles.descInput}
@@ -133,6 +141,13 @@ export default function CreateSetScreen() {
             value={description}
             onChangeText={setDescription}
             multiline
+            returnKeyType="next"
+            onSubmitEditing={() => {
+              if (termInputRefs.current[0]) {
+                termInputRefs.current[0].focus();
+              }
+            }}
+            ref={descriptionInputRef}
           />
           <Text style={styles.sectionTitle}>Terms</Text>
           {terms.map((item, index) => (
@@ -144,6 +159,12 @@ export default function CreateSetScreen() {
                   placeholderTextColor={theme.textTertiary}
                   value={item.term}
                   onChangeText={(v) => updateTerm(index, 'term', v)}
+                  returnKeyType="next"
+                  onSubmitEditing={() => {
+                    const definitionRef = termInputRefs.current[`${index}-def`];
+                    if (definitionRef) definitionRef.focus();
+                  }}
+                  ref={(ref) => termInputRefs.current[index] = ref}
                 />
                 <TextInput
                   style={styles.termInput}
@@ -151,6 +172,16 @@ export default function CreateSetScreen() {
                   placeholderTextColor={theme.textTertiary}
                   value={item.definition}
                   onChangeText={(v) => updateTerm(index, 'definition', v)}
+                  returnKeyType={index === terms.length - 1 ? 'done' : 'next'}
+                  onSubmitEditing={() => {
+                    if (index === terms.length - 1) {
+                      addTerm();
+                    } else {
+                      const nextRef = termInputRefs.current[index + 1];
+                      if (nextRef) nextRef.focus();
+                    }
+                  }}
+                  ref={(ref) => termInputRefs.current[`${index}-def`] = ref}
                 />
               </View>
               <TouchableOpacity onPress={() => removeTerm(index)} style={styles.removeBtn}>

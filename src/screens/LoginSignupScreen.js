@@ -60,6 +60,13 @@ export default function LoginSignupScreen() {
   const submitScale = useRef(new Animated.Value(1)).current;
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Input field refs for Enter key support
+  const nameInputRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
+  const confirmPasswordInputRef = useRef(null);
+  const resetEmailInputRef = useRef(null);
 
   // Initialize password reset cooldown from localStorage on component mount
   useEffect(() => {
@@ -980,6 +987,9 @@ export default function LoginSignupScreen() {
                   value={name}
                   onChangeText={handleNameChange}
                   onBlur={handleNameBlur}
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailInputRef.current?.focus()}
+                  ref={nameInputRef}
                   editable={!loading}
                 />
                 {errors.name ? <Text style={styles.errorText}>{errors.name}</Text> : null}
@@ -997,6 +1007,9 @@ export default function LoginSignupScreen() {
                 onBlur={handleEmailBlur}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                returnKeyType={isLogin ? 'next' : 'next'}
+                onSubmitEditing={() => isLogin ? passwordInputRef.current?.focus() : passwordInputRef.current?.focus()}
+                ref={emailInputRef}
                 editable={!loading}
               />
               {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
@@ -1013,6 +1026,9 @@ export default function LoginSignupScreen() {
                   onChangeText={handlePasswordChange}
                   onBlur={handlePasswordBlur}
                   secureTextEntry={!showPassword}
+                  returnKeyType={isLogin ? 'done' : 'next'}
+                  onSubmitEditing={() => isLogin ? handleSubmit() : confirmPasswordInputRef.current?.focus()}
+                  ref={passwordInputRef}
                   editable={!loading}
                 />
                 <TouchableOpacity
@@ -1085,6 +1101,9 @@ export default function LoginSignupScreen() {
                     onChangeText={handleConfirmPasswordChange}
                     onBlur={handleConfirmPasswordBlur}
                     secureTextEntry={!showConfirmPassword}
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit}
+                    ref={confirmPasswordInputRef}
                     editable={!loading}
                   />
                   <TouchableOpacity
@@ -1175,6 +1194,9 @@ export default function LoginSignupScreen() {
                     onChangeText={setResetEmail}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={handleForgotPasswordRequest}
+                    ref={resetEmailInputRef}
                     editable={!resetLoading}
                   />
                 </View>

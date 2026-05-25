@@ -321,17 +321,7 @@ export default function SettingsScreen() {
               theme={theme}
             />
           </View>
-          <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-            <SettingRow
-              icon=""
-              title="Auto-save"
-              description="Automatically save your sets"
-              value={autoSave}
-              onToggle={setAutoSave}
-              isToggle
-              theme={theme}
-            />
-          </View>
+
           <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
             <SettingRow
               title="Sound Effects"

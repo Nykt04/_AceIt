@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 import { changePassword, resetPasswordWithToken } from '../services/authService';
 import { parseAuthError } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
@@ -24,6 +25,7 @@ import Sidebar from '../components/Sidebar';
 export default function ChangePasswordScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { theme } = useTheme();
   const isReset = route.params?.isReset || false;
   
   const [currentPassword, setCurrentPassword] = useState('');
@@ -243,19 +245,18 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles(theme).container]}>
       {!isReset && <Navbar onMenuPress={() => setSidebarOpen(true)} />}
       {!isReset && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={styles(theme).scrollContent} keyboardShouldPersistTaps="handled">
           {/* Password Change/Reset Reminder Banner */}
-          <View style={[styles.reminderBanner, isReset && styles.reminderBannerReset]}>
-            <Text style={styles.reminderIcon}>{isReset ? '🔑' : '🔐'}</Text>
-            <View style={styles.reminderContent}>
-              <Text style={styles.reminderTitle}>
+          <View style={[styles(theme).reminderBanner, isReset && styles(theme).reminderBannerReset]}>
+            <View style={styles(theme).reminderContent}>
+              <Text style={styles(theme).reminderTitle}>
                 {isReset ? 'Reset Your Password' : 'Keep Your Account Secure'}
               </Text>
-              <Text style={styles.reminderMessage}>
+              <Text style={styles(theme).reminderMessage}>
                 {isReset 
                   ? 'Create a new password to regain access to your account.' 
                   : 'We recommend changing your password every 3-6 months to maintain your account security.'}
@@ -263,33 +264,33 @@ export default function ChangePasswordScreen() {
             </View>
           </View>
 
-          <View style={styles.header}>
+          <View style={styles(theme).header}>
             {!isReset && (
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                <Text style={styles.backText}>←</Text>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles(theme).backButton}>
+                <Text style={styles(theme).backText}>←</Text>
               </TouchableOpacity>
             )}
-            <Text style={styles.title}>
+            <Text style={styles(theme).title}>
               {isReset ? 'Reset Password' : 'Change Password'}
             </Text>
           </View>
 
-          <View style={styles.content}>
-            <Text style={styles.description}>
+          <View style={styles(theme).content}>
+            <Text style={styles(theme).description}>
               {isReset 
                 ? 'Enter a new password to regain access to your account'
                 : 'Enter your current password and choose a new one'}
             </Text>
 
-            <View style={styles.form}>
+            <View style={styles(theme).form}>
               {/* Only show current password field if NOT in reset mode */}
               {!isReset && (
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Current Password</Text>
+                <View style={styles(theme).inputGroup}>
+                  <Text style={styles(theme).label}>Current Password</Text>
                   <TextInput
-                    style={styles.input}
+                    style={styles(theme).input}
                     placeholder="Enter your current password"
-                    placeholderTextColor="#64748b"
+                    placeholderTextColor={theme.textSecondary}
                     secureTextEntry
                     value={currentPassword}
                     onChangeText={setCurrentPassword}
@@ -298,12 +299,12 @@ export default function ChangePasswordScreen() {
                 </View>
               )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>New Password</Text>
+              <View style={styles(theme).inputGroup}>
+                <Text style={styles(theme).label}>New Password</Text>
                 <TextInput
-                  style={styles.input}
+                  style={styles(theme).input}
                   placeholder="Enter new password"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textSecondary}
                   secureTextEntry
                   value={newPassword}
                   onChangeText={handleNewPasswordChange}
@@ -311,30 +312,30 @@ export default function ChangePasswordScreen() {
                 />
                 
                 {showPasswordRequirements && (
-                  <View style={styles.passwordRequirements}>
-                    <Text style={styles.requirementsTitle}>Password Requirements:</Text>
-                    <View style={styles.requirementItem}>
-                      <Text style={newPassword.length >= 8 ? styles.requirementMet : styles.requirementUnmet}>
+                  <View style={styles(theme).passwordRequirements}>
+                    <Text style={styles(theme).requirementsTitle}>Password Requirements:</Text>
+                    <View style={styles(theme).requirementItem}>
+                      <Text style={newPassword.length >= 8 ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
                         {newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
                       </Text>
                     </View>
-                    <View style={styles.requirementItem}>
-                      <Text style={/[A-Z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                    <View style={styles(theme).requirementItem}>
+                      <Text style={/[A-Z]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
                         {/[A-Z]/.test(newPassword) ? '✓' : '○'} One uppercase letter (A-Z)
                       </Text>
                     </View>
-                    <View style={styles.requirementItem}>
-                      <Text style={/[a-z]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                    <View style={styles(theme).requirementItem}>
+                      <Text style={/[a-z]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
                         {/[a-z]/.test(newPassword) ? '✓' : '○'} One lowercase letter (a-z)
                       </Text>
                     </View>
-                    <View style={styles.requirementItem}>
-                      <Text style={/[0-9]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                    <View style={styles(theme).requirementItem}>
+                      <Text style={/[0-9]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
                         {/[0-9]/.test(newPassword) ? '✓' : '○'} One number (0-9)
                       </Text>
                     </View>
-                    <View style={styles.requirementItem}>
-                      <Text style={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? styles.requirementMet : styles.requirementUnmet}>
+                    <View style={styles(theme).requirementItem}>
+                      <Text style={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
                         {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '○'} One special character (!@#$%...)
                       </Text>
                     </View>
@@ -342,12 +343,12 @@ export default function ChangePasswordScreen() {
                 )}
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirm Password</Text>
+              <View style={styles(theme).inputGroup}>
+                <Text style={styles(theme).label}>Confirm Password</Text>
                 <TextInput
-                  style={styles.input}
+                  style={styles(theme).input}
                   placeholder="Confirm new password"
-                  placeholderTextColor="#64748b"
+                  placeholderTextColor={theme.textSecondary}
                   secureTextEntry
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -357,12 +358,12 @@ export default function ChangePasswordScreen() {
 
               <Animated.View style={{ transform: [{ scale: submitScale }] }}>
                 <TouchableOpacity
-                  style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                  style={[styles(theme).submitButton, loading && styles(theme).submitButtonDisabled]}
                   onPress={handlePasswordUpdate}
                   disabled={loading}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.submitText}>
+                  <Text style={styles(theme).submitText}>
                     {loading ? 'Updating...' : (isReset ? 'Reset Password' : 'Change Password')}
                   </Text>
                 </TouchableOpacity>
@@ -375,19 +376,19 @@ export default function ChangePasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.background,
   },
   scrollContent: {
     flexGrow: 1,
     padding: 20,
   },
   reminderBanner: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
+    borderLeftColor: theme.primaryAccent,
     borderRadius: 8,
     padding: 14,
     marginBottom: 20,
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   },
   reminderBannerReset: {
     borderLeftColor: '#f59e0b',
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
   },
   reminderIcon: {
     fontSize: 24,
@@ -408,12 +409,12 @@ const styles = StyleSheet.create({
   reminderTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: theme.text,
     marginBottom: 4,
   },
   reminderMessage: {
     fontSize: 12,
-    color: '#cbd5e1',
+    color: theme.textSecondary,
     lineHeight: 18,
   },
   header: {
@@ -427,20 +428,20 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 24,
-    color: '#6366f1',
+    color: theme.primaryAccent,
     fontWeight: '600',
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.text,
   },
   content: {
     flex: 1,
   },
   description: {
     fontSize: 14,
-    color: '#cbd5e1',
+    color: theme.textSecondary,
     marginBottom: 30,
     lineHeight: 20,
   },
@@ -453,24 +454,24 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e2e8f0',
+    color: theme.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.border,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: '#fff',
+    color: theme.text,
     fontSize: 16,
     fontFamily: 'System',
   },
   passwordRequirements: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.secondary,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.border,
     borderRadius: 8,
     padding: 12,
     marginTop: 8,
@@ -478,7 +479,7 @@ const styles = StyleSheet.create({
   requirementsTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#cbd5e1',
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   requirementItem: {
@@ -495,7 +496,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   submitButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: theme.primaryAccent,
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',

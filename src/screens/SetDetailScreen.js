@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, Platform, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
@@ -14,6 +14,10 @@ export default function SetDetailScreen() {
     const setFromParams = route.params?.set;
     const [showFlashcardEditor, setShowFlashcardEditor] = useState(false);
     const [set, setSet] = useState(null);
+    
+    // Animation refs for mode cards
+    const flashcardScaleAnim = useRef(new Animated.Value(1)).current;
+    const quizScaleAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         console.log('[SetDetailScreen] useEffect triggered. studySets length:', studySets.length, 'setFromParams?.id:', setFromParams?.id);
@@ -37,7 +41,20 @@ export default function SetDetailScreen() {
     }
 
     const termCount = (set.terms?.length || 0) + (set.questions?.length || 0);
+    const termsOnly = set.terms?.length || 0;
+    const questionsOnly = set.questions?.length || 0;
     const hasContent = (set.terms?.length > 0) || (set.questions?.length > 0);
+
+    const getMetaText = () => {
+        if (termsOnly > 0 && questionsOnly > 0) {
+            return `${termsOnly} terms, ${questionsOnly} questions`;
+        } else if (termsOnly > 0) {
+            return `${termsOnly} terms`;
+        } else if (questionsOnly > 0) {
+            return `${questionsOnly} questions`;
+        }
+        return '0 items';
+    };
 
     const onDelete = async () => {
         const proceed = Platform.OS === 'web'
@@ -157,6 +174,24 @@ export default function SetDetailScreen() {
         await updateStudySet(set.id, { terms: updatedTerms });
     };
 
+    const handleModeCardPress = (anim, mode) => {
+        Animated.sequence([
+            Animated.timing(anim, {
+                toValue: 0.92,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+            Animated.spring(anim, {
+                toValue: 1,
+                friction: 3,
+                tension: 40,
+                useNativeDriver: true,
+            }),
+        ]).start();
+        
+        navigation.navigate('Study', { set, mode });
+    };
+
     const styles = createStyles(theme);
 
     return (
@@ -170,29 +205,42 @@ export default function SetDetailScreen() {
             <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
                 <Text style={styles.title}>{set.title}</Text>
                 {set.description ? <Text style={styles.desc}>{set.description}</Text> : null}
-                <Text style={styles.meta}>{termCount} terms & questions</Text>
+                <Text style={styles.meta}>{getMetaText()}</Text>
 
                 {hasContent ? (
                     <>
                         <View style={styles.modes}>
-                            <TouchableOpacity
-                                style={styles.modeCard}
-                                onPress={() => navigation.navigate('Study', { set, mode: 'flashcards' })}
-                            >
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.modeTitle}>Flashcards</Text>
-                                    <Text style={styles.modeDesc}>Flip through terms</Text>
-                                </View>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.modeCard}
-                                onPress={() => navigation.navigate('Study', { set, mode: 'quiz' })}
-                            >
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.modeTitle}>Quiz</Text>
-                                    <Text style={styles.modeDesc}>Multiple choice & True/False</Text>
-                                </View>
-                            </TouchableOpacity>
+                            <Animated.View style={{ transform: [{ scale: flashcardScaleAnim }] }}>
+                                <TouchableOpacity
+                                    style={styles.modeCard}
+                                    onPress={() => handleModeCardPress(flashcardScaleAnim, 'flashcards')}
+                                    activeOpacity={1}
+                                >
+                                    <View style={styles.modeCardContent}>
+                                        <View style={{ flex: 1, marginLeft: 16 }}>
+                                            <Text style={styles.modeTitle}>Flashcards</Text>
+                                            <Text style={styles.modeDesc}>Flip through terms</Text>
+                                        </View>
+                                        <Text style={styles.modeArrow}>→</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </Animated.View>
+                            
+                            <Animated.View style={{ transform: [{ scale: quizScaleAnim }] }}>
+                                <TouchableOpacity
+                                    style={styles.modeCard}
+                                    onPress={() => handleModeCardPress(quizScaleAnim, 'quiz')}
+                                    activeOpacity={1}
+                                >
+                                    <View style={styles.modeCardContent}>
+                                        <View style={{ flex: 1, marginLeft: 16 }}>
+                                            <Text style={styles.modeTitle}>Quiz</Text>
+                                            <Text style={styles.modeDesc}>Multiple choice & True/False</Text>
+                                        </View>
+                                        <Text style={styles.modeArrow}>→</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </Animated.View>
                         </View>
 
                         {(set.terms && set.terms.length > 0) || (set.questions && set.questions.length > 0) ? (
@@ -283,18 +331,21 @@ export default function SetDetailScreen() {
                     <TouchableOpacity 
                         style={[styles.actionBtn, styles.exportBtnPDF]} 
                         onPress={() => exportStudySet(set, 'pdf')}
+                        activeOpacity={0.8}
                     >
-                        <Text style={styles.actionBtnText}>Export as PDF</Text>
+                        <Text style={styles.actionBtnText}>Export PDF</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
                         style={[styles.actionBtn, styles.exportBtnDocx]} 
                         onPress={() => exportStudySet(set, 'docx')}
+                        activeOpacity={0.8}
                     >
-                        <Text style={styles.actionBtnText}>Export as DOCX</Text>
+                        <Text style={styles.actionBtnText}>Export DOCX</Text>
                     </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.deleteBtn} onPress={onDelete}>
+                <TouchableOpacity style={styles.deleteBtn} onPress={onDelete} activeOpacity={0.8}>
+                    <Text style={styles.deleteIcon}>🗑️</Text>
                     <Text style={styles.deleteText}>Delete set</Text>
                 </TouchableOpacity>
         
@@ -366,32 +417,44 @@ const createStyles = (theme) => StyleSheet.create({
         marginTop: 12,
         fontWeight: '600',
     },
-    modes: { marginTop: 32 },
+    modes: { marginTop: 32, gap: 16 },
     modeCard: {
         backgroundColor: theme.secondary,
         borderRadius: 16,
         padding: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 14,
+        marginBottom: 0,
         borderWidth: 1.5,
         borderColor: theme.border,
         shadowColor: theme.primaryAccent,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    modeCardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+    },
+    modeIcon: {
+        fontSize: 36,
     },
     modeTitle: { 
         fontSize: 20, 
         fontWeight: '700', 
-        color: theme.text, 
-        flex: 1,
+        color: theme.text,
     },
     modeDesc: { 
         fontSize: 14, 
         color: theme.textSecondary,
         marginTop: 4,
+    },
+    modeArrow: {
+        fontSize: 20,
+        color: theme.primaryAccent,
+        fontWeight: '700',
     },
     empty: { 
         marginTop: 32, 
@@ -441,11 +504,19 @@ const createStyles = (theme) => StyleSheet.create({
         gap: 12,
     },
     actionBtn: {
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 12,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 14,
         alignItems: 'center',
         borderWidth: 1,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 10,
+        shadowColor: theme.primaryAccent,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 4,
     },
     exportBtnPDF: {
         backgroundColor: theme.primaryAccent,
@@ -455,6 +526,9 @@ const createStyles = (theme) => StyleSheet.create({
         backgroundColor: theme.primaryAccent,
         borderColor: theme.primaryAccent,
     },
+    actionBtnIcon: {
+        fontSize: 20,
+    },
     actionBtnText: {
         fontSize: 16,
         fontWeight: '700',
@@ -463,11 +537,22 @@ const createStyles = (theme) => StyleSheet.create({
     deleteBtn: { 
         marginTop: 36, 
         alignItems: 'center',
-        paddingVertical: 14,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        paddingVertical: 16,
+        gap: 10,
         backgroundColor: theme.isDark ? theme.secondary : '#fee2e2',
-        borderRadius: 12,
-        borderWidth: 1,
+        borderRadius: 14,
+        borderWidth: 2,
         borderColor: theme.error,
+        shadowColor: theme.error,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    deleteIcon: {
+        fontSize: 20,
     },
     deleteText: { 
         fontSize: 16, 
@@ -517,6 +602,12 @@ const createStyles = (theme) => StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
         color: theme.textSecondary,
+    },
+    editorHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
     },
     sectionDivider: {
         fontSize: 14,

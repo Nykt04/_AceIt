@@ -545,9 +545,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     try {
       console.log('[authService] Requesting password reset for:', email);
 
+      // Redirect to app root so it can detect and process the recovery token in the URL hash
       const redirectTo = Platform.OS === 'web'
-        ? `${window.location.origin}/reset-password`
-        : `${process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`;
+        ? window.location.origin
+        : process.env.EXPO_PUBLIC_SITE_URL || 'http://localhost:3000';
 
       console.log('[authService] Password reset redirect URL:', redirectTo);
 

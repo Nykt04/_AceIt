@@ -246,25 +246,33 @@ export default function FileUploadQuestionsScreen() {
         return;
       }
 
+      // Convert questions to flashcard terms
+      const terms = questions.map((q) => ({
+        term: q.question || 'Question',
+        definition: q.explanation || q.correctAnswer?.toString() || 'Answer',
+      }));
+
       if (existingSet) {
         const existing = existingSet.questions || [];
+        const existingTerms = existingSet.terms || [];
         await updateStudySet(existingSet.id, {
           questions: [...existing, ...questions],
+          terms: [...existingTerms, ...terms],
         });
         navigation.navigate('SetDetail', {
-          set: { ...existingSet, questions: [...existing, ...questions] },
+          set: { ...existingSet, questions: [...existing, ...questions], terms: [...existingTerms, ...terms] },
         });
       } else {
         const newSet = await addStudySet({
           title: setTitle.trim(),
           description: 'AI-generated from study material',
-          terms: [],
+          terms,
           questions,
         });
         navigation.replace('SetDetail', { set: newSet });
       }
 
-      Alert.alert('Success', `Generated ${questions.length} questions using AI!`);
+      Alert.alert('Success', `Generated ${questions.length} questions and terms using AI!`);
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to generate questions');
       console.error(error);
@@ -278,17 +286,22 @@ export default function FileUploadQuestionsScreen() {
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Generate from File</Text>
-          <Text style={styles.subtitle}>Upload a document to create questions</Text>
+        {/* Header */}
+        <View style={styles.headerSection}>
+          <Text style={styles.headerTitle}>📄 Generate from File</Text>
+          <Text style={styles.headerSubtitle}>Upload DOCX, PDF, or TXT files</Text>
         </View>
 
+        {/* Set Title (if not existing set) */}
         {!existingSet && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Set Title</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionIcon}>✏️</Text>
+              <Text style={styles.sectionTitle}>Set Title</Text>
+            </View>
             <TextInput
               style={styles.input}
-              placeholder="Enter set title"
+              placeholder="e.g., Biology Notes, History Chapter 5"
               placeholderTextColor={theme.textTertiary}
               value={setTitle}
               onChangeText={setSetTitle}
@@ -296,20 +309,26 @@ export default function FileUploadQuestionsScreen() {
           </View>
         )}
 
+        {/* File Selection Section */}
         <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionIcon}>📁</Text>
+            <Text style={styles.sectionTitle}>Upload Document</Text>
+          </View>
+          
           <View style={styles.fileBox}>
             {!selectedFile ? (
               <>
                 <Text style={styles.fileIcon}>📄</Text>
                 <Text style={styles.fileText}>No file selected</Text>
-                <Text style={styles.fileHint}>Select a document to extract content</Text>
+                <Text style={styles.fileHint}>Upload .txt, .docx, or .pdf</Text>
               </>
             ) : (
               <>
-                <Text style={styles.fileIcon}>✓</Text>
+                <Text style={styles.fileIcon}>✅</Text>
                 <Text style={styles.fileText}>{fileName}</Text>
                 <Text style={styles.fileSize}>
-                  {(selectedFile.size / 1024).toFixed(2)} KB
+                  {(selectedFile.size / 1024).toFixed(2)} KB • {fileContent.length} characters
                 </Text>
               </>
             )}
@@ -320,39 +339,41 @@ export default function FileUploadQuestionsScreen() {
             onPress={handleSelectFile}
             activeOpacity={0.8}
           >
-            <Text style={styles.selectButtonText}>📂 Select File</Text>
+            <Text style={styles.selectButtonIcon}>📂</Text>
+            <Text style={styles.selectButtonText}>Select File</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Number of Questions Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Number of Questions</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionIcon}>🎯</Text>
+            <Text style={styles.sectionTitle}>Number of Questions</Text>
+          </View>
+          
           <View style={styles.questionInputContainer}>
+            <Text style={styles.inputPrefix}>📝</Text>
             <TextInput
               style={styles.questionInput}
-              placeholder="Enter desired number"
+              placeholder="e.g., 10, 20, 30..."
               placeholderTextColor={theme.textTertiary}
               value={numQuestions}
               onChangeText={setNumQuestions}
               keyboardType="number-pad"
             />
-            <Text style={styles.questionInputHint}>Min: 1 | Recommended: 5-50 | Max: 250+</Text>
           </View>
         </View>
 
-        <View style={styles.infoBox}>
-          <Text style={styles.infoTitle}>📋 How it works:</Text>
-          <Text style={styles.infoText}>
-            1. Paste your study material or document text
-          </Text>
-          <Text style={styles.infoText}>2. Select number of questions to generate</Text>
-          <Text style={styles.infoText}>
-            3. AI extracts key concepts and creates questions
-          </Text>
-          <Text style={styles.infoText}>
-            4. Review and add questions to your study set
-          </Text>
+        {/* How It Works */}
+        <View style={styles.tipsBox}>
+          <Text style={styles.tipsTitle}>💡 How It Works</Text>
+          <Text style={styles.tipItem}>1️⃣ Upload your study material</Text>
+          <Text style={styles.tipItem}>2️⃣ Specify number of questions</Text>
+          <Text style={styles.tipItem}>3️⃣ AI generates both questions and terms</Text>
+          <Text style={styles.tipItem}>4️⃣ Review and study instantly</Text>
         </View>
 
+        {/* Generate Button */}
         <TouchableOpacity
           style={[styles.generateButton, loading && styles.generateButtonDisabled]}
           onPress={handleGenerateFromFile}
@@ -360,9 +381,14 @@ export default function FileUploadQuestionsScreen() {
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#f5f5f5" size="large" />
+            <>
+              <ActivityIndicator color="#f5f5f5" size="small" />
+              <Text style={styles.generateButtonText}>Generating...</Text>
+            </>
           ) : (
-            <Text style={styles.generateButtonText}>Generate Questions</Text>
+            <>
+              <Text style={styles.generateButtonText}>Generate Questions</Text>
+            </>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -376,138 +402,201 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.background,
   },
   scrollContent: {
-    padding: 24,
-    paddingBottom: 50,
+    padding: 20,
+    paddingBottom: 60,
   },
-  header: {
-    marginBottom: 40,
+
+  // Header Section
+  headerSection: {
+    marginBottom: 28,
     paddingBottom: 20,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5,
     borderBottomColor: theme.border,
   },
-  title: {
-    fontSize: 32,
+  headerTitle: {
+    fontSize: 28,
     fontWeight: '800',
     color: theme.text,
-    marginBottom: 12,
+    marginBottom: 6,
   },
-  subtitle: {
-    fontSize: 15,
-    color: theme.textSecondary,
-    lineHeight: 22,
-  },
-  section: {
-    marginBottom: 36,
-  },
-  sectionLabel: {
+  headerSubtitle: {
     fontSize: 14,
-    fontWeight: '700',
     color: theme.textSecondary,
-    marginBottom: 14,
-    letterSpacing: 0.3,
+    fontWeight: '500',
   },
-  input: {
+
+  // Section Styling
+  section: {
+    marginBottom: 24,
     backgroundColor: theme.secondary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
+    borderRadius: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: theme.border,
-    fontSize: 16,
-    color: theme.text,
+    shadowColor: theme.background,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  fileBox: {
-    backgroundColor: theme.secondary,
-    borderRadius: 14,
-    paddingVertical: 48,
-    paddingHorizontal: 24,
+  sectionHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.border,
-    borderStyle: 'dashed',
-    marginBottom: 18,
+    marginBottom: 14,
   },
-  fileIcon: {
-    fontSize: 56,
-    marginBottom: 16,
+  sectionIcon: {
+    fontSize: 20,
+    marginRight: 10,
   },
-  fileText: {
-    fontSize: 17,
+  sectionTitle: {
+    fontSize: 15,
     fontWeight: '700',
     color: theme.text,
-    marginBottom: 8,
+    flex: 1,
+  },
+
+  // Input
+  input: {
+    backgroundColor: theme.background,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: theme.border,
+    fontSize: 15,
+    color: theme.text,
+    fontWeight: '500',
+  },
+
+  // File Box
+  fileBox: {
+    backgroundColor: theme.background,
+    borderRadius: 14,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.primaryAccent + '30',
+    borderStyle: 'dashed',
+    marginBottom: 14,
+  },
+  fileIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  fileText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.text,
+    marginBottom: 6,
   },
   fileHint: {
-    fontSize: 13,
+    fontSize: 12,
     color: theme.textTertiary,
+    fontWeight: '500',
   },
   fileSize: {
-    fontSize: 13,
+    fontSize: 12,
     color: theme.primaryAccent,
-    marginTop: 12,
+    marginTop: 10,
     fontWeight: '600',
   },
+
+  // Select Button
   selectButton: {
     backgroundColor: theme.primaryAccent,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: theme.primaryAccent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  selectButtonIcon: {
+    fontSize: 18,
   },
   selectButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#f5f5f5',
-  },
-  questionInputContainer: {
-    backgroundColor: theme.secondary,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  questionInput: {
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    fontSize: 16,
-    color: theme.text,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 10,
-  },
-  questionInputHint: {
-    fontSize: 13,
-    color: theme.textSecondary,
-    marginTop: 12,
-    paddingHorizontal: 2,
-    fontWeight: '500',
-  },
-  infoBox: {
-    backgroundColor: theme.secondary,
-    borderRadius: 12,
-    padding: 20,
-    borderLeftWidth: 5,
-    borderLeftColor: theme.primaryAccent,
-    marginBottom: 32,
-  },
-  infoTitle: {
     fontSize: 15,
     fontWeight: '700',
+    color: '#f5f5f5',
+  },
+
+  // Question Input
+  questionInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.background,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: theme.border,
+    marginBottom: 10,
+  },
+  inputPrefix: {
+    fontSize: 18,
+    paddingLeft: 12,
+  },
+  questionInput: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    fontSize: 15,
     color: theme.text,
-    marginBottom: 16,
+    fontWeight: '500',
   },
-  infoText: {
+  questionInputHint: {
+    fontSize: 12,
+    color: theme.textTertiary,
+    fontWeight: '500',
+  },
+
+  // Tips Box
+  tipsBox: {
+    backgroundColor: theme.primaryAccent + '10',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 28,
+    borderWidth: 1.5,
+    borderColor: theme.primaryAccent + '30',
+  },
+  tipsTitle: {
     fontSize: 14,
-    color: theme.textSecondary,
-    marginBottom: 11,
-    lineHeight: 20,
+    fontWeight: '700',
+    color: theme.text,
+    marginBottom: 12,
   },
+  tipItem: {
+    fontSize: 13,
+    color: theme.textSecondary,
+    fontWeight: '500',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+
+  // Generate Button
   generateButton: {
     backgroundColor: theme.primaryAccent,
-    borderRadius: 12,
-    paddingVertical: 18,
+    borderRadius: 14,
+    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: theme.primaryAccent,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   generateButtonDisabled: {
     opacity: 0.7,
+  },
+  generateButtonIcon: {
+    fontSize: 18,
   },
   generateButtonText: {
     fontSize: 16,

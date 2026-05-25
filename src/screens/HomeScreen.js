@@ -16,10 +16,8 @@ const createStyles = (theme) => StyleSheet.create({
     // Header
     header: { 
         paddingHorizontal: 20, 
-        paddingTop: 20, 
+        paddingTop: 16, 
         paddingBottom: 24,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.secondary,
     },
     title: { 
         fontSize: 32, 
@@ -33,7 +31,51 @@ const createStyles = (theme) => StyleSheet.create({
         fontWeight: '500',
     },
     
+    // Stats Banner
+    statsBanner: {
+        marginHorizontal: 16,
+        marginBottom: 20,
+        borderRadius: 14,
+        padding: 16,
+        backgroundColor: theme.primaryAccent + '15',
+        borderWidth: 1.5,
+        borderColor: theme.primaryAccent + '30',
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    statIcon: {
+        fontSize: 36,
+        marginBottom: 8,
+    },
+    statValue: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: theme.text,
+        marginBottom: 4,
+    },
+    statLabel: {
+        fontSize: 14,
+        color: theme.textSecondary,
+        fontWeight: '600',
+    },
+    
     // Study Sets List
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        color: theme.text,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 12,
+        marginTop: 8,
+    },
     list: { 
         padding: 16, 
         gap: 12,
@@ -51,21 +93,58 @@ const createStyles = (theme) => StyleSheet.create({
         shadowRadius: 8,
         elevation: 5,
     },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
     cardTitle: { 
         fontSize: 20, 
         fontWeight: '700', 
         color: theme.text,
+        marginBottom: 4,
     },
     cardDesc: { 
-        fontSize: 15, 
-        color: theme.textTertiary, 
-        marginTop: 8,
+        fontSize: 14, 
+        color: theme.textSecondary, 
+        marginTop: 2,
         fontWeight: '500',
+    },
+    cardStats: {
+        flexDirection: 'row',
+        marginTop: 12,
+        gap: 16,
+    },
+    cardStat: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    cardStatIcon: {
+        fontSize: 18,
+    },
+    cardStatText: {
+        fontSize: 15,
+        color: theme.textSecondary,
+        fontWeight: '600',
+    },
+    progressBar: {
+        height: 4,
+        backgroundColor: theme.border,
+        borderRadius: 2,
+        marginTop: 12,
+        overflow: 'hidden',
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: theme.primaryAccent,
+        borderRadius: 2,
     },
     cardMeta: { 
         fontSize: 14, 
-        color: theme.textSecondary, 
-        marginTop: 10,
+        color: theme.textTertiary, 
+        marginTop: 12,
         fontWeight: '500',
     },
     
@@ -279,7 +358,9 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
         }).start();
     };
 
-    const termCount = (item.terms?.length || 0) + (item.questions?.length || 0);
+    const termCount = (item.terms?.length || item.flashcards?.length || 0);
+    const questionCount = item.questions?.length || 0;
+    const totalCount = termCount + questionCount;
 
         return (
                 <Animated.View style={{
@@ -293,15 +374,12 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
                                 onPressOut={handlePressOut}
                                 activeOpacity={1}
                         >
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <View style={{ flex: 1, marginRight: 8 }}>
+                                <View style={styles.cardHeader}>
+                                    <View style={{ flex: 1 }}>
                                         <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
                                         {item.description ? (
-                                                <Text style={[styles.cardDesc, { color: theme.textSecondary }]} numberOfLines={2}>{item.description}</Text>
+                                                <Text style={[styles.cardDesc, { color: theme.textSecondary }]} numberOfLines={1}>{item.description}</Text>
                                         ) : null}
-                                        <Text style={[styles.cardMeta, { color: theme.textTertiary }]}>
-                                                {termCount} terms · {item.questions?.length || 0} quiz questions
-                                        </Text>
                                     </View>
                                     <TouchableOpacity
                                         style={styles.deleteBtn}
@@ -310,6 +388,33 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
                                         <Text style={styles.deleteText}>🗑️</Text>
                                     </TouchableOpacity>
                                 </View>
+
+                                <View style={styles.cardStats}>
+                                    <View style={styles.cardStat}>
+                                        <Text style={styles.cardStatIcon}>📚</Text>
+                                        <Text style={styles.cardStatText}>{totalCount} items</Text>
+                                    </View>
+                                    {termCount > 0 ? (
+                                        <View style={styles.cardStat}>
+                                            <Text style={styles.cardStatIcon}>📝</Text>
+                                            <Text style={styles.cardStatText}>{termCount} terms</Text>
+                                        </View>
+                                    ) : null}
+                                    {questionCount > 0 ? (
+                                        <View style={styles.cardStat}>
+                                            <Text style={styles.cardStatIcon}>❓</Text>
+                                            <Text style={styles.cardStatText}>{questionCount} Qs</Text>
+                                        </View>
+                                    ) : null}
+                                </View>
+
+                                <View style={styles.progressBar}>
+                                    <View style={[styles.progressFill, { width: `${Math.min(100, totalCount * 8)}%` }]} />
+                                </View>
+
+                                <Text style={[styles.cardMeta, { color: theme.textSecondary }]}>
+                                    {totalCount > 0 ? `${totalCount} items` : 'Empty'}
+                                </Text>
                         </TouchableOpacity>
                 </Animated.View>
         );
@@ -427,6 +532,33 @@ export default function HomeScreen() {
                     <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{studySets.length} set{studySets.length !== 1 ? 's' : ''}</Text>
                 </View>
 
+                {studySets.length > 0 && (
+                    <View style={styles.statsBanner}>
+                        <View style={styles.statsGrid}>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statIcon}>📚</Text>
+                                <Text style={styles.statValue}>{studySets.reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0) + (set.questions?.length || 0), 0)}</Text>
+                                <Text style={styles.statLabel}>Items</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statIcon}>📝</Text>
+                                <Text style={styles.statValue}>{studySets.reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0), 0)}</Text>
+                                <Text style={styles.statLabel}>Terms</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statIcon}>❓</Text>
+                                <Text style={styles.statValue}>{studySets.reduce((sum, set) => sum + (set.questions?.length || 0), 0)}</Text>
+                                <Text style={styles.statLabel}>Questions</Text>
+                            </View>
+                            <View style={styles.statItem}>
+                                <Text style={styles.statIcon}>🎯</Text>
+                                <Text style={styles.statValue}>{studySets.length}</Text>
+                                <Text style={styles.statLabel}>Sets</Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
                 {studySets.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <View style={styles.emptyIllustration}>
@@ -459,7 +591,6 @@ export default function HomeScreen() {
                                 }}
                                 activeOpacity={0.8}
                             >
-                                <Text style={styles.quickActionIcon}>✨</Text>
                                 <Text style={[styles.quickActionTitle, { color: theme.text }]}>AI Generate</Text>
                                 <Text style={[styles.quickActionDesc, { color: theme.textSecondary }]}>Create with AI assistance</Text>
                             </TouchableOpacity>
@@ -487,9 +618,12 @@ export default function HomeScreen() {
                         </View>
                     </View>
                 ) : (
-                    <View style={styles.list}>
-                        {studySets.map((item, index) => renderSet({ item, index }))}
-                    </View>
+                    <>
+                        <Text style={styles.sectionTitle}>🔥 Your Study Sets</Text>
+                        <View style={styles.list}>
+                            {studySets.map((item, index) => renderSet({ item, index }))}
+                        </View>
+                    </>
                 )}
             </ScrollView>
 

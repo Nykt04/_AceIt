@@ -17,15 +17,23 @@ export default function Sidebar({ isOpen, onClose }) {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const slideAnim = React.useRef(new Animated.Value(-width * 0.5)).current;
+  const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     console.log('[Sidebar] isOpen changed to:', isOpen);
-    Animated.timing(slideAnim, {
-      toValue: isOpen ? 0 : -width * 0.5,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [isOpen, slideAnim]);
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: isOpen ? 0 : -width * 0.5,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: isOpen ? 1 : 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isOpen, slideAnim, opacityAnim]);
 
   const handleNavigate = (screenName) => {
     navigation.navigate(screenName);
@@ -45,14 +53,17 @@ export default function Sidebar({ isOpen, onClose }) {
 
   return (
     <>
-      {isOpen && (
-        <TouchableOpacity
-          style={styles.backdrop}
-          onPress={onClose}
-          activeOpacity={1}
-          pointerEvents="auto"
-        />
-      )}
+      <Animated.View
+        style={[
+          styles.backdrop,
+          {
+            opacity: opacityAnim,
+            pointerEvents: isOpen ? 'auto' : 'none',
+          },
+        ]}
+        onStartShouldSetResponder={() => true}
+        onResponderRelease={onClose}
+      />
       <Animated.View
         style={[
           styles.sidebar,
@@ -60,9 +71,9 @@ export default function Sidebar({ isOpen, onClose }) {
             transform: [{ translateX: slideAnim }],
             backgroundColor: theme.background,
             borderRightColor: theme.border,
+            pointerEvents: isOpen ? 'auto' : 'none',
           },
         ]}
-        pointerEvents={isOpen ? 'auto' : 'none'}
       >
         <ScrollView style={styles.sidebarContent} showsVerticalScrollIndicator={false}>
           <View style={[styles.sidebarHeader, { borderBottomColor: theme.border }]}>
@@ -91,7 +102,6 @@ export default function Sidebar({ isOpen, onClose }) {
             />
             <MenuItem
               icon=""
-
               label="Create Set"
               onPress={() => handleNavigate('CreateSet')}
             />
@@ -141,8 +151,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    zIndex: 999,
-    pointerEvents: 'auto',
+    zIndex: 998,
   },
   sidebar: {
     position: 'absolute',
