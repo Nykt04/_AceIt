@@ -163,12 +163,14 @@ const buildMessagesFromText = (textContent, count) => {
 For multiple choice: use format { "type": "multiple_choice", "question": "...", "options": ["A", "B", "C", "D"], "correctIndex": 0, "explanation": "Why this is correct..." }
 For true/false: use format { "type": "true_false", "question": "...", "correctAnswer": true, "explanation": "Why this is correct..." } or "correctAnswer": false
 Create questions that test understanding of the key concepts in the text.
-IMPORTANT: Include "explanation" field for every question that explains why the correct answer is right based on the provided text.
-Return a JSON array of question objects.`,
+IMPORTANT: 
+1. You MUST generate EXACTLY ${count} questions - no more, no less.
+2. Include "explanation" field for every question that explains why the correct answer is right based on the provided text.
+3. Return ONLY a JSON array with exactly ${count} question objects.`,
     },
     {
       role: 'user',
-      content: `Here is the study material:\n\n${textContent}\n\nGenerate ${count} questions (mix of multiple choice and true/false) based on this text. Focus on important concepts and facts mentioned. Include detailed explanations for each question explaining why the correct answer is right. Return only a JSON array.`,
+      content: `Here is the study material:\n\n${textContent}\n\nGenerate EXACTLY ${count} questions (mix of multiple choice and true/false) based on this text. You must provide exactly ${count} questions. Focus on important concepts and facts mentioned. Include detailed explanations for each question explaining why the correct answer is right. Return only a JSON array with exactly ${count} questions.`,
     },
   ];
 };
@@ -260,15 +262,18 @@ const generateWithTextContent = async (apiKey, textContent, count) => {
       throw error;
     }
 
-    // If fewer questions than requested, log warning but still return what we got
-    if (questions.length < count) {
-      console.warn(
-        `[AIService] Generated ${questions.length} questions instead of ${count}. ` +
-        `The AI may need more context or the request was too large.`
+    // ENFORCE: Must return exactly the requested number of questions
+    if (questions.length !== count) {
+      const error = new Error(
+        `Generated ${questions.length} questions instead of ${count}. ` +
+        `Please try again or request a different number of questions. ` +
+        `(Tip: Large requests may work better with more detailed source material)`
       );
+      logError('generateWithTextContent', error, { generatedCount: questions.length, requestedCount: count });
+      throw error;
     }
 
-    console.log(`[AIService] Successfully generated ${questions.length} questions`);
+    console.log(`[AIService] Successfully generated exactly ${questions.length} questions as requested`);
     return normalizeQuestions(questions);
   } catch (error) {
     logError('generateWithTextContent', error, { count, textLength: textContent?.length });

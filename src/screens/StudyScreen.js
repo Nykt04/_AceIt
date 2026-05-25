@@ -465,12 +465,15 @@ function createStyles(theme) {
     flashcardWrap: { 
       flex: 1, 
       padding: 20, 
-      justifyContent: 'center' 
+      justifyContent: 'space-between',
+      flexDirection: 'column',
     },
     flashcardContainer: { 
       position: 'relative', 
       alignItems: 'center', 
-      justifyContent: 'center' 
+      justifyContent: 'center',
+      flex: 1,
+      minHeight: 300,
     },
     flashcard: { 
       backgroundColor: theme.secondary, 
@@ -509,8 +512,8 @@ function createStyles(theme) {
     flashcardNav: { 
       flexDirection: 'row', 
       justifyContent: 'space-between', 
-      marginTop: 28, 
-      paddingHorizontal: 20,
+      marginTop: 24, 
+      paddingHorizontal: 0,
       gap: 12,
     },
     navBtn: { 

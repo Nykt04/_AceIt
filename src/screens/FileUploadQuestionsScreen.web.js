@@ -183,7 +183,7 @@ export default function FileUploadQuestionsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Text style={styles.title}>Generate Questions from File</Text>
-          <Text style={styles.subtitle}>Upload DOCX/TXT files or paste text</Text>
+          <Text style={styles.subtitle}>Upload DOCX/PDF/TXT files or paste text</Text>
         </View>
 
         {!existingSet && (
@@ -207,7 +207,7 @@ export default function FileUploadQuestionsScreen() {
               onPress={() => setInputMode('file')}
             >
               <Text style={[styles.modeButtonText, inputMode === 'file' && styles.modeButtonTextActive]}>
-                📁 Upload File
+                 Upload File
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -215,7 +215,7 @@ export default function FileUploadQuestionsScreen() {
               onPress={() => setInputMode('text')}
             >
               <Text style={[styles.modeButtonText, inputMode === 'text' && styles.modeButtonTextActive]}>
-                📝 Paste Text
+                Paste Text
               </Text>
             </TouchableOpacity>
           </View>
@@ -236,12 +236,10 @@ export default function FileUploadQuestionsScreen() {
                 </>
               ) : selectedFile ? (
                 <>
-                  <Text style={styles.filePickerButtonIcon}>✅</Text>
                   <Text style={styles.filePickerButtonText}>{selectedFile.name}</Text>
                 </>
               ) : (
                 <>
-                  <Text style={styles.filePickerButtonIcon}>📄</Text>
                   <Text style={styles.filePickerButtonText}>Tap to select DOCX, PDF,  or TXT file</Text>
                   <Text style={styles.filePickerHint}>Max 10MB</Text>
                 </>
@@ -279,7 +277,6 @@ export default function FileUploadQuestionsScreen() {
               onChangeText={setNumQuestions}
               keyboardType="number-pad"
             />
-            <Text style={styles.questionInputHint}>Min: 1 | Recommended: 5-50 | Max: 250+</Text>
           </View>
         </View>
 
@@ -287,7 +284,7 @@ export default function FileUploadQuestionsScreen() {
           style={[styles.generateButton, loading && styles.generateButtonDisabled]}
           onPress={handleGenerate}
           disabled={loading}
-          activeOpacity={0.8}
+          activeOpacity={loading ? 1 : 0.8}
         >
           {loading ? (
             <ActivityIndicator color="#f5f5f5" size="large" />
@@ -305,6 +302,21 @@ export default function FileUploadQuestionsScreen() {
           onChange={handleFileSelect}
         />
       </ScrollView>
+
+      {/* Loading Overlay */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={theme.primaryAccent} />
+            <Text style={[styles.loadingText, { color: theme.text }]}>
+              Generating Quiz Questions
+            </Text>
+            <Text style={[styles.loadingSubtext, { color: theme.textSecondary }]}>
+              Please wait while the AI creates your questions...
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -426,21 +438,25 @@ const createStyles = (theme) => StyleSheet.create({
     backgroundColor: theme.secondary,
     borderRadius: 12,
     overflow: 'hidden',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   questionInput: {
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     fontSize: 16,
     color: theme.text,
     borderWidth: 1,
     borderColor: theme.border,
     borderRadius: 10,
+    backgroundColor: theme.background,
   },
   questionInputHint: {
     fontSize: 12,
     color: theme.textSecondary,
-    marginTop: 8,
-    paddingHorizontal: 2,
+    marginTop: 12,
+    paddingHorizontal: 4,
   },
   generateButton: {
     backgroundColor: theme.primaryAccent,
@@ -449,11 +465,49 @@ const createStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
   },
   generateButtonDisabled: {
-    opacity: 0.7,
+    opacity: 1,
   },
   generateButtonText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#f5f5f5',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContent: {
+    backgroundColor: theme.secondary,
+    borderRadius: 16,
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.border,
+    shadowColor: theme.background,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  loadingText: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 24,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
   },
 });

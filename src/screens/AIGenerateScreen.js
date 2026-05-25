@@ -153,6 +153,21 @@ export default function AIGenerateScreen() {
         </Animated.View>
       
       </ScrollView>
+
+      {/* Loading Overlay */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={theme.primaryAccent} />
+            <Text style={[styles.loadingText, { color: theme.text }]}>
+              Generating Quiz Questions
+            </Text>
+            <Text style={[styles.loadingSubtext, { color: theme.textSecondary }]}>
+              Please wait while the AI creates your questions...
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -178,4 +193,42 @@ const createStyles = (theme) => StyleSheet.create({
   generateBtnDisabled: { opacity: 0.7 },
   generateText: { fontSize: 17, fontWeight: '700', color: '#f5f5f5' },
   hint: { marginTop: 16, fontSize: 12, color: theme.textTertiary, textAlign: 'center' },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContent: {
+    backgroundColor: theme.secondary,
+    borderRadius: 16,
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.border,
+    shadowColor: theme.background,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  loadingText: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 24,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+  },
 });
