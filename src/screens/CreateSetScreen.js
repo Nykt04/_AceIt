@@ -253,7 +253,6 @@ export default function CreateSetScreen() {
                   <ActivityIndicator size="small" color={theme.secondary} />
                 ) : (
                   <>
-                    <Text style={styles.convertBtnIcon}>✨</Text>
                     <Text style={styles.convertBtnText}>Convert Terms to Questions</Text>
                   </>
                 )}

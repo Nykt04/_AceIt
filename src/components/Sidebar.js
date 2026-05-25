@@ -16,14 +16,14 @@ const { width } = Dimensions.get('window');
 export default function Sidebar({ isOpen, onClose }) {
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const slideAnim = React.useRef(new Animated.Value(-width * 0.4)).current;
+  const slideAnim = React.useRef(new Animated.Value(-width * 0.45)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     console.log('[Sidebar] isOpen changed to:', isOpen);
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: isOpen ? 0 : -width * 0.4,
+        toValue: isOpen ? 0 : -width * 0.45,
         duration: 300,
         useNativeDriver: true,
       }),
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: width * 0.4, 
+    width: width * 0.45, 
     borderRightWidth: 2,
     shadowColor: '#000',
     shadowOffset: { width: 4, height: 0 },
