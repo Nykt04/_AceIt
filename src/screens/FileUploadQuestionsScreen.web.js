@@ -48,6 +48,10 @@ export default function FileUploadQuestionsScreen() {
       return;
     }
 
+    // Auto-populate title from filename (without extension)
+    const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+    setSetTitle(fileNameWithoutExt);
+
     setSelectedFile(file);
     setExtracting(true);
 

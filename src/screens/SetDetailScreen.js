@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, Platform, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, Platform, Animated, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
 import { exportStudySet } from '../services/exportService';
+import { generateQuestionsFromTerms } from '../services/aiService';
 import EditableFlashcard from '../components/EditableFlashcard';
 
 export default function SetDetailScreen() {
@@ -14,10 +15,12 @@ export default function SetDetailScreen() {
     const setFromParams = route.params?.set;
     const [showFlashcardEditor, setShowFlashcardEditor] = useState(false);
     const [set, setSet] = useState(null);
+    const [converting, setConverting] = useState(false);
     
     // Animation refs for mode cards
     const flashcardScaleAnim = useRef(new Animated.Value(1)).current;
     const quizScaleAnim = useRef(new Animated.Value(1)).current;
+    const convertBtnScale = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
         console.log('[SetDetailScreen] useEffect triggered. studySets length:', studySets.length, 'setFromParams?.id:', setFromParams?.id);
@@ -192,6 +195,54 @@ export default function SetDetailScreen() {
         navigation.navigate('Study', { set, mode });
     };
 
+    const handleConvertToQuestions = async () => {
+        const validTerms = (set.terms || []).filter((t) => t.term.trim() && t.definition.trim());
+        
+        if (validTerms.length === 0) {
+            Alert.alert('No terms', 'Add at least one term with both term and definition to convert to questions.');
+            return;
+        }
+
+        setConverting(true);
+        try {
+            Animated.sequence([
+                Animated.timing(convertBtnScale, {
+                    toValue: 0.9,
+                    duration: 100,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(convertBtnScale, {
+                    toValue: 1,
+                    friction: 3,
+                    tension: 40,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+
+            const generatedQuestions = await generateQuestionsFromTerms(validTerms, validTerms.length);
+            
+            if (!generatedQuestions || generatedQuestions.length === 0) {
+                Alert.alert('No questions generated', 'Try again or add more detailed terms.');
+                return;
+            }
+
+            // Add generated questions to existing ones
+            const existingQuestions = set.questions || [];
+            const allQuestions = [...existingQuestions, ...generatedQuestions];
+            await updateStudySet(set.id, { questions: allQuestions });
+            
+            // Update local state
+            setSet({ ...set, questions: allQuestions });
+            
+            Alert.alert('Success', `Generated ${generatedQuestions.length} questions from your ${validTerms.length} terms! 🎉`);
+        } catch (error) {
+            console.error('[SetDetail] Convert error:', error);
+            Alert.alert('Error', error.message || 'Failed to convert terms to questions');
+        } finally {
+            setConverting(false);
+        }
+    };
+
     const styles = createStyles(theme);
 
     return (
@@ -328,6 +379,25 @@ export default function SetDetailScreen() {
                 )}
 
                 <View style={styles.actionButtons}>
+                    {set.terms && set.terms.length > 0 && (!set.questions || set.questions.length < set.terms.length) && (
+                        <Animated.View style={{ transform: [{ scale: convertBtnScale }] }}>
+                            <TouchableOpacity 
+                                style={[styles.actionBtn, styles.convertBtn]} 
+                                onPress={handleConvertToQuestions}
+                                disabled={converting}
+                                activeOpacity={0.8}
+                            >
+                                {converting ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <>
+                                        <Text style={styles.convertBtnIcon}>✨</Text>
+                                        <Text style={styles.actionBtnText}>Convert to Questions</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        </Animated.View>
+                    )}
                     <TouchableOpacity 
                         style={[styles.actionBtn, styles.exportBtnPDF]} 
                         onPress={() => exportStudySet(set, 'pdf')}
@@ -525,6 +595,13 @@ const createStyles = (theme) => StyleSheet.create({
     exportBtnDocx: {
         backgroundColor: theme.primaryAccent,
         borderColor: theme.primaryAccent,
+    },
+    convertBtn: {
+        backgroundColor: theme.primaryAccent,
+        borderColor: theme.primaryAccent,
+    },
+    convertBtnIcon: {
+        fontSize: 18,
     },
     actionBtnIcon: {
         fontSize: 20,

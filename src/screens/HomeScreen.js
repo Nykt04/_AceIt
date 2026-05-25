@@ -37,33 +37,56 @@ const createStyles = (theme) => StyleSheet.create({
         marginBottom: 20,
         borderRadius: 14,
         padding: 16,
-        backgroundColor: theme.primaryAccent + '15',
-        borderWidth: 1.5,
-        borderColor: theme.primaryAccent + '30',
+        backgroundColor: theme.background,
     },
     statsGrid: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        gap: 12,
     },
-    statItem: {
+    statCard: {
+        flex: 1,
+        minWidth: '48%',
+        borderRadius: 16,
+        padding: 16,
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 12,
+        borderWidth: 1.5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    statCardIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: 28,
+    },
+    statCardContent: {
         flex: 1,
     },
-    statIcon: {
-        fontSize: 36,
-        marginBottom: 8,
-    },
-    statValue: {
+    statCardValue: {
         fontSize: 28,
-        fontWeight: '800',
+        fontWeight: '900',
         color: theme.text,
-        marginBottom: 4,
     },
-    statLabel: {
+    statCardLabel: {
         fontSize: 14,
         color: theme.textSecondary,
         fontWeight: '600',
+        marginTop: 2,
+    },
+    statCardChange: {
+        fontSize: 12,
+        color: '#4CAF50',
+        fontWeight: '700',
+        marginTop: 4,
     },
     
     // Study Sets List
@@ -75,6 +98,30 @@ const createStyles = (theme) => StyleSheet.create({
         paddingTop: 20,
         paddingBottom: 12,
         marginTop: 8,
+    },
+    sectionHeader: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        marginTop: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        backgroundColor: theme.primaryAccent + '10',
+        borderLeftWidth: 4,
+        borderLeftColor: theme.primaryAccent,
+        borderWidth: 1,
+        borderColor: theme.primaryAccent + '30',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    sectionHeaderText: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: theme.text,
+    },
+    sectionHeaderIcon: {
+        fontSize: 24,
     },
     list: { 
         padding: 16, 
@@ -115,11 +162,16 @@ const createStyles = (theme) => StyleSheet.create({
         flexDirection: 'row',
         marginTop: 12,
         gap: 16,
+        flexWrap: 'wrap',
     },
     cardStat: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        backgroundColor: theme.background + '30',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
     },
     cardStatIcon: {
         fontSize: 18,
@@ -361,6 +413,9 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
     const termCount = (item.terms?.length || item.flashcards?.length || 0);
     const questionCount = item.questions?.length || 0;
     const totalCount = termCount + questionCount;
+    const createdDate = new Date(item.created_at);
+    const daysOld = Math.floor((new Date() - createdDate) / (1000 * 60 * 60 * 24));
+    const termPercentage = totalCount > 0 ? Math.round((termCount / totalCount) * 100) : 0;
 
         return (
                 <Animated.View style={{
@@ -392,7 +447,7 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
                                 <View style={styles.cardStats}>
                                     <View style={styles.cardStat}>
                                         <Text style={styles.cardStatIcon}>📚</Text>
-                                        <Text style={styles.cardStatText}>{totalCount} items</Text>
+                                        <Text style={styles.cardStatText}>{totalCount} total</Text>
                                     </View>
                                     {termCount > 0 ? (
                                         <View style={styles.cardStat}>
@@ -406,6 +461,10 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
                                             <Text style={styles.cardStatText}>{questionCount} Qs</Text>
                                         </View>
                                     ) : null}
+                                    <View style={styles.cardStat}>
+                                        <Text style={styles.cardStatIcon}>📅</Text>
+                                        <Text style={styles.cardStatText}>{daysOld === 0 ? 'Today' : daysOld + ' days ago'}</Text>
+                                    </View>
                                 </View>
 
                                 <View style={styles.progressBar}>
@@ -413,7 +472,7 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
                                 </View>
 
                                 <Text style={[styles.cardMeta, { color: theme.textSecondary }]}>
-                                    {totalCount > 0 ? `${totalCount} items` : 'Empty'}
+                                    {totalCount > 0 ? `${termPercentage}% Terms • ${100 - termPercentage}% Questions` : 'Empty'}
                                 </Text>
                         </TouchableOpacity>
                 </Animated.View>
@@ -504,6 +563,39 @@ export default function HomeScreen() {
         );
     };
 
+    // Calculate statistics
+    const calculateStats = () => {
+        const totalItems = studySets.reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0) + (set.questions?.length || 0), 0);
+        const totalTerms = studySets.reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0), 0);
+        const totalQuestions = studySets.reduce((sum, set) => sum + (set.questions?.length || 0), 0);
+        
+        // Calculate weekly changes (last 7 days)
+        const sevenDaysAgo = new Date(new Date() - 7 * 24 * 60 * 60 * 1000);
+        const setsThisWeek = studySets.filter(set => new Date(set.created_at) > sevenDaysAgo).length;
+        
+        const itemsThisWeek = studySets
+            .filter(set => new Date(set.created_at) > sevenDaysAgo)
+            .reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0) + (set.questions?.length || 0), 0);
+        
+        const termsThisWeek = studySets
+            .filter(set => new Date(set.created_at) > sevenDaysAgo)
+            .reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0), 0);
+        
+        const questionsThisWeek = studySets
+            .filter(set => new Date(set.created_at) > sevenDaysAgo)
+            .reduce((sum, set) => sum + (set.questions?.length || 0), 0);
+
+        return {
+            totalItems,
+            totalTerms,
+            totalQuestions,
+            itemsThisWeek,
+            termsThisWeek,
+            questionsThisWeek,
+            setsThisWeek,
+        };
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -535,25 +627,72 @@ export default function HomeScreen() {
                 {studySets.length > 0 && (
                     <View style={styles.statsBanner}>
                         <View style={styles.statsGrid}>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statIcon}>📚</Text>
-                                <Text style={styles.statValue}>{studySets.reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0) + (set.questions?.length || 0), 0)}</Text>
-                                <Text style={styles.statLabel}>Items</Text>
+                            {/* Items Card */}
+                            <View style={[styles.statCard, { 
+                                backgroundColor: theme.secondary,
+                                borderColor: '#4A90E2' + '40',
+                            }]}>
+                                <Text style={{ fontSize: 40 }}>📚</Text>
+                                <View style={styles.statCardContent}>
+                                    <Text style={[styles.statCardValue, { color: theme.text }]}>
+                                        {calculateStats().totalItems}
+                                    </Text>
+                                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Items</Text>
+                                    <Text style={styles.statCardChange}>
+                                        +{calculateStats().itemsThisWeek} this week
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statIcon}>📝</Text>
-                                <Text style={styles.statValue}>{studySets.reduce((sum, set) => sum + ((set.terms?.length || set.flashcards?.length) || 0), 0)}</Text>
-                                <Text style={styles.statLabel}>Terms</Text>
+
+                            {/* Terms Card */}
+                            <View style={[styles.statCard, { 
+                                backgroundColor: theme.secondary,
+                                borderColor: '#F5A623' + '40',
+                            }]}>
+                                <Text style={{ fontSize: 40 }}>📝</Text>
+                                <View style={styles.statCardContent}>
+                                    <Text style={[styles.statCardValue, { color: theme.text }]}>
+                                        {calculateStats().totalTerms}
+                                    </Text>
+                                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Terms</Text>
+                                    <Text style={styles.statCardChange}>
+                                        +{calculateStats().termsThisWeek} this week
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statIcon}>❓</Text>
-                                <Text style={styles.statValue}>{studySets.reduce((sum, set) => sum + (set.questions?.length || 0), 0)}</Text>
-                                <Text style={styles.statLabel}>Questions</Text>
+
+                            {/* Questions Card */}
+                            <View style={[styles.statCard, { 
+                                backgroundColor: theme.secondary,
+                                borderColor: '#E94B7F' + '40',
+                            }]}>
+                                <Text style={{ fontSize: 40 }}>❓</Text>
+                                <View style={styles.statCardContent}>
+                                    <Text style={[styles.statCardValue, { color: theme.text }]}>
+                                        {calculateStats().totalQuestions}
+                                    </Text>
+                                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Questions</Text>
+                                    <Text style={styles.statCardChange}>
+                                        +{calculateStats().questionsThisWeek} this week
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={styles.statItem}>
-                                <Text style={styles.statIcon}>🎯</Text>
-                                <Text style={styles.statValue}>{studySets.length}</Text>
-                                <Text style={styles.statLabel}>Sets</Text>
+
+                            {/* Sets Card */}
+                            <View style={[styles.statCard, { 
+                                backgroundColor: theme.secondary,
+                                borderColor: '#9B59B6' + '40',
+                            }]}>
+                                <Text style={{ fontSize: 40 }}>🎯</Text>
+                                <View style={styles.statCardContent}>
+                                    <Text style={[styles.statCardValue, { color: theme.text }]}>
+                                        {studySets.length}
+                                    </Text>
+                                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Sets</Text>
+                                    <Text style={styles.statCardChange}>
+                                        +{calculateStats().setsThisWeek} this week
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
@@ -619,7 +758,10 @@ export default function HomeScreen() {
                     </View>
                 ) : (
                     <>
-                        <Text style={styles.sectionTitle}>🔥 Your Study Sets</Text>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionHeaderIcon}>🔥</Text>
+                            <Text style={styles.sectionHeaderText}>Your Study Sets</Text>
+                        </View>
                         <View style={styles.list}>
                             {studySets.map((item, index) => renderSet({ item, index }))}
                         </View>

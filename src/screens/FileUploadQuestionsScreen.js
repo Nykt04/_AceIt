@@ -158,6 +158,10 @@ export default function FileUploadQuestionsScreen() {
           setSelectedFile(file);
           setFileName(file.name);
           
+          // Auto-populate title from filename (without extension)
+          const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+          setSetTitle(fileNameWithoutExt);
+          
           // Check if content is empty or has warning
           if (extractedData.isEmpty || extractedData.warning) {
             setFileContent(''); // Don't set placeholder text

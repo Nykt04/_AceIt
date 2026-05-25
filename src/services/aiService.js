@@ -298,3 +298,28 @@ export const generateQuestionsFromText = async (
 
   return generateWithTextContent(apiKey, textContent, count);
 };
+
+/**
+ * Convert flashcard terms/definitions into quiz questions
+ * @param {Array} terms - Array of {term, definition} objects
+ * @param {number} count - Number of questions to generate
+ * @returns {Promise<Array>} Generated questions
+ */
+export const generateQuestionsFromTerms = async (terms, count = 5) => {
+  if (!Array.isArray(terms) || terms.length === 0) {
+    throw new Error('No terms provided to convert');
+  }
+
+  // Format terms into readable text for AI
+  const formattedTerms = terms
+    .filter(t => t.term && t.definition)
+    .map(t => `Term: "${t.term}" - Definition: "${t.definition}"`)
+    .join('\n');
+
+  if (!formattedTerms) {
+    throw new Error('No valid terms found to convert');
+  }
+
+  // Generate questions from the formatted terms
+  return generateQuestionsFromText(formattedTerms, Math.min(count, terms.length * 2));
+};

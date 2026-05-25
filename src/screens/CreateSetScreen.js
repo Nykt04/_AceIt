@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, Alert, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, Alert, Animated, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
+import { generateQuestionsFromTerms } from '../services/aiService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import EditableFlashcard from '../components/EditableFlashcard';
@@ -20,9 +21,11 @@ export default function CreateSetScreen() {
   const [terms, setTerms] = useState(editingSet?.terms ?? [{ term: '', definition: '' }]);
   const [questions, setQuestions] = useState(editingSet?.questions ?? []);
   const [saving, setSaving] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [showQuestionsEditor, setShowQuestionsEditor] = useState(false);
   const addTermScale = useRef(new Animated.Value(1)).current;
   const saveBtnScale = useRef(new Animated.Value(1)).current;
+  const convertBtnScale = useRef(new Animated.Value(1)).current;
   
   // Input refs for Enter key support
   const titleInputRef = useRef(null);
@@ -63,6 +66,48 @@ export default function CreateSetScreen() {
 
   const handleDeleteQuestion = (index) => {
     setQuestions((q) => q.filter((_, i) => i !== index));
+  };
+
+  const handleConvertToQuestions = async () => {
+    const validTerms = terms.filter((t) => t.term.trim() && t.definition.trim());
+    
+    if (validTerms.length === 0) {
+      Alert.alert('No terms', 'Add at least one term with both term and definition to convert to questions.');
+      return;
+    }
+
+    setConverting(true);
+    try {
+      Animated.sequence([
+        Animated.timing(convertBtnScale, {
+          toValue: 0.9,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(convertBtnScale, {
+          toValue: 1,
+          friction: 3,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      const generatedQuestions = await generateQuestionsFromTerms(validTerms, validTerms.length);
+      
+      if (!generatedQuestions || generatedQuestions.length === 0) {
+        Alert.alert('No questions generated', 'Try again or add more detailed terms.');
+        return;
+      }
+
+      // Add generated questions to existing ones
+      setQuestions((q) => [...q, ...generatedQuestions]);
+      Alert.alert('Success', `Generated ${generatedQuestions.length} questions from your ${validTerms.length} terms! 🎉`);
+    } catch (error) {
+      console.error('[CreateSet] Convert error:', error);
+      Alert.alert('Error', error.message || 'Failed to convert terms to questions');
+    } finally {
+      setConverting(false);
+    }
   };
 
   const save = async () => {
@@ -194,6 +239,27 @@ export default function CreateSetScreen() {
               <Text style={styles.addTermText}>+ Add term</Text>
             </TouchableOpacity>
           </Animated.View>
+
+          {/* Convert to Questions Section */}
+          {terms.filter((t) => t.term.trim() && t.definition.trim()).length > 0 && (
+            <Animated.View style={{ transform: [{ scale: convertBtnScale }], marginTop: 24 }}>
+              <TouchableOpacity 
+                style={styles.convertBtn} 
+                onPress={handleConvertToQuestions} 
+                disabled={converting}
+                activeOpacity={0.8}
+              >
+                {converting ? (
+                  <ActivityIndicator size="small" color={theme.secondary} />
+                ) : (
+                  <>
+                    <Text style={styles.convertBtnIcon}>✨</Text>
+                    <Text style={styles.convertBtnText}>Convert Terms to Questions</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -339,6 +405,29 @@ const createStyles = (theme) => StyleSheet.create({
   addTermText: { 
     fontSize: 17, 
     color: theme.primaryAccent, 
+    fontWeight: '700',
+  },
+  convertBtn: {
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: theme.primaryAccent,
+    flexDirection: 'row',
+    gap: 10,
+    shadowColor: theme.primaryAccent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  convertBtnIcon: {
+    fontSize: 18,
+  },
+  convertBtnText: {
+    fontSize: 17,
+    color: '#fff',
     fontWeight: '700',
   },
 });

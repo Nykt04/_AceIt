@@ -75,10 +75,10 @@ function RootNavigator() {
 
     // Determine the initial route name
     let initialRouteName = "LoginSignup";
-    if (!onboardingComplete) {
-        initialRouteName = "About";
-    } else if (isPasswordReset) {
+    if (isPasswordReset) {
         initialRouteName = "ResetPassword";
+    } else if (!onboardingComplete) {
+        initialRouteName = "About";
     } else if (isAuthenticated) {
         initialRouteName = "Home";
     }
