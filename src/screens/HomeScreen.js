@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   Pressable,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -20,338 +22,118 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { BrutalCard, BrutalButton, BrutalSkeleton, BrutalBadge } from '../components/brutal';
 
-const createStyles = (theme) => {
-  const borderColor = theme.border || '#121212';
-  const shadowColor = theme.shadow || '#121212';
-  const borderWidth = theme.borderWidth || 3;
-
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    centered: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
-    },
-    scrollContent: {
-      flexGrow: 1,
-      paddingBottom: 110,
-    },
-
-    // Header Hero Banner
-    heroBanner: {
-      marginHorizontal: 16,
-      marginTop: 16,
-      marginBottom: 16,
-      padding: 20,
-      borderRadius: 4,
-      backgroundColor: theme.card,
-      borderWidth: borderWidth,
-      borderColor: borderColor,
-      ...(Platform.OS === 'web' && {
-        boxShadow: `4px 4px 0px ${shadowColor}`,
-      }),
-    },
-    heroBadge: {
-      alignSelf: 'flex-start',
-      backgroundColor: theme.accent || '#FCD34D',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 3,
-      borderWidth: borderWidth,
-      borderColor: borderColor,
-      marginBottom: 10,
-    },
-    heroBadgeText: {
-      fontSize: 11,
-      fontWeight: '900',
-      color: '#121212',
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-    },
-    heroTitle: {
-      fontSize: 28,
-      fontWeight: '900',
-      color: theme.text,
-      letterSpacing: 0.5,
-      marginBottom: 6,
-    },
-    heroSubtitle: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      fontWeight: '600',
-      lineHeight: 20,
-    },
-
-    // Stats Grid
-    statsBanner: {
-      marginHorizontal: 16,
-      marginBottom: 20,
-    },
-    statsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    statCard: {
-      flex: 1,
-      minWidth: '47%',
-      borderRadius: 4,
-      padding: 14,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      borderWidth: borderWidth,
-      borderColor: borderColor,
-      backgroundColor: theme.card,
-      ...(Platform.OS === 'web' && {
-        boxShadow: `3px 3px 0px ${shadowColor}`,
-      }),
-    },
-    statCardContent: {
-      flex: 1,
-    },
-    statCardValue: {
-      fontSize: 24,
-      fontWeight: '900',
-      color: theme.text,
-    },
-    statCardLabel: {
-      fontSize: 12,
-      color: theme.textSecondary,
-      fontWeight: '800',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-      marginTop: 2,
-    },
-    statCardChange: {
-      fontSize: 11,
-      color: theme.success || '#10B981',
-      fontWeight: '800',
-      marginTop: 4,
-    },
-
-    // Study Sets Section
-    sectionHeader: {
-      marginHorizontal: 16,
-      marginBottom: 14,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 4,
-      backgroundColor: theme.card,
-      borderWidth: borderWidth,
-      borderColor: borderColor,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      ...(Platform.OS === 'web' && {
-        boxShadow: `3px 3px 0px ${shadowColor}`,
-      }),
-    },
-    sectionHeaderText: {
-      fontSize: 15,
-      fontWeight: '900',
-      color: theme.text,
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-    },
-    list: {
-      paddingHorizontal: 16,
-      gap: 14,
-    },
-
-    // Set Card
-    card: {
-      backgroundColor: theme.card,
-      borderRadius: 4,
-      padding: 16,
-      marginBottom: 14,
-      borderWidth: borderWidth,
-      borderColor: borderColor,
-    },
-    cardHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: 10,
-    },
-    cardTitle: {
-      fontSize: 18,
-      fontWeight: '900',
-      color: theme.text,
-      letterSpacing: 0.3,
-      marginBottom: 4,
-    },
-    cardDesc: {
-      fontSize: 13,
-      color: theme.textSecondary,
-      fontWeight: '600',
-      lineHeight: 18,
-    },
-    cardStats: {
-      flexDirection: 'row',
-      marginTop: 10,
-      gap: 8,
-      flexWrap: 'wrap',
-    },
-    progressBar: {
-      height: 8,
-      backgroundColor: theme.muted,
-      borderRadius: 2,
-      borderWidth: 2,
-      borderColor: borderColor,
-      marginTop: 12,
-      overflow: 'hidden',
-    },
-    progressFill: {
-      height: '100%',
-      backgroundColor: theme.primary,
-    },
-    cardMeta: {
-      fontSize: 12,
-      color: theme.textTertiary,
-      marginTop: 10,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-
-    // Delete Button
-    deleteBtn: {
-      padding: 8,
-      borderRadius: 4,
-      borderWidth: 2,
-      borderColor: borderColor,
-      backgroundColor: theme.isDark ? '#3E1E1E' : '#FFEBEB',
-    },
-
-    // Empty State
-    emptyContainer: {
-      paddingHorizontal: 20,
-      paddingVertical: 32,
-      marginHorizontal: 16,
-      borderRadius: 4,
-      backgroundColor: theme.card,
-      borderWidth: borderWidth,
-      borderColor: borderColor,
-      alignItems: 'center',
-      ...(Platform.OS === 'web' && {
-        boxShadow: `4px 4px 0px ${shadowColor}`,
-      }),
-    },
-    emptyTitle: {
-      fontSize: 22,
-      fontWeight: '900',
-      color: theme.text,
-      textAlign: 'center',
-      marginTop: 14,
-      marginBottom: 8,
-      letterSpacing: 0.5,
-    },
-    emptyDescription: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      textAlign: 'center',
-      marginBottom: 24,
-      lineHeight: 20,
-      fontWeight: '600',
-    },
-    emptyActions: {
-      width: '100%',
-      gap: 12,
-    },
-
-    // Floating Action Buttons
-    fabRow: {
-      position: 'absolute',
-      bottom: 20,
-      left: 16,
-      right: 16,
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      gap: 12,
-      zIndex: 20,
-    },
-  });
-};
-
-const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
+// Physical Deck Stack Card Component
+const PhysicalDeckCard = ({ item, index, navigation, onDelete, theme, cardWidth }) => {
   const [isDown, setIsDown] = useState(false);
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 220,
+        delay: Math.min(index * 40, 300),
+        useNativeDriver: Platform.OS !== 'web',
+      }),
       Animated.timing(opacityAnim, {
         toValue: 1,
-        duration: 250,
-        delay: Math.min(index * 40, 200),
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        friction: 8,
-        tension: 80,
-        delay: Math.min(index * 40, 200),
-        useNativeDriver: true,
+        duration: 220,
+        delay: Math.min(index * 40, 300),
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
-  }, [opacityAnim, slideAnim, index]);
-
-  const handlePressDelete = async () => {
-    soundManager.playButtonClick();
-    const proceed =
-      Platform.OS === 'web'
-        ? window.confirm(`Delete "${item.title}"? This action cannot be undone.`)
-        : await new Promise((res) => {
-            Alert.alert(
-              'Delete Set',
-              `Are you sure you want to delete "${item.title}"? This action cannot be undone.`,
-              [
-                { text: 'Cancel', style: 'cancel', onPress: () => res(false) },
-                { text: 'Delete', style: 'destructive', onPress: () => res(true) },
-              ]
-            );
-          });
-    if (!proceed) return;
-    await onDelete(item.id);
-  };
+  }, [index, opacityAnim, slideAnim]);
 
   const termCount = item.terms?.length || item.flashcards?.length || 0;
   const questionCount = item.questions?.length || 0;
   const totalCount = termCount + questionCount;
-  const createdDate = new Date(item.created_at);
-  const daysOld = Math.floor((new Date() - createdDate) / (1000 * 60 * 60 * 24));
-  const termPercentage = totalCount > 0 ? Math.round((termCount / totalCount) * 100) : 0;
 
-  const shadowColor = theme.shadow || '#121212';
-  const currentOffset = isDown ? 1 : 4;
+  const daysOld = Math.floor(
+    (new Date() - new Date(item.created_at || Date.now())) / (1000 * 60 * 60 * 24)
+  );
 
-  const webShadow = Platform.OS === 'web'
-    ? {
-        boxShadow: `${currentOffset}px ${currentOffset}px 0px ${shadowColor}`,
-        cursor: 'pointer',
-        transition: 'transform 0.08s ease, box-shadow 0.08s ease',
-      }
-    : {
-        shadowColor: shadowColor,
-        shadowOffset: { width: currentOffset, height: currentOffset },
-        shadowOpacity: 1,
-        shadowRadius: 0,
-        elevation: currentOffset,
-      };
+  const handlePressDelete = () => {
+    soundManager.playButtonClick();
+    if (Platform.OS === 'web') {
+      const ok = window.confirm(`Permanently delete deck "${item.title}"?`);
+      if (ok) onDelete(item.id);
+    } else {
+      Alert.alert(
+        'Delete Deck',
+        `Are you sure you want to delete "${item.title}"?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => onDelete(item.id),
+          },
+        ]
+      );
+    }
+  };
+
+  const borderColor = theme.border || '#111827';
+  const shadowColor = theme.shadow || '#111827';
+  const borderWidth = theme.borderWidth || 2;
+
+  // Deck badge logic
+  let badgeLabel = 'EMPTY';
+  let badgeColor = theme.muted;
+  let badgeTextColor = theme.text;
+
+  if (termCount > 0 && questionCount > 0) {
+    badgeLabel = 'MIXED DECK';
+    badgeColor = theme.accent || '#FCD34D';
+    badgeTextColor = '#111827';
+  } else if (termCount > 0) {
+    badgeLabel = `${termCount} TERMS`;
+    badgeColor = theme.primary;
+    badgeTextColor = '#FFFFFF';
+  } else if (questionCount > 0) {
+    badgeLabel = `${questionCount} QUESTIONS`;
+    badgeColor = theme.brandSecondary || '#EA580C';
+    badgeTextColor = '#FFFFFF';
+  }
+
+  const progressPercent = Math.min(100, Math.max(12, totalCount * 10));
 
   return (
     <Animated.View
-      style={{
-        opacity: opacityAnim,
-        transform: [{ translateY: slideAnim }],
-      }}
+      style={[
+        styles.deckWrapper,
+        {
+          width: cardWidth,
+          opacity: opacityAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
     >
+      {/* 3D Stack Effect - Bottom Offset Layer 2 */}
+      <View
+        style={[
+          styles.stackLayer2,
+          {
+            backgroundColor: theme.muted,
+            borderColor: borderColor,
+            borderWidth: borderWidth,
+          },
+        ]}
+      />
+      {/* 3D Stack Effect - Middle Offset Layer 1 */}
+      <View
+        style={[
+          styles.stackLayer1,
+          {
+            backgroundColor: theme.card,
+            borderColor: borderColor,
+            borderWidth: borderWidth,
+          },
+        ]}
+      />
+
+      {/* Main Front Deck Card */}
       <Pressable
         onPress={() => {
           soundManager.playButtonClick();
@@ -360,77 +142,132 @@ const AnimatedCard = ({ item, index, navigation, onDelete, theme, styles }) => {
         onPressIn={() => setIsDown(true)}
         onPressOut={() => setIsDown(false)}
         style={[
-          styles.card,
+          styles.mainDeckCard,
           {
+            backgroundColor: theme.card,
+            borderColor: borderColor,
+            borderWidth: borderWidth,
             transform: [
               { translateX: isDown ? 2 : 0 },
               { translateY: isDown ? 2 : 0 },
             ],
           },
-          webShadow,
+          Platform.OS === 'web' && {
+            boxShadow: isDown
+              ? `1px 1px 0px ${shadowColor}`
+              : `3px 3px 0px ${shadowColor}`,
+            cursor: 'pointer',
+            transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+          },
         ]}
       >
-        <View style={styles.cardHeader}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
-              {item.title}
-            </Text>
-            {item.description ? (
-              <Text style={styles.cardDesc} numberOfLines={2}>
-                {item.description}
-              </Text>
-            ) : null}
-          </View>
+        {/* Top Header: Badge + Delete Icon */}
+        <View style={styles.cardHeaderRow}>
+          <BrutalBadge
+            label={badgeLabel}
+            color={badgeColor}
+            textColor={badgeTextColor}
+          />
           <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={handlePressDelete}
-            accessibilityLabel={`Delete ${item.title}`}
+            style={[
+              styles.deleteBtn,
+              {
+                borderColor: borderColor,
+                backgroundColor: theme.isDark ? '#3E1F1F' : '#FEE2E2',
+              },
+            ]}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              handlePressDelete();
+            }}
+            accessibilityLabel={`Delete deck ${item.title}`}
           >
-            <MaterialIcons name="delete" size={18} color="#EF4444" />
+            <MaterialIcons name="delete-outline" size={17} color="#EF4444" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.cardStats}>
-          <BrutalBadge
-            label={`${totalCount} TOTAL`}
-            color={theme.primary}
-            textColor="#FFFFFF"
-          />
-          {termCount > 0 && (
-            <BrutalBadge
-              label={`${termCount} TERMS`}
-              color={theme.accent || '#FFDE59'}
-              textColor="#121212"
-            />
-          )}
-          {questionCount > 0 && (
-            <BrutalBadge
-              label={`${questionCount} QUESTIONS`}
-              color={theme.brandSecondary || '#FF5722'}
-              textColor="#FFFFFF"
-            />
-          )}
-          <BrutalBadge
-            label={daysOld === 0 ? 'TODAY' : `${daysOld}D AGO`}
-            color={theme.muted}
-            textColor={theme.text}
-          />
+        {/* Deck Title & Description */}
+        <View style={styles.cardContent}>
+          <Text
+            style={[styles.cardTitle, { color: theme.text }]}
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+          <Text
+            style={[styles.cardDesc, { color: theme.textSecondary }]}
+            numberOfLines={2}
+          >
+            {item.description ? item.description : 'No description provided for this deck.'}
+          </Text>
         </View>
 
-        <View style={styles.progressBar}>
+        {/* Deck Thickness / Card Count & Age */}
+        <View style={styles.cardMetaRow}>
+          <View
+            style={[
+              styles.thicknessBadge,
+              {
+                backgroundColor: theme.muted,
+                borderColor: borderColor,
+                borderWidth: 1.5,
+              },
+            ]}
+          >
+            <MaterialIcons name="layers" size={14} color={theme.text} />
+            <Text style={[styles.thicknessText, { color: theme.text }]}>
+              {totalCount} {totalCount === 1 ? 'ITEM' : 'ITEMS'}
+            </Text>
+          </View>
+          <Text style={[styles.ageText, { color: theme.textTertiary }]}>
+            {daysOld === 0 ? 'TODAY' : `${daysOld}D AGO`}
+          </Text>
+        </View>
+
+        {/* Mastery Progress Bar */}
+        <View
+          style={[
+            styles.progressBar,
+            {
+              backgroundColor: theme.muted,
+              borderColor: borderColor,
+            },
+          ]}
+        >
           <View
             style={[
               styles.progressFill,
-              { width: `${Math.min(100, Math.max(10, totalCount * 12))}%` },
+              {
+                width: `${progressPercent}%`,
+                backgroundColor: theme.primary,
+              },
             ]}
           />
         </View>
 
-        <Text style={styles.cardMeta}>
-          {totalCount > 0
-            ? `${termPercentage}% TERMS • ${100 - termPercentage}% QUESTIONS`
-            : 'EMPTY SET'}
-        </Text>
+        {/* Action Button: Study Deck */}
+        <TouchableOpacity
+          style={[
+            styles.studyButton,
+            {
+              backgroundColor: theme.primary,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `2px 2px 0px ${shadowColor}`,
+            },
+          ]}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            soundManager.playButtonClick();
+            navigation.navigate('SetDetail', { set: item });
+          }}
+          accessibilityLabel={`Study ${item.title}`}
+        >
+          <Text style={styles.studyButtonText}>STUDY DECK</Text>
+          <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" />
+        </TouchableOpacity>
       </Pressable>
     </Animated.View>
   );
@@ -441,7 +278,28 @@ export default function HomeScreen() {
   const { studySets, loading, refresh, deleteStudySet } = useStudy();
   const { theme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'TERMS' | 'QUESTIONS' | 'RECENT'
+
+  const { width } = useWindowDimensions();
+
+  // Responsive column calculation
+  const cardWidth = useMemo(() => {
+    const horizontalPadding = 32;
+    const gap = 16;
+    if (width >= 1024) {
+      // 3 columns on large screens
+      const available = width - horizontalPadding - gap * 2;
+      return Math.floor(available / 3);
+    } else if (width >= 640) {
+      // 2 columns on tablet / medium viewports
+      const available = width - horizontalPadding - gap;
+      return Math.floor(available / 2);
+    } else {
+      // 1 column on mobile screens
+      return width - horizontalPadding;
+    }
+  }, [width]);
 
   useEffect(() => {
     const unsub = navigation.addListener('focus', refresh);
@@ -472,7 +330,7 @@ export default function HomeScreen() {
       0
     );
 
-    const sevenDaysAgo = new Date(new Date() - 7 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const itemsThisWeek = studySets
       .filter((set) => new Date(set.created_at) > sevenDaysAgo)
       .reduce(
@@ -483,19 +341,44 @@ export default function HomeScreen() {
         0
       );
 
-    return {
-      totalItems,
-      totalTerms,
-      totalQuestions,
-      itemsThisWeek,
-      totalSets: studySets.length,
-    };
+    return { totalItems, totalTerms, totalQuestions, totalSets: studySets.length, itemsThisWeek };
   };
 
-  // Structured Skeleton Loader when fetching
-  if (loading) {
+  // Filtered study sets based on search & category pill
+  const filteredSets = useMemo(() => {
+    let result = [...studySets];
+
+    // Category filter
+    if (activeFilter === 'TERMS') {
+      result = result.filter(
+        (s) => (s.terms?.length || s.flashcards?.length || 0) > 0
+      );
+    } else if (activeFilter === 'QUESTIONS') {
+      result = result.filter((s) => (s.questions?.length || 0) > 0);
+    } else if (activeFilter === 'RECENT') {
+      result.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    }
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (s) =>
+          (s.title && s.title.toLowerCase().includes(q)) ||
+          (s.description && s.description.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [studySets, activeFilter, searchQuery]);
+
+  const borderColor = theme.border || '#111827';
+  const shadowColor = theme.shadow || '#111827';
+  const borderWidth = theme.borderWidth || 2;
+
+  if (loading && studySets.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <Navbar onMenuPress={() => setSidebarOpen(true)} />
         <View style={{ padding: 16 }}>
           <BrutalSkeleton height={110} style={{ marginBottom: 16 }} />
@@ -503,8 +386,10 @@ export default function HomeScreen() {
             <BrutalSkeleton height={80} style={{ flex: 1 }} />
             <BrutalSkeleton height={80} style={{ flex: 1 }} />
           </View>
-          <BrutalSkeleton height={140} style={{ marginBottom: 12 }} />
-          <BrutalSkeleton height={140} style={{ marginBottom: 12 }} />
+          <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
+            <BrutalSkeleton height={200} style={{ flex: 1, minWidth: 280 }} />
+            <BrutalSkeleton height={200} style={{ flex: 1, minWidth: 280 }} />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -513,7 +398,7 @@ export default function HomeScreen() {
   const stats = calculateStats();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <Navbar
         onMenuPress={() => {
           soundManager.playButtonClick();
@@ -524,13 +409,34 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Neubrutalism Hero Header */}
-        <View style={styles.heroBanner}>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>ACTIVE DASHBOARD</Text>
+        <View
+          style={[
+            styles.heroBanner,
+            {
+              backgroundColor: theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `4px 4px 0px ${shadowColor}`,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.heroBadge,
+              {
+                backgroundColor: theme.accent || '#FCD34D',
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+            ]}
+          >
+            <Text style={styles.heroBadgeText}>DASHBOARD</Text>
           </View>
-          <Text style={styles.heroTitle}>STUDY DECKS</Text>
-          <Text style={styles.heroSubtitle}>
-            High-contrast flashcard study system. Master your sets with tactile reviews.
+          <Text style={[styles.heroTitle, { color: theme.text }]}>STUDY DECKS</Text>
+          <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+            Master your knowledge with tactile flashcards and quizzes.
           </Text>
         </View>
 
@@ -538,60 +444,233 @@ export default function HomeScreen() {
         {studySets.length > 0 && (
           <View style={styles.statsBanner}>
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <MaterialIcons name="menu-book" size={32} color={theme.primary} />
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                  },
+                  Platform.OS === 'web' && {
+                    boxShadow: `3px 3px 0px ${shadowColor}`,
+                  },
+                ]}
+              >
+                <MaterialIcons name="menu-book" size={28} color={theme.primary} />
                 <View style={styles.statCardContent}>
-                  <Text style={styles.statCardValue}>{stats.totalItems}</Text>
-                  <Text style={styles.statCardLabel}>Total Items</Text>
-                  <Text style={styles.statCardChange}>+{stats.itemsThisWeek} this week</Text>
+                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalItems}</Text>
+                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Total Items</Text>
+                  <Text style={[styles.statCardChange, { color: theme.success || '#10B981' }]}>
+                    +{stats.itemsThisWeek} this week
+                  </Text>
                 </View>
               </View>
 
-              <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                  },
+                  Platform.OS === 'web' && {
+                    boxShadow: `3px 3px 0px ${shadowColor}`,
+                  },
+                ]}
+              >
                 <MaterialIcons
                   name="assignment"
-                  size={32}
-                  color={theme.accent || '#FFDE59'}
+                  size={28}
+                  color={theme.accent || '#FCD34D'}
                 />
                 <View style={styles.statCardContent}>
-                  <Text style={styles.statCardValue}>{stats.totalTerms}</Text>
-                  <Text style={styles.statCardLabel}>Terms</Text>
+                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalTerms}</Text>
+                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Terms</Text>
                 </View>
               </View>
 
-              <View style={styles.statCard}>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                  },
+                  Platform.OS === 'web' && {
+                    boxShadow: `3px 3px 0px ${shadowColor}`,
+                  },
+                ]}
+              >
                 <MaterialIcons
-                  name="help"
-                  size={32}
-                  color={theme.brandSecondary || '#FF5722'}
+                  name="help-outline"
+                  size={28}
+                  color={theme.brandSecondary || '#EA580C'}
                 />
                 <View style={styles.statCardContent}>
-                  <Text style={styles.statCardValue}>{stats.totalQuestions}</Text>
-                  <Text style={styles.statCardLabel}>Questions</Text>
+                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalQuestions}</Text>
+                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Questions</Text>
                 </View>
               </View>
 
-              <View style={styles.statCard}>
-                <MaterialIcons name="folder" size={32} color={theme.textSecondary} />
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                  },
+                  Platform.OS === 'web' && {
+                    boxShadow: `3px 3px 0px ${shadowColor}`,
+                  },
+                ]}
+              >
+                <MaterialIcons name="folder-open" size={28} color={theme.textSecondary} />
                 <View style={styles.statCardContent}>
-                  <Text style={styles.statCardValue}>{stats.totalSets}</Text>
-                  <Text style={styles.statCardLabel}>Sets</Text>
+                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalSets}</Text>
+                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Decks</Text>
                 </View>
               </View>
             </View>
           </View>
         )}
 
-        {/* Study Sets List or Empty State */}
+        {/* Quick Search & Filter Toolbar */}
+        {studySets.length > 0 && (
+          <View style={styles.toolbarContainer}>
+            {/* Search Input */}
+            <View
+              style={[
+                styles.searchBox,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: `3px 3px 0px ${shadowColor}`,
+                },
+              ]}
+            >
+              <MaterialIcons name="search" size={22} color={theme.textSecondary} />
+              <TextInput
+                style={[styles.searchInput, { color: theme.text }]}
+                placeholder="Search decks by title or keyword..."
+                placeholderTextColor={theme.textTertiary || '#9CA3AF'}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchQuery('')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <MaterialIcons name="close" size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Filter Category Pills */}
+            <View style={styles.filterPillsRow}>
+              {[
+                { key: 'ALL', label: `ALL (${studySets.length})` },
+                { key: 'TERMS', label: 'TERMS' },
+                { key: 'QUESTIONS', label: 'QUESTIONS' },
+                { key: 'RECENT', label: 'RECENT' },
+              ].map((pill) => {
+                const isActive = activeFilter === pill.key;
+                return (
+                  <TouchableOpacity
+                    key={pill.key}
+                    onPress={() => {
+                      soundManager.playButtonClick();
+                      setActiveFilter(pill.key);
+                    }}
+                    style={[
+                      styles.filterPill,
+                      {
+                        backgroundColor: isActive ? theme.primary : theme.card,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                      },
+                      Platform.OS === 'web' && {
+                        boxShadow: isActive
+                          ? `1px 1px 0px ${shadowColor}`
+                          : `2px 2px 0px ${shadowColor}`,
+                        cursor: 'pointer',
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterPillText,
+                        {
+                          color: isActive ? '#FFFFFF' : theme.text,
+                          fontWeight: isActive ? '900' : '700',
+                        },
+                      ]}
+                    >
+                      {pill.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Study Sets Grid Header */}
+        {studySets.length > 0 && (
+          <View
+            style={[
+              styles.sectionHeader,
+              {
+                backgroundColor: theme.card,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+              Platform.OS === 'web' && {
+                boxShadow: `3px 3px 0px ${shadowColor}`,
+              },
+            ]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialIcons name="style" size={22} color={theme.primary} />
+              <Text style={[styles.sectionHeaderText, { color: theme.text }]}>
+                DECKS ({filteredSets.length})
+              </Text>
+            </View>
+            <Text style={[styles.sectionHeaderSub, { color: theme.textSecondary }]}>
+              GRID VIEW
+            </Text>
+          </View>
+        )}
+
+        {/* Decks Responsive Grid or Empty States */}
         {studySets.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View
+            style={[
+              styles.emptyContainer,
+              {
+                backgroundColor: theme.card,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+              Platform.OS === 'web' && {
+                boxShadow: `4px 4px 0px ${shadowColor}`,
+              },
+            ]}
+          >
             <MaterialIcons
               name="library-books"
               size={54}
               color={theme.textTertiary}
             />
-            <Text style={styles.emptyTitle}>NO STUDY SETS YET</Text>
-            <Text style={styles.emptyDescription}>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>NO STUDY SETS YET</Text>
+            <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
               Create your first deck manually or generate one instantly using our AI assistant.
             </Text>
             <View style={styles.emptyActions}>
@@ -615,37 +694,60 @@ export default function HomeScreen() {
               />
             </View>
           </View>
+        ) : filteredSets.length === 0 ? (
+          <View
+            style={[
+              styles.emptyFilteredContainer,
+              {
+                backgroundColor: theme.card,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+              Platform.OS === 'web' && {
+                boxShadow: `4px 4px 0px ${shadowColor}`,
+              },
+            ]}
+          >
+            <MaterialIcons name="search-off" size={48} color={theme.textTertiary} />
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>NO MATCHING DECKS</Text>
+            <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
+              No decks found matching "{searchQuery}". Try a different search or filter.
+            </Text>
+            <BrutalButton
+              title="RESET FILTERS"
+              variant="outline"
+              onPress={() => {
+                soundManager.playButtonClick();
+                setSearchQuery('');
+                setActiveFilter('ALL');
+              }}
+            />
+          </View>
         ) : (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>YOUR DECKS ({studySets.length})</Text>
-              <MaterialIcons name="bolt" size={22} color={theme.accent || '#FFDE59'} />
-            </View>
-            <View style={styles.list}>
-              {studySets.map((item, index) => {
-                const setItem = { ...item, id: String(item.id) };
-                return (
-                  <AnimatedCard
-                    key={setItem.id}
-                    item={setItem}
-                    index={index}
-                    navigation={{
-                      ...navigation,
-                      navigate: (screen, params) => {
-                        const latestSet =
-                          studySets.find((s) => String(s.id) === String(item.id)) ||
-                          setItem;
-                        navigation.navigate(screen, { ...params, set: latestSet });
-                      },
-                    }}
-                    onDelete={handleDelete}
-                    theme={theme}
-                    styles={styles}
-                  />
-                );
-              })}
-            </View>
-          </>
+          <View style={styles.gridContainer}>
+            {filteredSets.map((item, index) => {
+              const setItem = { ...item, id: String(item.id) };
+              return (
+                <PhysicalDeckCard
+                  key={setItem.id}
+                  item={setItem}
+                  index={index}
+                  cardWidth={cardWidth}
+                  navigation={{
+                    ...navigation,
+                    navigate: (screen, params) => {
+                      const latestSet =
+                        studySets.find((s) => String(s.id) === String(item.id)) ||
+                        setItem;
+                      navigation.navigate(screen, { ...params, set: latestSet });
+                    },
+                  }}
+                  onDelete={handleDelete}
+                  theme={theme}
+                />
+              );
+            })}
+          </View>
         )}
       </ScrollView>
 
@@ -673,3 +775,307 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 110,
+  },
+
+  // Hero Banner
+  heroBanner: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 4,
+  },
+  heroBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 3,
+    marginBottom: 10,
+  },
+  heroBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#111827',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+
+  // Stats Grid
+  statsBanner: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '47%',
+    borderRadius: 4,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statCardContent: {
+    flex: 1,
+  },
+  statCardValue: {
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  statCardLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  statCardChange: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+
+  // Toolbar (Search & Filter Pills)
+  toolbarContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    padding: 0,
+    outlineStyle: 'none',
+  },
+  filterPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 4,
+  },
+  filterPillText: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+
+  // Section Header
+  sectionHeader: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeaderText: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  sectionHeaderSub: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+
+  // Decks Grid Container
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    gap: 16,
+    alignItems: 'stretch',
+  },
+
+  // Physical Deck Stack Styles
+  deckWrapper: {
+    position: 'relative',
+    marginBottom: 8,
+  },
+  stackLayer2: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: -6,
+    bottom: -6,
+    borderRadius: 4,
+    zIndex: 1,
+  },
+  stackLayer1: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 4,
+    zIndex: 2,
+  },
+  mainDeckCard: {
+    position: 'relative',
+    zIndex: 3,
+    borderRadius: 4,
+    padding: 16,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    minHeight: 240,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  deleteBtn: {
+    padding: 6,
+    borderRadius: 4,
+    borderWidth: 1.5,
+  },
+  cardContent: {
+    flex: 1,
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    marginBottom: 6,
+    lineHeight: 22,
+  },
+  cardDesc: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  thicknessBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 3,
+  },
+  thicknessText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  ageText: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  progressBar: {
+    height: 7,
+    borderRadius: 2,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  progressFill: {
+    height: '100%',
+  },
+  studyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 4,
+  },
+  studyButtonText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+
+  // Empty State
+  emptyContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 32,
+    marginHorizontal: 16,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  emptyFilteredContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 32,
+    marginHorizontal: 16,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  emptyDescription: {
+    fontSize: 13,
+    textAlign: 'center',
+    maxWidth: 320,
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  emptyActions: {
+    gap: 12,
+    width: '100%',
+    maxWidth: 280,
+  },
+
+  // FAB
+  fabRow: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    flexDirection: 'row',
+    gap: 12,
+  },
+});

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
   ScrollView,
   Alert,
   Platform,
-  ActivityIndicator,
+  useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -21,24 +22,163 @@ import soundManager from '../services/soundService';
 import EditableFlashcard from '../components/EditableFlashcard';
 import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 
+// Interactive Flip Index Card Component
+const InteractiveIndexCard = ({ term, definition, index, theme, cardWidth }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isDown, setIsDown] = useState(false);
+
+  const borderColor = theme.border || '#111827';
+  const shadowColor = theme.shadow || '#111827';
+  const borderWidth = theme.borderWidth || 2;
+
+  const handleSpeak = (e) => {
+    e.stopPropagation?.();
+    soundManager.playButtonClick();
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const textToSpeak = isFlipped ? definition : term;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleFlip = () => {
+    soundManager.playButtonClick();
+    setIsFlipped(!isFlipped);
+  };
+
+  return (
+    <Pressable
+      onPress={handleFlip}
+      onPressIn={() => setIsDown(true)}
+      onPressOut={() => setIsDown(false)}
+      style={[
+        styles.flipCard,
+        {
+          width: cardWidth,
+          backgroundColor: isFlipped ? (theme.isDark ? '#232731' : '#F4F5F7') : theme.card,
+          borderColor: borderColor,
+          borderWidth: borderWidth,
+          transform: [
+            { translateX: isDown ? 2 : 0 },
+            { translateY: isDown ? 2 : 0 },
+          ],
+        },
+        Platform.OS === 'web' && {
+          boxShadow: isDown
+            ? `1px 1px 0px ${shadowColor}`
+            : `3px 3px 0px ${shadowColor}`,
+          cursor: 'pointer',
+          transition: 'transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease',
+        },
+      ]}
+      accessibilityLabel={`Card ${index + 1}: ${isFlipped ? 'Definition' : 'Term'}. Tap to flip.`}
+    >
+      {/* Card Header Strip */}
+      <View style={styles.flipCardHeader}>
+        <View style={styles.flipCardHeaderLeft}>
+          <View
+            style={[
+              styles.cardNumberBadge,
+              {
+                backgroundColor: theme.muted,
+                borderColor: borderColor,
+                borderWidth: 1.5,
+              },
+            ]}
+          >
+            <Text style={[styles.cardNumberText, { color: theme.text }]}>#{index + 1}</Text>
+          </View>
+          <BrutalBadge
+            label={isFlipped ? 'DEFINITION' : 'TERM'}
+            color={isFlipped ? (theme.accent || '#FCD34D') : theme.primary}
+            textColor={isFlipped ? '#111827' : '#FFFFFF'}
+          />
+        </View>
+
+        {Platform.OS === 'web' && (
+          <TouchableOpacity
+            onPress={handleSpeak}
+            style={[
+              styles.speakButton,
+              {
+                borderColor: borderColor,
+                borderWidth: 1.5,
+                backgroundColor: theme.card,
+              },
+            ]}
+            accessibilityLabel="Speak card text"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="volume-up" size={16} color={theme.text} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Card Main Body */}
+      <View style={styles.flipCardBody}>
+        {isFlipped ? (
+          <Text style={[styles.definitionText, { color: theme.text }]}>
+            {definition || 'No definition provided.'}
+          </Text>
+        ) : (
+          <Text style={[styles.termText, { color: theme.text }]}>
+            {term || 'Empty term'}
+          </Text>
+        )}
+      </View>
+
+      {/* Card Footer Hint */}
+      <View style={styles.flipCardFooter}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <MaterialIcons
+            name={isFlipped ? 'replay' : 'flip'}
+            size={14}
+            color={theme.textTertiary}
+          />
+          <Text style={[styles.flipHintText, { color: theme.textTertiary }]}>
+            {isFlipped ? 'TAP TO SHOW TERM' : 'TAP TO REVEAL DEFINITION'}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+};
+
 export default function SetDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { theme } = useTheme();
   const { studySets, deleteStudySet, updateStudySet } = useStudy();
   const setFromParams = route.params?.set;
-  const [showFlashcardEditor, setShowFlashcardEditor] = useState(false);
+  const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'edit'
   const [set, setSet] = useState(null);
   const [converting, setConverting] = useState(false);
+
+  const { width } = useWindowDimensions();
+
+  // Responsive column width for index cards grid
+  const cardWidth = useMemo(() => {
+    const horizontalPadding = 32;
+    const gap = 14;
+    if (width >= 640) {
+      // 2 columns on tablet and desktop
+      const available = width - horizontalPadding - gap;
+      return Math.floor(available / 2);
+    } else {
+      // 1 column on mobile
+      return width - horizontalPadding;
+    }
+  }, [width]);
 
   useEffect(() => {
     const currentSet = studySets.find((s) => s.id === setFromParams?.id) || setFromParams;
     setSet(currentSet);
   }, [studySets, setFromParams]);
 
-  const borderColor = theme.border || '#121212';
-  const shadowColor = theme.shadow || '#121212';
-  const borderWidth = theme.borderWidth || 3;
+  const borderColor = theme.border || '#111827';
+  const shadowColor = theme.shadow || '#111827';
+  const borderWidth = theme.borderWidth || 2;
 
   if (!set) {
     return (
@@ -66,7 +206,7 @@ export default function SetDetailScreen() {
     soundManager.playButtonClick();
     const proceed =
       Platform.OS === 'web'
-        ? window.confirm(`Delete "${set.title}"?`)
+        ? window.confirm(`Permanently delete deck "${set.title}"?`)
         : await new Promise((res) => {
             Alert.alert('Delete set', `Delete "${set.title}"?`, [
               { text: 'Cancel', style: 'cancel', onPress: () => res(false) },
@@ -107,7 +247,7 @@ export default function SetDetailScreen() {
       if (window.confirm(`Delete "${termName}"?`)) performDelete();
     } else {
       Alert.alert('Delete Term', `Delete "${termName}"?`, [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel', onPress: () => {} },
         { text: 'Delete', style: 'destructive', onPress: performDelete },
       ]);
     }
@@ -141,12 +281,14 @@ export default function SetDetailScreen() {
   };
 
   const handleAddTerm = async () => {
+    soundManager.playButtonClick();
     const updatedTerms = [...(set.terms || []), { term: '', definition: '' }];
     await updateStudySet(set.id, { terms: updatedTerms });
+    setViewMode('edit');
   };
 
   const handleConvertToQuestions = async () => {
-    const validTerms = (set.terms || []).filter((t) => t.term.trim() && t.definition.trim());
+    const validTerms = (set.terms || []).filter((t) => t.term?.trim() && t.definition?.trim());
     if (validTerms.length === 0) {
       Alert.alert('No terms', 'Add at least one term with both term and definition to convert.');
       return;
@@ -188,12 +330,15 @@ export default function SetDetailScreen() {
           title="BACK TO DECKS"
           variant="outline"
           icon={<MaterialIcons name="arrow-back" size={18} color={theme.text} />}
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            soundManager.playButtonClick();
+            navigation.goBack();
+          }}
         />
         <BrutalBadge
           label={`${termsOnly + questionsOnly} ITEMS`}
-          color={theme.accent || '#FFDE59'}
-          textColor="#121212"
+          color={theme.accent || '#FCD34D'}
+          textColor="#111827"
         />
       </View>
 
@@ -215,7 +360,12 @@ export default function SetDetailScreen() {
             />
             <BrutalBadge
               label={`${questionsOnly} QUESTIONS`}
-              color={theme.brandSecondary || '#FF5722'}
+              color={theme.brandSecondary || '#EA580C'}
+              textColor="#FFFFFF"
+            />
+            <BrutalBadge
+              label="READY TO STUDY"
+              color={theme.success || '#10B981'}
               textColor="#FFFFFF"
             />
           </View>
@@ -228,7 +378,7 @@ export default function SetDetailScreen() {
               STUDY MODES
             </Text>
 
-            <View style={styles.modeCardsRow}>
+            <View style={[styles.modeCardsRow, width >= 640 && { flexDirection: 'row' }]}>
               {/* Flashcards Mode */}
               <Pressable
                 onPress={() => {
@@ -237,6 +387,7 @@ export default function SetDetailScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.modeCard,
+                  width >= 640 && { flex: 1 },
                   {
                     backgroundColor: theme.card,
                     borderColor: borderColor,
@@ -249,7 +400,7 @@ export default function SetDetailScreen() {
                   Platform.OS === 'web' && {
                     boxShadow: pressed
                       ? `1px 1px 0px ${shadowColor}`
-                      : `4px 4px 0px ${shadowColor}`,
+                      : `3px 3px 0px ${shadowColor}`,
                     cursor: 'pointer',
                     transition: 'transform 0.08s ease, box-shadow 0.08s ease',
                   },
@@ -258,11 +409,15 @@ export default function SetDetailScreen() {
                 <View
                   style={[
                     styles.modeStripe,
-                    { backgroundColor: theme.primary, borderBottomWidth: borderWidth, borderBottomColor: borderColor },
+                    {
+                      backgroundColor: theme.primary,
+                      borderBottomWidth: borderWidth,
+                      borderBottomColor: borderColor,
+                    },
                   ]}
                 >
-                  <MaterialIcons name="style" size={24} color="#FFFFFF" />
-                  <Text style={styles.modeStripeTitle}>FLASHCARDS</Text>
+                  <MaterialIcons name="style" size={22} color="#FFFFFF" />
+                  <Text style={styles.modeStripeTitle}>FLASHCARDS MODE</Text>
                 </View>
                 <View style={styles.modeBody}>
                   <Text style={[styles.modeDesc, { color: theme.textSecondary }]}>
@@ -282,6 +437,7 @@ export default function SetDetailScreen() {
                 }}
                 style={({ pressed }) => [
                   styles.modeCard,
+                  width >= 640 && { flex: 1 },
                   {
                     backgroundColor: theme.card,
                     borderColor: borderColor,
@@ -294,7 +450,7 @@ export default function SetDetailScreen() {
                   Platform.OS === 'web' && {
                     boxShadow: pressed
                       ? `1px 1px 0px ${shadowColor}`
-                      : `4px 4px 0px ${shadowColor}`,
+                      : `3px 3px 0px ${shadowColor}`,
                     cursor: 'pointer',
                     transition: 'transform 0.08s ease, box-shadow 0.08s ease',
                   },
@@ -304,23 +460,23 @@ export default function SetDetailScreen() {
                   style={[
                     styles.modeStripe,
                     {
-                      backgroundColor: theme.brandSecondary || '#FF5722',
+                      backgroundColor: theme.brandSecondary || '#EA580C',
                       borderBottomWidth: borderWidth,
                       borderBottomColor: borderColor,
                     },
                   ]}
                 >
-                  <MaterialIcons name="quiz" size={24} color="#FFFFFF" />
+                  <MaterialIcons name="psychology" size={22} color="#FFFFFF" />
                   <Text style={styles.modeStripeTitle}>QUIZ MODE</Text>
                 </View>
                 <View style={styles.modeBody}>
                   <Text style={[styles.modeDesc, { color: theme.textSecondary }]}>
-                    Multiple choice and True/False questions with live score.
+                    Multiple choice challenge with immediate grading.
                   </Text>
                   <Text
                     style={[
                       styles.modeAction,
-                      { color: theme.brandSecondary || '#FF5722' },
+                      { color: theme.brandSecondary || '#EA580C' },
                     ]}
                   >
                     START QUIZ →
@@ -329,28 +485,151 @@ export default function SetDetailScreen() {
               </Pressable>
             </View>
 
-            {/* Flashcard Editor Toggle */}
-            <BrutalButton
-              title={showFlashcardEditor ? 'HIDE ITEM EDITOR' : 'EDIT FLASHCARDS & QUESTIONS'}
-              variant="outline"
-              icon={
-                <MaterialIcons
-                  name={showFlashcardEditor ? 'expand-less' : 'edit'}
-                  size={18}
-                  color={theme.text}
-                />
-              }
-              onPress={() => setShowFlashcardEditor(!showFlashcardEditor)}
-              style={{ marginTop: 8, marginBottom: 14 }}
-            />
+            {/* Deck Cards Section: View Switcher (Flip Grid vs Edit Mode) */}
+            <View style={styles.cardsHeaderSection}>
+              <View style={styles.cardsHeaderTitleRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MaterialIcons name="grid-view" size={20} color={theme.primary} />
+                  <Text style={[styles.sectionHeading, { color: theme.text, marginBottom: 0 }]}>
+                    DECK CARDS ({termsOnly})
+                  </Text>
+                </View>
 
-            {showFlashcardEditor && (
+                {/* View Mode Segmented Controls */}
+                <View
+                  style={[
+                    styles.segmentedContainer,
+                    {
+                      backgroundColor: theme.muted,
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                  ]}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      soundManager.playButtonClick();
+                      setViewMode('preview');
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      viewMode === 'preview' && {
+                        backgroundColor: theme.card,
+                        borderColor: borderColor,
+                        borderWidth: 1.5,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="flip"
+                      size={15}
+                      color={viewMode === 'preview' ? theme.primary : theme.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.segmentBtnText,
+                        {
+                          color: viewMode === 'preview' ? theme.text : theme.textSecondary,
+                          fontWeight: viewMode === 'preview' ? '900' : '700',
+                        },
+                      ]}
+                    >
+                      FLIP GRID
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      soundManager.playButtonClick();
+                      setViewMode('edit');
+                    }}
+                    style={[
+                      styles.segmentBtn,
+                      viewMode === 'edit' && {
+                        backgroundColor: theme.card,
+                        borderColor: borderColor,
+                        borderWidth: 1.5,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="edit"
+                      size={15}
+                      color={viewMode === 'edit' ? theme.primary : theme.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.segmentBtnText,
+                        {
+                          color: viewMode === 'edit' ? theme.text : theme.textSecondary,
+                          fontWeight: viewMode === 'edit' ? '900' : '700',
+                        },
+                      ]}
+                    >
+                      EDIT CARDS
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+
+            {/* Display: Flip-Card Grid Preview */}
+            {viewMode === 'preview' ? (
+              <View>
+                {set.terms && set.terms.length > 0 ? (
+                  <View style={styles.cardsGridContainer}>
+                    {set.terms.map((term, index) => (
+                      <InteractiveIndexCard
+                        key={`preview-card-${index}`}
+                        term={term.term}
+                        definition={term.definition}
+                        index={index}
+                        theme={theme}
+                        cardWidth={cardWidth}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.emptyBox,
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.emptyTitle, { color: theme.text }]}>NO TERMS IN DECK</Text>
+                    <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                      Add your first flashcard term to start previewing and studying.
+                    </Text>
+                    <BrutalButton
+                      title="+ ADD FIRST TERM"
+                      variant="primary"
+                      onPress={handleAddTerm}
+                    />
+                  </View>
+                )}
+
+                {set.terms && set.terms.length > 0 && (
+                  <BrutalButton
+                    title="+ ADD NEW TERM"
+                    variant="outline"
+                    icon={<MaterialIcons name="add" size={18} color={theme.text} />}
+                    onPress={handleAddTerm}
+                    style={{ marginTop: 14 }}
+                  />
+                )}
+              </View>
+            ) : (
+              /* Display: Full Inline Editable Cards */
               <View style={styles.editorContainer}>
                 {set.terms && set.terms.length > 0 && (
                   <View style={{ marginBottom: 18 }}>
                     <View style={styles.editorHeaderRow}>
                       <Text style={[styles.editorSectionTitle, { color: theme.text }]}>
-                        TERMS ({set.terms.length})
+                        EDITING TERMS ({set.terms.length})
                       </Text>
                       <BrutalButton
                         title="+ ADD TERM"
@@ -373,24 +652,25 @@ export default function SetDetailScreen() {
                     ))}
                   </View>
                 )}
+              </View>
+            )}
 
-                {set.questions && set.questions.length > 0 && (
-                  <View>
-                    <Text style={[styles.editorSectionTitle, { color: theme.text, marginBottom: 10 }]}>
-                      QUESTIONS ({set.questions.length})
-                    </Text>
-                    {set.questions.map((question, index) => (
-                      <EditableFlashcard
-                        key={`question-${index}`}
-                        term={question.question || question.text || 'Question'}
-                        definition={question.answer || ''}
-                        index={index}
-                        onEdit={handleEditQuestion}
-                        onDelete={handleDeleteQuestion}
-                      />
-                    ))}
-                  </View>
-                )}
+            {/* Questions Bank Section */}
+            {set.questions && set.questions.length > 0 && (
+              <View style={{ marginTop: 20 }}>
+                <Text style={[styles.sectionHeading, { color: theme.text }]}>
+                  QUESTION BANK ({set.questions.length})
+                </Text>
+                {set.questions.map((question, index) => (
+                  <EditableFlashcard
+                    key={`question-${index}`}
+                    term={question.question || question.text || 'Question'}
+                    definition={question.answer || ''}
+                    index={index}
+                    onEdit={handleEditQuestion}
+                    onDelete={handleDeleteQuestion}
+                  />
+                ))}
               </View>
             )}
           </View>
@@ -499,9 +779,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginTop: 8,
+    flexWrap: 'wrap',
   },
   modesSection: {
-    marginTop: 10,
+    marginTop: 14,
     marginBottom: 16,
   },
   sectionHeading: {
@@ -513,7 +794,7 @@ const styles = StyleSheet.create({
   },
   modeCardsRow: {
     gap: 14,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   modeCard: {
     borderRadius: 4,
@@ -546,6 +827,112 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
   },
+
+  // Cards Header Section with Segmented View Toggle
+  cardsHeaderSection: {
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  cardsHeaderTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  segmentedContainer: {
+    flexDirection: 'row',
+    borderRadius: 4,
+    padding: 3,
+    gap: 4,
+  },
+  segmentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 3,
+  },
+  segmentBtnText: {
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+
+  // Flip Index Cards Grid
+  cardsGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    alignItems: 'stretch',
+  },
+  flipCard: {
+    borderRadius: 4,
+    padding: 16,
+    minHeight: 170,
+    justifyContent: 'space-between',
+    flexDirection: 'column',
+  },
+  flipCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  flipCardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardNumberBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 3,
+  },
+  cardNumberText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  speakButton: {
+    padding: 4,
+    borderRadius: 3,
+  },
+  flipCardBody: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  termText: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  definitionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  flipCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(150, 150, 150, 0.2)',
+    paddingTop: 8,
+    marginTop: 6,
+  },
+  flipHintText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+
+  // Editor Styles
   editorContainer: {
     marginTop: 10,
   },
@@ -579,7 +966,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   utilitiesSection: {
-    marginTop: 14,
+    marginTop: 20,
   },
   utilityGrid: {
     gap: 10,
