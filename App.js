@@ -153,6 +153,7 @@ function RootNavigator() {
                 {isAuthenticated && (
                   <>
                     <Stack.Screen name="Home" component={HomeScreen} />
+                    <Stack.Screen name="About" component={AboutScreen} />
                     <Stack.Screen name="CreateSet" component={CreateSetScreen} />
                     <Stack.Screen name="SetDetail" component={SetDetailScreen} />
                     <Stack.Screen name="QuizSettings" component={QuizSettingsScreen} />
