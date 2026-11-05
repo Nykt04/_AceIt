@@ -2,274 +2,291 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  CheckBox,
-  Alert,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { showError } from '../services/notificationService';
+import soundManager from '../services/soundService';
+import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 
 export default function TermsAndConditionsScreen() {
   const navigation = useNavigation();
-  const { isAuthenticated, completeOnboarding } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
   const [accepted, setAccepted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [agreeError, setAgreeError] = useState(false);
 
-  // Debug logging
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 3;
+
   useEffect(() => {
-    console.log('[TermsAndConditions] Screen mounted. isAuthenticated:', isAuthenticated);
+    console.log('[TermsAndConditions] Mounted. isAuthenticated:', isAuthenticated);
   }, [isAuthenticated]);
 
-  const handleAccept = async () => {
-    if (!accepted) {
+  const handleAccept = () => {
+    soundManager.playButtonClick();
+    if (!accepted && !isAuthenticated) {
       setAgreeError(true);
-      showError('Terms Not Accepted', 'Please click the checkbox to agree to the Terms & Conditions');
+      showError('Terms Not Accepted', 'Please check the agreement box before proceeding.');
       setTimeout(() => setAgreeError(false), 3000);
       return;
     }
 
-    setLoading(true);
-    try {
-      if (!isAuthenticated) {
-        // Onboarding flow - navigate to Privacy Policy
-        console.log('[TermsAndConditions] Navigating to Privacy Policy...');
-        navigation.navigate('PrivacyPolicy');
-      } else {
-        // Authenticated user viewing T&C - navigate to Home
-        setLoading(false);
-        navigation.replace('Home');
-      }
-    } catch (error) {
-      console.error('[TermsAndConditions] Error accepting T&C:', error);
-      showError('Error', 'Failed to save acceptance. Please try again.');
-      setLoading(false);
+    if (!isAuthenticated) {
+      navigation.navigate('PrivacyPolicy');
+    } else {
+      navigation.replace('Home');
     }
   };
 
   const handleDecline = () => {
+    soundManager.playButtonClick();
     if (isAuthenticated) {
-      // Just go back if authenticated user
       navigation.goBack();
       return;
     }
-
-    // For onboarding, show a message
     showError(
-      'Terms Not Accepted',
-      'You must accept the Terms & Conditions to use AceIt. Please click "I Agree" to continue.'
+      'Terms Required',
+      'You must accept the Terms & Conditions to use AceIt.'
     );
   };
 
+  const SECTIONS = [
+    {
+      id: '1',
+      title: '1. SERVICE PURPOSE & FAIR USE',
+      accent: theme.primary,
+      summary: 'AceIt is an educational study engine built for student success.',
+      points: [
+        'Study materials, decks, and tests created are for personal learning and exam prep.',
+        'You agree not to use AceIt for academic dishonesty, unauthorized test sharing, or exam cheating.',
+        'The platform is provided as-is with continuous reliability and performance updates.',
+      ],
+    },
+    {
+      id: '2',
+      title: '2. USER CONTENT & OWNERSHIP',
+      accent: theme.accent || '#FFDE59',
+      summary: 'You retain 100% full intellectual property ownership of your decks.',
+      points: [
+        'All flashcards, questions, and notes you create remain entirely your property.',
+        'We do not sell, license, or claim ownership over your uploaded study data.',
+        'You are responsible for ensuring your uploads do not violate third-party copyrights.',
+      ],
+    },
+    {
+      id: '3',
+      title: '3. AI-GENERATED CONTENT ADVISORY',
+      accent: theme.brandSecondary || '#FF5722',
+      summary: 'AI question generation is an assistant tool, not an infallible authority.',
+      points: [
+        'AI extracts and generates flashcards based on your provided study material.',
+        'Always review and verify critical formulas, dates, and definitions before exams.',
+        'AceIt is not liable for academic grade outcomes resulting from unverified AI cards.',
+      ],
+    },
+    {
+      id: '4',
+      title: '4. ACCOUNT SECURITY & PRIVACY',
+      accent: theme.success || '#10B981',
+      summary: 'Your account and data are secured with industry-standard encryption.',
+      points: [
+        'Keep your account credentials confidential and report any unauthorized access immediately.',
+        'Study sets are synced securely using encrypted Supabase PostgreSQL storage.',
+        'For details on data collection and retention, consult our Privacy Policy.',
+      ],
+    },
+    {
+      id: '5',
+      title: '5. ACCEPTABLE CONDUCT & PROHIBITIONS',
+      accent: theme.isDark ? '#333333' : '#E5E5E0',
+      summary: 'Strict zero-tolerance policy for abuse, exploitation, or malicious activity.',
+      points: [
+        'No automated scraping, denial-of-service attempts, or reverse-engineering.',
+        'No uploading malicious scripts, viruses, or offensive content.',
+        'Violations result in immediate suspension or permanent account termination.',
+      ],
+    },
+  ];
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {isAuthenticated && (
-        <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={[styles.backButton, { color: theme.primaryAccent }]}>← Back</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
-        showsVerticalScrollIndicator={true}
-        scrollEventThrottle={16}
+      {/* Top Bar */}
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: borderColor,
+            borderBottomWidth: borderWidth,
+          },
+        ]}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Terms & Conditions</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            {isAuthenticated ? 'Review our terms' : 'Please read and accept to continue'}
-          </Text>
-        </View>
+        <BrutalButton
+          title={isAuthenticated ? 'BACK' : 'ABOUT'}
+          variant="outline"
+          icon={<MaterialIcons name="arrow-back" size={18} color={theme.text} />}
+          onPress={() => (isAuthenticated ? navigation.goBack() : navigation.navigate('About'))}
+          style={{ minHeight: 38, paddingVertical: 6, paddingHorizontal: 12 }}
+        />
+        <BrutalBadge label="LEGAL CONTRACT" color={theme.accent || '#FFDE59'} textColor="#121212" />
+      </View>
 
-        {/* T&C Content */}
-        <View style={[styles.contentBox, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>1. Service Agreement</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            By using Study Buddy, you agree to comply with these terms and conditions. This service is provided as-is for educational purposes to help students create and manage study materials.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>2. User Responsibilities</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            • You are responsible for maintaining the confidentiality of your account credentials{'\n'}
-            • You agree not to use the service for any unlawful or harmful purposes{'\n'}
-            • You will not upload or share content that infringes on intellectual property rights{'\n'}
-            • You agree to use the service in accordance with all applicable laws and regulations
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>3. Content and IP Rights</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            You retain ownership of all content you create in Study Buddy. By uploading content, you grant us a license to use it solely for providing and improving our service. We do not claim ownership of your study materials.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>4. Data Privacy</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We are committed to protecting your personal information. Your data is stored securely and will not be shared with third parties without your consent, except as required by law. For details, please review our Privacy Policy.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>5. Limitation of Liability</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            Study Buddy is provided on an "as-is" basis. We are not liable for any damages resulting from your use of the service. This includes but is not limited to lost data, interruptions, or inaccuracies in AI-generated content.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>6. Acceptable Use</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            You agree not to:
-            {'\n'}• Attempt to hack, reverse-engineer, or compromise the service{'\n'}
-            • Engage in harassment or bullying{'\n'}
-            • Upload viruses, malware, or harmful code{'\n'}
-            • Spam or abuse the service{'\n'}
-            • Impersonate others or provide false information
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>7. Modifications</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We reserve the right to modify these terms at any time. Continued use of Study Buddy after modifications constitutes acceptance of the updated terms. We will notify users of significant changes.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>8. Termination</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We reserve the right to suspend or terminate your account if you violate these terms or engage in any prohibited conduct.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>9. Contact Us</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            If you have any questions about these terms, please contact us through the Help & Support section in the app.
-          </Text>
-
-          <Text style={[styles.lastUpdated, { color: theme.textTertiary }]}>
-            Last Updated: {new Date().toLocaleDateString()}
-          </Text>
-        </View>
-
-        {/* Checkbox */}
-        <View style={styles.checkboxContainer}>
-          <TouchableOpacity
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Hero Header */}
+        <View
+          style={[
+            styles.heroCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `4px 4px 0px ${shadowColor}`,
+            },
+          ]}
+        >
+          <View
             style={[
-              styles.checkbox,
+              styles.heroStripe,
               {
-                backgroundColor: accepted ? theme.primaryAccent : theme.secondary,
-                borderColor: theme.border,
-                borderWidth: agreeError ? 2 : 1,
-                borderColor: agreeError ? '#ef4444' : theme.border,
+                backgroundColor: theme.primary,
+                borderBottomColor: borderColor,
+                borderBottomWidth: borderWidth,
               },
             ]}
-            onPress={() => {
-              setAccepted(!accepted);
-              setAgreeError(false);
-            }}
           >
-            {accepted && <Text style={[styles.checkmark, { color: theme.background }]}>✓</Text>}
-          </TouchableOpacity>
-          <Text style={[styles.checkboxLabel, { color: theme.text }]}>
-            I have read and agree to the Terms & Conditions
-          </Text>
+            <MaterialIcons name="gavel" size={20} color="#FFFFFF" />
+            <Text style={styles.heroStripeText}>TERMS OF SERVICE</Text>
+          </View>
+          <View style={styles.heroBody}>
+            <Text style={[styles.heroTitle, { color: theme.text }]}>TERMS & CONDITIONS</Text>
+            <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+              Please review the AceIt terms governing your study decks, data ownership, and fair use.
+            </Text>
+            <Text style={[styles.heroDate, { color: theme.textTertiary }]}>
+              EFFECTIVE DATE: NOVEMBER 2026 • VERSION 2.0
+            </Text>
+          </View>
         </View>
 
-        {/* Error Message */}
-        {agreeError && !isAuthenticated && (
-          <View style={[styles.errorMessage, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <MaterialIcons name="warning" size={20} color="#dc2626" />
-              <Text style={[styles.errorText, { color: '#dc2626' }]}>
-                Please agree to the Terms & Conditions to continue
+        {/* Section Cards */}
+        {SECTIONS.map((sec) => (
+          <BrutalCard
+            key={sec.id}
+            accentColor={sec.accent}
+            headerTitle={sec.title}
+            style={{ marginBottom: 14 }}
+          >
+            <View style={styles.sectionSummaryBox}>
+              <Text style={[styles.sectionSummaryText, { color: theme.text }]}>
+                {sec.summary}
               </Text>
             </View>
+            <View style={styles.pointsList}>
+              {sec.points.map((pt, i) => (
+                <View key={i} style={styles.pointRow}>
+                  <View
+                    style={[
+                      styles.bulletSquare,
+                      { backgroundColor: theme.text, borderColor: borderColor },
+                    ]}
+                  />
+                  <Text style={[styles.pointText, { color: theme.textSecondary }]}>{pt}</Text>
+                </View>
+              ))}
+            </View>
+          </BrutalCard>
+        ))}
+
+        {/* Agreement Toggle Card */}
+        <Pressable
+          onPress={() => {
+            soundManager.playButtonClick();
+            setAccepted(!accepted);
+            setAgreeError(false);
+          }}
+          style={({ pressed }) => [
+            styles.agreementCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: agreeError ? '#EF4444' : borderColor,
+              borderWidth: borderWidth,
+              transform: [
+                { translateX: pressed ? 2 : 0 },
+                { translateY: pressed ? 2 : 0 },
+              ],
+            },
+            Platform.OS === 'web' && {
+              boxShadow: pressed ? `1px 1px 0px ${shadowColor}` : `4px 4px 0px ${shadowColor}`,
+              cursor: 'pointer',
+              transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.checkboxBox,
+              {
+                backgroundColor: accepted ? (theme.primary || '#2563EB') : theme.background,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+            ]}
+          >
+            {accepted && <MaterialIcons name="check" size={22} color="#FFFFFF" />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.agreementLabel, { color: theme.text }]}>
+              I have read, understood, and accept the Terms & Conditions
+            </Text>
+            <Text style={[styles.agreementSublabel, { color: theme.textSecondary }]}>
+              Mandatory to create, sync, and study decks with AceIt.
+            </Text>
+          </View>
+        </Pressable>
+
+        {agreeError && (
+          <View
+            style={[
+              styles.errorBanner,
+              {
+                backgroundColor: '#FEE2E2',
+                borderColor: '#EF4444',
+                borderWidth: borderWidth,
+              },
+            ]}
+          >
+            <MaterialIcons name="error" size={20} color="#EF4444" />
+            <Text style={styles.errorText}>
+              Please check the agreement box above to accept the terms.
+            </Text>
           </View>
         )}
 
-        {/* Buttons */}
-        {/* Buttons */}
-        <View>
-          {!isAuthenticated && (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.goBackButton,
-                  { backgroundColor: theme.secondary, borderColor: theme.border },
-                ]}
-                onPress={() => navigation.navigate('About')}
-                disabled={loading}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.buttonText, { color: theme.text }]}>← Back</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.continueButton,
-                  {
-                    backgroundColor: accepted ? theme.primaryAccent : theme.tertiary,
-                    opacity: accepted ? 1 : 0.5,
-                  },
-                ]}
-                onPress={handleAccept}
-                disabled={!accepted || loading}
-                activeOpacity={0.7}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={[styles.buttonText, { color: '#fff' }]}>
-                    Continue to Privacy & Policies →
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {isAuthenticated && (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.goBackButton,
-                  { backgroundColor: theme.secondary, borderColor: theme.border },
-                ]}
-                onPress={() => navigation.goBack()}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.buttonText, { color: theme.text }]}>← Back</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.acceptButton,
-                  {
-                    backgroundColor: theme.primaryAccent,
-                  },
-                ]}
-                onPress={handleAccept}
-                disabled={loading}
-                activeOpacity={0.7}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={[styles.buttonText, { color: '#fff' }]}>
-                    I Agree
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
+        {/* Action Buttons */}
+        <View style={styles.actionRow}>
+          <BrutalButton
+            title={isAuthenticated ? "CLOSE" : "DECLINE"}
+            variant="outline"
+            onPress={handleDecline}
+            style={{ flex: 1 }}
+          />
+          <BrutalButton
+            title={isAuthenticated ? "CONFIRM" : "ACCEPT & CONTINUE →"}
+            variant={accepted || isAuthenticated ? "primary" : "secondary"}
+            onPress={handleAccept}
+            style={{ flex: 2 }}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -280,125 +297,127 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
-    flexGrow: 1,
+    paddingBottom: 48,
   },
-  header: {
-    marginBottom: 24,
+  heroCard: {
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  backButton: {
-    fontSize: 18,
-    fontWeight: '600',
-    padding: 8,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: '500',
-  },
-  contentBox: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  sectionHeading: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  content: {
-    fontSize: 17,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  lastUpdated: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  checkboxContainer: {
+  heroStripe: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 24,
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
-    borderRadius: 8,
-    paddingLeft: 12,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+  heroStripeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
   },
-  checkmark: {
-    fontSize: 17,
-    fontWeight: 'bold',
+  heroBody: {
+    padding: 16,
   },
-  checkboxLabel: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-    flexWrap: 'wrap',
-    marginLeft: 8,
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
-  errorMessage: {
-    marginBottom: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  errorText: {
+  heroSubtitle: {
     fontSize: 14,
     fontWeight: '600',
+    lineHeight: 20,
+    marginBottom: 8,
   },
-  buttonContainer: {
+  heroDate: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  sectionSummaryBox: {
+    marginBottom: 10,
+  },
+  sectionSummaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  pointsList: {
+    gap: 8,
+  },
+  pointRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-    marginBottom: 16,
+    alignItems: 'flex-start',
+    gap: 10,
   },
-  button: {
+  bulletSquare: {
+    width: 6,
+    height: 6,
+    marginTop: 6,
+    borderRadius: 1,
+  },
+  pointText: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+  },
+  agreementCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 4,
+    gap: 14,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  checkboxBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    minHeight: 50,
   },
-  goBackButton: {
-    borderWidth: 1,
+  agreementLabel: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+    lineHeight: 18,
   },
-  acceptButton: {
-    borderWidth: 0,
-  },
-  continueButton: {
-    borderWidth: 0,
-  },
-  buttonText: {
-    fontSize: 15,
+  agreementSublabel: {
+    fontSize: 12,
     fontWeight: '600',
-    textAlign: 'center',
-    flexWrap: 'wrap',
+    marginTop: 2,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 14,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#EF4444',
+    flex: 1,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
   },
 });

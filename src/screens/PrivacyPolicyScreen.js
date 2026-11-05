@@ -2,314 +2,299 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { showError } from '../services/notificationService';
+import soundManager from '../services/soundService';
+import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 
 export default function PrivacyPolicyScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { isAuthenticated, completeOnboarding } = useAuth();
   const [accepted, setAccepted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [agreeError, setAgreeError] = useState(false);
 
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 3;
+
   useEffect(() => {
-    console.log('[PrivacyPolicy] Screen mounted. isAuthenticated:', isAuthenticated);
+    console.log('[PrivacyPolicy] Mounted. isAuthenticated:', isAuthenticated);
   }, [isAuthenticated]);
 
   const handleAccept = async () => {
+    soundManager.playButtonClick();
     if (!isAuthenticated && !accepted) {
       setAgreeError(true);
-      showError('Policy Not Accepted', 'Please click the checkbox to agree to the Privacy Policy');
+      showError('Policy Not Accepted', 'Please check the agreement box before proceeding.');
       setTimeout(() => setAgreeError(false), 3000);
       return;
     }
 
-    setLoading(true);
     try {
       if (!isAuthenticated) {
-        // Onboarding flow - complete onboarding and navigate to LoginSignup
-        console.log('[PrivacyPolicy] Completing onboarding...');
+        console.log('[PrivacyPolicy] Completing onboarding and redirecting to Login/Signup...');
         await completeOnboarding();
-        console.log('[PrivacyPolicy] Onboarding completed, navigating to LoginSignup...');
         navigation.replace('LoginSignup');
       } else {
-        // Authenticated user viewing privacy policy - navigate to Home
-        setLoading(false);
         navigation.replace('Home');
       }
     } catch (error) {
-      console.error('[PrivacyPolicy] Error accepting privacy policy:', error);
-      showError('Error', 'Failed to save acceptance. Please try again.');
-      setLoading(false);
+      showError('Error', 'Failed to complete onboarding: ' + error.message);
     }
   };
 
   const handleDecline = () => {
+    soundManager.playButtonClick();
     if (isAuthenticated) {
       navigation.goBack();
       return;
     }
-
     showError(
-      'Policy Not Accepted',
-      'You must accept the Privacy Policy to use Study Buddy. Please click "I Agree" to continue.'
+      'Policy Required',
+      'You must accept the Privacy Policy to start using AceIt.'
     );
   };
 
+  const SECTIONS = [
+    {
+      id: '1',
+      title: '1. INFORMATION WE COLLECT',
+      accent: theme.primary,
+      summary: 'Minimal, purposeful collection needed exclusively to sync your study decks.',
+      points: [
+        'Account Credentials: Email address and encrypted password hash for account auth.',
+        'Study Material: Flashcard terms, definitions, quiz questions, and study session tags.',
+        'Technical Metrics: Anonymous error logs and performance statistics to keep the app fast.',
+      ],
+    },
+    {
+      id: '2',
+      title: '2. HOW WE USE YOUR INFORMATION',
+      accent: theme.accent || '#FFDE59',
+      summary: 'Used solely to power your study experience and AI card generation.',
+      points: [
+        'Syncing your study sets across web and mobile via Supabase cloud storage.',
+        'Processing your uploaded study texts via AI to generate custom quiz questions.',
+        'Strictly zero tracking cookies, third-party analytics trackers, or targeted ad networks.',
+      ],
+    },
+    {
+      id: '3',
+      title: '3. DATA SECURITY & ENCRYPTION',
+      accent: theme.brandSecondary || '#FF5722',
+      summary: 'Enterprise-grade encryption in transit and at rest.',
+      points: [
+        'All client-server network requests use TLS 1.3 / SSL encryption.',
+        'Database records are hosted on secure PostgreSQL instances with Row-Level Security (RLS).',
+        'Your password is never stored in plaintext—only salted one-way hashes.',
+      ],
+    },
+    {
+      id: '4',
+      title: '4. YOUR RIGHTS & CONTROL',
+      accent: theme.success || '#10B981',
+      summary: 'You have complete sovereignty over your learning data.',
+      points: [
+        'Export your sets anytime to PDF or DOCX format with one click.',
+        'Edit or permanently delete your cards and decks whenever you choose.',
+        'Request complete account and database wipe via Settings > Help & Support.',
+      ],
+    },
+    {
+      id: '5',
+      title: '5. THIRD-PARTY SHARING POLICY',
+      accent: theme.isDark ? '#333333' : '#E5E5E0',
+      summary: 'We never sell or broker your personal study data. Period.',
+      points: [
+        'We do not sell, rent, or monetize your study content to advertisers.',
+        'Data is shared only with direct cloud infrastructure providers (Supabase) to store your account.',
+        'Zero behavioral surveillance or cross-site tracking.',
+      ],
+    },
+  ];
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Text style={[styles.backButton, { color: theme.primaryAccent }]}>← Back</Text>
-        </TouchableOpacity>
+      {/* Top Bar */}
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: borderColor,
+            borderBottomWidth: borderWidth,
+          },
+        ]}
+      >
+        <BrutalButton
+          title={isAuthenticated ? 'BACK' : 'TERMS'}
+          variant="outline"
+          icon={<MaterialIcons name="arrow-back" size={18} color={theme.text} />}
+          onPress={() =>
+            isAuthenticated ? navigation.goBack() : navigation.navigate('TermsAndConditions')
+          }
+          style={{ minHeight: 38, paddingVertical: 6, paddingHorizontal: 12 }}
+        />
+        <BrutalBadge label="DATA TRANSPARENCY" color={theme.primary} textColor="#FFFFFF" />
       </View>
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
-        showsVerticalScrollIndicator={true}
-        scrollEventThrottle={16}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Privacy Policy</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Your privacy matters to us
-          </Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Hero Header Card */}
+        <View
+          style={[
+            styles.heroCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `4px 4px 0px ${shadowColor}`,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.heroStripe,
+              {
+                backgroundColor: theme.brandSecondary || '#FF5722',
+                borderBottomColor: borderColor,
+                borderBottomWidth: borderWidth,
+              },
+            ]}
+          >
+            <MaterialIcons name="security" size={20} color="#FFFFFF" />
+            <Text style={styles.heroStripeText}>PRIVACY COMMITMENT</Text>
+          </View>
+          <View style={styles.heroBody}>
+            <Text style={[styles.heroTitle, { color: theme.text }]}>PRIVACY POLICY</Text>
+            <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+              Zero ad trackers. Zero data brokering. Your study sets belong entirely to you.
+            </Text>
+            <Text style={[styles.heroDate, { color: theme.textTertiary }]}>
+              EFFECTIVE DATE: NOVEMBER 2026 • VERSION 2.0
+            </Text>
+          </View>
         </View>
 
-        {/* Privacy Policy Content */}
-        <View style={[styles.contentBox, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>1. Information We Collect</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We collect information you provide directly to us, such as:{'\n'}
-            • Account information (email, name, password){'\n'}
-            • Study materials and flashcards you create{'\n'}
-            • Usage data and interaction patterns{'\n'}
-            • Device information (device type, OS version){'\n'}
-            • Files you upload for processing
-          </Text>
+        {/* Section Cards */}
+        {SECTIONS.map((sec) => (
+          <BrutalCard
+            key={sec.id}
+            accentColor={sec.accent}
+            headerTitle={sec.title}
+            style={{ marginBottom: 14 }}
+          >
+            <View style={styles.sectionSummaryBox}>
+              <Text style={[styles.sectionSummaryText, { color: theme.text }]}>
+                {sec.summary}
+              </Text>
+            </View>
+            <View style={styles.pointsList}>
+              {sec.points.map((pt, i) => (
+                <View key={i} style={styles.pointRow}>
+                  <View
+                    style={[
+                      styles.bulletSquare,
+                      { backgroundColor: theme.text, borderColor: borderColor },
+                    ]}
+                  />
+                  <Text style={[styles.pointText, { color: theme.textSecondary }]}>{pt}</Text>
+                </View>
+              ))}
+            </View>
+          </BrutalCard>
+        ))}
 
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>2. How We Use Your Information</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We use the information we collect to:{'\n'}
-            • Provide and improve our Study Buddy service{'\n'}
-            • Personalize your learning experience{'\n'}
-            • Send important updates and security alerts{'\n'}
-            • Generate insights about your study patterns{'\n'}
-            • Enhance AI features and recommendations{'\n'}
-            • Respond to your support requests
-          </Text>
+        {/* Agreement Toggle Card */}
+        <Pressable
+          onPress={() => {
+            soundManager.playButtonClick();
+            setAccepted(!accepted);
+            setAgreeError(false);
+          }}
+          style={({ pressed }) => [
+            styles.agreementCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: agreeError ? '#EF4444' : borderColor,
+              borderWidth: borderWidth,
+              transform: [
+                { translateX: pressed ? 2 : 0 },
+                { translateY: pressed ? 2 : 0 },
+              ],
+            },
+            Platform.OS === 'web' && {
+              boxShadow: pressed ? `1px 1px 0px ${shadowColor}` : `4px 4px 0px ${shadowColor}`,
+              cursor: 'pointer',
+              transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.checkboxBox,
+              {
+                backgroundColor: accepted ? (theme.primary || '#2563EB') : theme.background,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+            ]}
+          >
+            {accepted && <MaterialIcons name="check" size={22} color="#FFFFFF" />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.agreementLabel, { color: theme.text }]}>
+              I have read, understood, and accept the Privacy Policy
+            </Text>
+            <Text style={[styles.agreementSublabel, { color: theme.textSecondary }]}>
+              Confirms your agreement before creating your study account.
+            </Text>
+          </View>
+        </Pressable>
 
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>3. Data Security</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We implement industry-standard security measures to protect your data, including:{'\n'}
-            • End-to-end encryption for sensitive information{'\n'}
-            • Secure authentication protocols{'\n'}
-            • Regular security audits and updates{'\n'}
-            • Access controls and monitoring{'\n'}
-            • Compliance with data protection regulations
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>4. Third-Party Services</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            Study Buddy integrates with third-party services solely for providing and improving our service:{'\n'}
-            • Supabase for data storage and authentication{'\n'}
-            • OpenAI for AI-powered content generation{'\n'}
-            • Email services for notifications and password reset{'\n'}
-            • Analytics services to understand app usage{'\n'}
-            These third parties are bound by confidentiality agreements.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>5. Data Sharing</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We do not sell or trade your personal information. We only share data:{'\n'}
-            • With your explicit consent{'\n'}
-            • When legally required or for legal protection{'\n'}
-            • With service providers who assist us in operations{'\n'}
-            • In aggregated, anonymized form for analytics
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>6. User Content Ownership</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            You retain full ownership of all study materials, flashcards, and content you create in Study Buddy. We only use your content to provide the service and do not claim ownership or resell your materials. You can download or delete your content at any time.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>7. Cookies and Tracking</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We use cookies and similar technologies to:{'\n'}
-            • Remember your preferences and login status{'\n'}
-            • Understand how you use Study Buddy{'\n'}
-            • Improve our service performance{'\n'}
-            • Detect and prevent fraud{'\n'}
-            You can control cookie settings through your device preferences.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>8. Your Rights</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            You have the right to:{'\n'}
-            • Access your personal information{'\n'}
-            • Correct inaccurate data{'\n'}
-            • Request deletion of your data{'\n'}
-            • Export your study materials{'\n'}
-            • Opt-out of non-essential communications{'\n'}
-            To exercise these rights, contact us through Help & Support.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>9. Data Retention</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We retain your personal information for as long as your account is active. If you delete your account, we will securely erase your data within 30 days, except where retention is required by law.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>10. Children's Privacy</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            Study Buddy is not intended for users under 13 years old. We do not knowingly collect personal information from children under 13. If we become aware of such collection, we will delete the information promptly.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>11. Changes to Privacy Policy</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            We may update this Privacy Policy from time to time to reflect changes in our practices. We will notify you of significant changes. Your continued use of Study Buddy constitutes acceptance of the updated Privacy Policy.
-          </Text>
-
-          <Text style={[styles.sectionHeading, { color: theme.primaryAccent }]}>12. Contact Us</Text>
-          <Text style={[styles.content, { color: theme.text }]}>
-            If you have questions about our Privacy Policy or how we handle your data, please contact us through the Help & Support section in the app.
-          </Text>
-
-          <Text style={[styles.lastUpdated, { color: theme.textTertiary }]}>
-            Last Updated: {new Date().toLocaleDateString()}
-          </Text>
-        </View>
-
-        {/* Checkbox (only for onboarding) */}
-        {!isAuthenticated && (
-          <View style={styles.checkboxContainer}>
-            <TouchableOpacity
-              style={[
-                styles.checkbox,
-                {
-                  backgroundColor: accepted ? theme.primaryAccent : theme.secondary,
-                  borderColor: theme.border,
-                  borderWidth: agreeError ? 2 : 1,
-                  borderColor: agreeError ? '#ef4444' : theme.border,
-                },
-              ]}
-              onPress={() => {
-                setAccepted(!accepted);
-                setAgreeError(false);
-              }}
-            >
-              {accepted && <Text style={[styles.checkmark, { color: theme.background }]}>✓</Text>}
-            </TouchableOpacity>
-            <Text style={[styles.checkboxLabel, { color: theme.text }]}>
-              I have read and agree to the Privacy Policy
+        {agreeError && (
+          <View
+            style={[
+              styles.errorBanner,
+              {
+                backgroundColor: '#FEE2E2',
+                borderColor: '#EF4444',
+                borderWidth: borderWidth,
+              },
+            ]}
+          >
+            <MaterialIcons name="error" size={20} color="#EF4444" />
+            <Text style={styles.errorText}>
+              Please check the agreement box above to accept the Privacy Policy.
             </Text>
           </View>
         )}
 
-        {/* Error Message */}
-        {agreeError && !isAuthenticated && (
-          <View style={[styles.errorMessage, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <MaterialIcons name="warning" size={20} color="#dc2626" />
-              <Text style={[styles.errorText, { color: '#dc2626' }]}>
-                Please agree to the Privacy Policy to continue
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Buttons */}
-        <View>
-          {!isAuthenticated && (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.goBackButton,
-                  { backgroundColor: theme.secondary, borderColor: theme.border },
-                ]}
-                onPress={() => navigation.navigate('TermsAndConditions')}
-                disabled={loading}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.buttonText, { color: theme.text }]}>← Back</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.continueButton,
-                  {
-                    backgroundColor: accepted ? theme.primaryAccent : theme.tertiary,
-                    opacity: accepted ? 1 : 0.5,
-                  },
-                ]}
-                onPress={handleAccept}
-                disabled={!accepted || loading}
-                activeOpacity={0.7}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={[styles.buttonText, { color: '#fff' }]}>
-                    Continue to Login/Signup →
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {isAuthenticated && (
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.goBackButton,
-                  { backgroundColor: theme.secondary, borderColor: theme.border },
-                ]}
-                onPress={() => navigation.goBack()}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.buttonText, { color: theme.text }]}>← Back</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.acceptButton,
-                  {
-                    backgroundColor: theme.primaryAccent,
-                  },
-                ]}
-                onPress={handleAccept}
-                disabled={loading}
-                activeOpacity={0.7}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={[styles.buttonText, { color: '#fff' }]}>
-                    I Understand
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
+        {/* Action Buttons */}
+        <View style={styles.actionRow}>
+          <BrutalButton
+            title={isAuthenticated ? 'CLOSE' : 'DECLINE'}
+            variant="outline"
+            onPress={handleDecline}
+            style={{ flex: 1 }}
+          />
+          <BrutalButton
+            title={isAuthenticated ? 'CONFIRM' : 'ACCEPT & GET STARTED →'}
+            variant={accepted || isAuthenticated ? 'primary' : 'secondary'}
+            onPress={handleAccept}
+            style={{ flex: 2 }}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -320,131 +305,127 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
-    flexGrow: 1,
+    paddingBottom: 48,
   },
-  header: {
-    marginBottom: 24,
-    paddingHorizontal: 0,
-    borderBottomWidth: 0,
+  heroCard: {
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 16,
   },
-  backButton: {
-    fontSize: 18,
-    fontWeight: '600',
-    padding: 8,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: '500',
-  },
-  contentBox: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  sectionHeading: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  content: {
-    fontSize: 17,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  lastUpdated: {
-    fontSize: 16,
-    fontStyle: 'italic',
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  checkboxContainer: {
+  heroStripe: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    marginTop: 24,
-    paddingHorizontal: 4,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.05)',
-    borderRadius: 8,
-    paddingLeft: 12,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+  heroStripeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
   },
-  checkmark: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  heroBody: {
+    padding: 16,
   },
-  checkboxLabel: {
-    fontSize: 16,
-    fontWeight: '500',
+  heroTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  heroDate: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  sectionSummaryBox: {
+    marginBottom: 10,
+  },
+  sectionSummaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  pointsList: {
+    gap: 8,
+  },
+  pointRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  bulletSquare: {
+    width: 6,
+    height: 6,
+    marginTop: 6,
+    borderRadius: 1,
+  },
+  pointText: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
     flex: 1,
   },
-  errorMessage: {
-    marginBottom: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
+  agreementCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 4,
+    gap: 14,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  checkboxBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  agreementLabel: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.2,
+    lineHeight: 18,
+  },
+  agreementSublabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 14,
   },
   errorText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#EF4444',
+    flex: 1,
   },
-  buttonContainer: {
+  actionRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 30,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-  },
-  goBackButton: {
-    borderWidth: 1,
-  },
-  continueButton: {
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  acceptButton: {
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  buttonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-    flexWrap: 'wrap',
+    marginTop: 6,
   },
 });

@@ -1,64 +1,153 @@
-import React, { useState, useEffect } from 'react'; 
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Dimensions, useWindowDimensions } from 'react-native';
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '../context/ThemeContext';
+import soundManager from '../services/soundService';
+import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 
 export default function AboutScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const windowWidth = useWindowDimensions().width;
-  const isSmall = windowWidth < 480;
-  const isMedium = windowWidth < 768;
-  const isLarge = windowWidth >= 768;
+
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 3;
+
+  const FEATURES = [
+    {
+      title: 'AI QUESTION GENERATION',
+      desc: 'Upload class notes or enter key topics. The engine extracts flashcards and high-yield quiz questions.',
+      icon: 'auto-awesome',
+      accent: theme.primary,
+    },
+    {
+      title: 'CUSTOM DECK ARCHITECTURE',
+      desc: 'Organize study sets by semester, course, or exam. Edit and update terms with physical card mechanics.',
+      icon: 'library-books',
+      accent: theme.brandSecondary || '#FF5722',
+    },
+    {
+      title: 'TACTILE FLASHCARD STUDY',
+      desc: 'Active recall training with flip cards and self-assessed ratings for maximum retention.',
+      icon: 'style',
+      accent: theme.accent || '#FFDE59',
+    },
+    {
+      title: 'EXPORT & PRINT ANYWHERE',
+      desc: 'Export your decks to formatted PDF and DOCX documents with one tap to study offline.',
+      icon: 'print',
+      accent: theme.success || '#10B981',
+    },
+  ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Top Header */}
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: borderColor,
+            borderBottomWidth: borderWidth,
+          },
+        ]}
+      >
+        <Text style={[styles.logoText, { color: theme.text }]}>ACEIT</Text>
+        <BrutalBadge label="VERSION 2.0" color={theme.accent || '#FFDE59'} textColor="#121212" />
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>About AceIt</Text>
-        </View>
-
-        <View style={styles.content}>
-          <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>What is AceIt?</Text>
-          <Text style={[styles.description, { color: theme.textSecondary }]}>
-            AceIt is a powerful study companion designed to help you master any subject. Create custom study sets, generate flashcards with AI, and track your learning progress.
-          </Text>
-
-          <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>Features</Text>
-          <View style={styles.featureList}>
-            <View style={[styles.featureItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <Text style={styles.featureBullet}>✓</Text>
-              <Text style={[styles.featureText, { color: theme.textSecondary }]}>AI-powered flashcard generation</Text>
-            </View>
-            <View style={[styles.featureItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <Text style={styles.featureBullet}>✓</Text>
-              <Text style={[styles.featureText, { color: theme.textSecondary }]}>Create custom study sets</Text>
-            </View>
-            <View style={[styles.featureItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <Text style={styles.featureBullet}>✓</Text>
-              <Text style={[styles.featureText, { color: theme.textSecondary }]}>Interactive study mode</Text>
-            </View>
-            <View style={[styles.featureItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <Text style={styles.featureBullet}>✓</Text>
-              <Text style={[styles.featureText, { color: theme.textSecondary }]}>Local data storage</Text>
-            </View>
-          </View>
-
-          <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>Get Started</Text>
-          <Text style={[styles.description, { color: theme.textSecondary }]}>
-            Start by creating a new study set or using our AI to generate one. Study at your own pace and achieve your learning goals!
-          </Text>
-
-          <Text style={[styles.version, { color: theme.textTertiary }]}>Version 1.0.0</Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.primaryAccent, borderColor: theme.primaryAccent }]}
-          onPress={() => navigation.navigate('TermsAndConditions')}
-          activeOpacity={0.8}
+        {/* Hero Card */}
+        <View
+          style={[
+            styles.heroCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `4px 4px 0px ${shadowColor}`,
+            },
+          ]}
         >
-          <Text style={[styles.buttonText, { color: '#fff' }]}> Next: Terms & Conditions </Text>
-        </TouchableOpacity>
+          <View
+            style={[
+              styles.heroStripe,
+              {
+                backgroundColor: theme.primary,
+                borderBottomColor: borderColor,
+                borderBottomWidth: borderWidth,
+              },
+            ]}
+          >
+            <MaterialIcons name="school" size={22} color="#FFFFFF" />
+            <Text style={styles.heroStripeText}>STUDY INTELLIGENCE</Text>
+          </View>
+          <View style={styles.heroBody}>
+            <Text style={[styles.heroTitle, { color: theme.text }]}>ABOUT ACEIT</Text>
+            <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+              AceIt is a high-contrast, brutalist study companion designed to cut out distractions, boost focus, and accelerate memory retention.
+            </Text>
+          </View>
+        </View>
+
+        {/* Feature Cards Grid */}
+        <Text style={[styles.sectionHeading, { color: theme.text }]}>CORE CAPABILITIES</Text>
+
+        <View style={styles.featuresList}>
+          {FEATURES.map((item, idx) => (
+            <BrutalCard
+              key={idx}
+              accentColor={item.accent}
+              headerTitle={item.title}
+              style={{ marginBottom: 12 }}
+            >
+              <View style={styles.featureRow}>
+                <View
+                  style={[
+                    styles.featureIconBox,
+                    {
+                      backgroundColor: item.accent,
+                      borderColor: borderColor,
+                      borderWidth: 2,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={item.icon}
+                    size={24}
+                    color={item.accent === '#FFDE59' ? '#121212' : '#FFFFFF'}
+                  />
+                </View>
+                <Text style={[styles.featureDesc, { color: theme.textSecondary }]}>
+                  {item.desc}
+                </Text>
+              </View>
+            </BrutalCard>
+          ))}
+        </View>
+
+        {/* Action Button */}
+        <View style={styles.actionSection}>
+          <BrutalButton
+            title="NEXT: TERMS & CONDITIONS →"
+            variant="primary"
+            onPress={() => {
+              soundManager.playButtonClick();
+              navigation.navigate('TermsAndConditions');
+            }}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -68,72 +157,83 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: Dimensions.get('window').width < 480 ? 16 : 20,
-    justifyContent: 'space-between',
-  },
-  header: {
-    marginBottom: Dimensions.get('window').width < 768 ? 20 : 32,
-    alignItems: 'center',
-    paddingTop: Dimensions.get('window').width < 480 ? 12 : 20,
-  },
-  title: {
-    fontSize: Dimensions.get('window').width < 480 ? 24 : Dimensions.get('window').width < 768 ? 28 : 36,
-    fontWeight: '800',
-  },
-  content: {
-    flex: 1,
-    maxWidth: 600,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  sectionTitle: {
-    fontSize: Dimensions.get('window').width < 480 ? 16 : Dimensions.get('window').width < 768 ? 18 : 22,
-    fontWeight: '700',
-    marginTop: Dimensions.get('window').width < 480 ? 16 : 20,
-    marginBottom: 10,
-  },
-  description: {
-    fontSize: Dimensions.get('window').width < 480 ? 13 : Dimensions.get('window').width < 768 ? 14 : 15,
-    lineHeight: Dimensions.get('window').width < 480 ? 20 : 24,
-    marginBottom: 8,
-  },
-  featureList: {
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  featureItem: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingHorizontal: Dimensions.get('window').width < 480 ? 10 : 12,
-    paddingVertical: Dimensions.get('window').width < 480 ? 6 : 8,
-    borderRadius: 12,
-    borderWidth: 1.5,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  featureBullet: {
-    fontSize: Dimensions.get('window').width < 480 ? 16 : 20,
-    marginRight: Dimensions.get('window').width < 480 ? 10 : 12,
+  logoText: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
-  featureText: {
-    fontSize: Dimensions.get('window').width < 480 ? 13 : Dimensions.get('window').width < 768 ? 14 : 15,
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 48,
+  },
+  heroCard: {
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  heroStripe: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  heroStripeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+  },
+  heroBody: {
+    padding: 18,
+  },
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  sectionHeading: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  featuresList: {
+    marginBottom: 16,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  featureIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  featureDesc: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
     flex: 1,
   },
-  version: {
-    fontSize: 11,
-    marginTop: Dimensions.get('window').width < 480 ? 16 : 24,
-    textAlign: 'center',
-  },
-  button: {
-    paddingVertical: Dimensions.get('window').width < 480 ? 12 : 14,
-    paddingHorizontal: Dimensions.get('window').width < 480 ? 16 : 20,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: Dimensions.get('window').width < 480 ? 16 : 24,
-  },
-  buttonText: {
-    fontSize: Dimensions.get('window').width < 480 ? 14 : Dimensions.get('window').width < 768 ? 15 : 16,
-    fontWeight: '600',
+  actionSection: {
+    marginTop: 8,
   },
 });

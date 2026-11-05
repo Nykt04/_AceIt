@@ -24,6 +24,9 @@ const files = [
   path.join('src', 'screens', 'HomeScreen.js'),
   path.join('src', 'screens', 'SetDetailScreen.js'),
   path.join('src', 'screens', 'StudyScreen.js'),
+  path.join('src', 'screens', 'TermsAndConditionsScreen.js'),
+  path.join('src', 'screens', 'PrivacyPolicyScreen.js'),
+  path.join('src', 'screens', 'AboutScreen.js'),
 ];
 
 for (const file of files) {
@@ -37,4 +40,4 @@ for (const file of files) {
   }
 }
 
-console.log('✓ All Neubrutalism components and screens verified successfully!');
+console.log('✓ All Neubrutalism screens and components verified successfully!');
