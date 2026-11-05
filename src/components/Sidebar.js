@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
+  Pressable,
   StyleSheet,
   Animated,
   Dimensions,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
@@ -16,39 +18,75 @@ const { width } = Dimensions.get('window');
 export default function Sidebar({ isOpen, onClose }) {
   const navigation = useNavigation();
   const { theme } = useTheme();
-  const slideAnim = React.useRef(new Animated.Value(-width * 0.45)).current;
+  const sidebarWidth = Math.min(width * 0.85, 360);
+
+  const slideAnim = React.useRef(new Animated.Value(-sidebarWidth - 20)).current;
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
-    console.log('[Sidebar] isOpen changed to:', isOpen);
     Animated.parallel([
       Animated.timing(slideAnim, {
-        toValue: isOpen ? 0 : -width * 0.45,
-        duration: 300,
+        toValue: isOpen ? 0 : -sidebarWidth - 20,
+        duration: 220,
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: isOpen ? 1 : 0,
-        duration: 300,
+        duration: 220,
         useNativeDriver: true,
       }),
     ]).start();
-  }, [isOpen, slideAnim, opacityAnim]);
+  }, [isOpen, slideAnim, opacityAnim, sidebarWidth]);
 
   const handleNavigate = (screenName) => {
     navigation.navigate(screenName);
     onClose();
   };
 
-  const MenuItem = ({ icon, label, onPress }) => (
-    <TouchableOpacity
-      style={[styles.menuItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 3;
+
+  const MenuItem = ({ iconName, label, onPress, accentColor }) => (
+    <Pressable
+      style={({ pressed }) => [
+        styles.menuItem,
+        {
+          backgroundColor: accentColor || theme.card,
+          borderColor: borderColor,
+          borderWidth: borderWidth,
+          transform: [
+            { translateX: pressed ? 2 : 0 },
+            { translateY: pressed ? 2 : 0 },
+          ],
+        },
+        Platform.OS === 'web' && {
+          boxShadow: pressed
+            ? `1px 1px 0px ${shadowColor}`
+            : `3px 3px 0px ${shadowColor}`,
+          cursor: 'pointer',
+          transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+        },
+      ]}
       onPress={onPress}
-      activeOpacity={0.7}
+      accessibilityRole="button"
     >
-      <Text style={styles.menuIcon}>{icon}</Text>
-      <Text style={[styles.menuLabel, { color: theme.text }]}>{label}</Text>
-    </TouchableOpacity>
+      <View style={styles.iconCircle}>
+        <MaterialIcons
+          name={iconName}
+          size={22}
+          color={theme.isDark ? '#FFFFFF' : '#121212'}
+        />
+      </View>
+      <Text
+        style={[
+          styles.menuLabel,
+          { color: theme.isDark ? '#FFFFFF' : '#121212' },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
   );
 
   return (
@@ -68,75 +106,147 @@ export default function Sidebar({ isOpen, onClose }) {
         style={[
           styles.sidebar,
           {
+            width: sidebarWidth,
             transform: [{ translateX: slideAnim }],
             backgroundColor: theme.background,
-            borderRightColor: theme.border,
+            borderRightColor: borderColor,
+            borderRightWidth: borderWidth,
             pointerEvents: isOpen ? 'auto' : 'none',
+          },
+          Platform.OS === 'web' && {
+            boxShadow: `6px 0px 0px ${shadowColor}`,
           },
         ]}
       >
         <ScrollView style={styles.sidebarContent} showsVerticalScrollIndicator={false}>
-          <View style={[styles.sidebarHeader, { borderBottomColor: theme.border }]}>
-            <Text style={styles.sidebarTitle}>AceIt</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={[styles.closeButton, { color: theme.textSecondary }]}>✕</Text>
-            </TouchableOpacity>
+          {/* Header */}
+          <View
+            style={[
+              styles.sidebarHeader,
+              {
+                backgroundColor: theme.primary,
+                borderBottomColor: borderColor,
+                borderBottomWidth: borderWidth,
+              },
+            ]}
+          >
+            <Text style={styles.sidebarTitle}>ACEIT NAVIGATION</Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityLabel="Close menu"
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.closeButton,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: 2,
+                  transform: [
+                    { translateX: pressed ? 1 : 0 },
+                    { translateY: pressed ? 1 : 0 },
+                  ],
+                },
+              ]}
+            >
+              <MaterialIcons name="close" size={20} color={theme.text} />
+            </Pressable>
           </View>
 
+          {/* Core Navigation */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Navigation</Text>
+            <Text
+              style={[
+                styles.sectionLabel,
+                { color: theme.textSecondary },
+              ]}
+            >
+              STUDY & DECKS
+            </Text>
             <MenuItem
-              icon="  "
-              label="Home"
+              iconName="home"
+              label="HOME"
               onPress={() => handleNavigate('Home')}
             />
             <MenuItem
-              icon=""
-              label="AI Generate"
+              iconName="auto-awesome"
+              label="AI GENERATE"
               onPress={() => handleNavigate('AIGenerate')}
             />
             <MenuItem
-              icon=""
-              label="Upload File"
+              iconName="upload-file"
+              label="UPLOAD QUESTIONS"
               onPress={() => handleNavigate('FileUploadQuestions')}
             />
             <MenuItem
-              icon=""
-              label="Create Set"
+              iconName="add-box"
+              label="CREATE SET"
               onPress={() => handleNavigate('CreateSet')}
             />
             <MenuItem
-              icon=""
-              label="About"
+              iconName="info"
+              label="ABOUT"
               onPress={() => handleNavigate('About')}
             />
           </View>
 
+          {/* Account */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Account</Text>
+            <Text
+              style={[
+                styles.sectionLabel,
+                { color: theme.textSecondary },
+              ]}
+            >
+              ACCOUNT
+            </Text>
             <MenuItem
-              icon=""
-              label="Settings"
+              iconName="settings"
+              label="SETTINGS"
               onPress={() => handleNavigate('Settings')}
             />
             <MenuItem
-              icon=""
-              label="Login / Signup"
+              iconName="login"
+              label="LOGIN / SIGNUP"
               onPress={() => handleNavigate('LoginSignup')}
             />
           </View>
 
+          {/* Info Card */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>About</Text>
-            <View style={[styles.infoBox, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-              <Text style={[styles.infoText, { color: theme.text }]}>Version 1.0.0</Text>
-              <Text style={[styles.infoSubtext, { color: theme.textSecondary }]}>Your personal study companion</Text>
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: `3px 3px 0px ${shadowColor}`,
+                },
+              ]}
+            >
+              <Text style={[styles.infoTitle, { color: theme.text }]}>ACEIT v1.0.0</Text>
+              <Text style={[styles.infoSubtitle, { color: theme.textSecondary }]}>
+                Strict Neubrutalism Study Engine
+              </Text>
             </View>
           </View>
         </ScrollView>
 
-        <View style={[styles.sidebarFooter, { borderTopColor: theme.border }]}>
-          <Text style={[styles.footerText, { color: theme.textTertiary }]}>© 2026 AceIt</Text>
+        <View
+          style={[
+            styles.sidebarFooter,
+            {
+              borderTopColor: borderColor,
+              borderTopWidth: borderWidth,
+              backgroundColor: theme.background,
+            },
+          ]}
+        >
+          <Text style={[styles.footerText, { color: theme.textTertiary }]}>
+            © 2026 ACEIT • ZERO BLURS
+          </Text>
         </View>
       </Animated.View>
     </>
@@ -150,112 +260,87 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    zIndex: 998,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    zIndex: 99,
   },
   sidebar: {
     position: 'absolute',
-    left: 0,
     top: 0,
+    left: 0,
     bottom: 0,
-    width: width * 0.45, 
-    borderRightWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 1000,
-    zIndex: 1000,
+    zIndex: 100,
   },
   sidebarContent: {
     flex: 1,
-    paddingTop: 12,
   },
   sidebarHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    borderBottomWidth: 1.5,
-    marginBottom: 12,
   },
   sidebarTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '900',
-    color: '#6366f1',
-    letterSpacing: 1,
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
   },
   closeButton: {
-    fontSize: 24,
-    fontWeight: '600',
-    padding: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   section: {
-    marginBottom: 24,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6366f1',
-    textTransform: 'uppercase',
+    fontSize: 11,
+    fontWeight: '900',
     letterSpacing: 1,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',        
-    paddingVertical: 13,
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 1,
+    borderRadius: 4,
+    marginBottom: 10,
   },
-  menuIcon: {
-    fontSize: 18,
+  iconCircle: {
     marginRight: 12,
   },
   menuLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  infoBox: {
-    width: '100%',  
-    borderRadius: 10,
-    padding: 14,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6366f1',
-    borderWidth: 1,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  infoText: {
     fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 3,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
-  infoSubtext: {
+  infoCard: {
+    padding: 14,
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  infoTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  infoSubtitle: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginTop: 2,
   },
   sidebarFooter: {
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderTopWidth: 1.5,
+    padding: 14,
+    alignItems: 'center',
   },
   footerText: {
     fontSize: 11,
-    textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

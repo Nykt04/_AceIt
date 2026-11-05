@@ -3,19 +3,19 @@ const fs = require('fs');
 const path = require('path');
 
 const files = [
-  'BrutalCard.js',
-  'BrutalButton.js',
-  'BrutalSkeleton.js',
-  'BrutalBadge.js',
-  'BrutalInput.js',
-  'index.js'
+  path.join('src', 'components', 'brutal', 'BrutalCard.js'),
+  path.join('src', 'components', 'brutal', 'BrutalButton.js'),
+  path.join('src', 'components', 'brutal', 'BrutalSkeleton.js'),
+  path.join('src', 'components', 'brutal', 'BrutalBadge.js'),
+  path.join('src', 'components', 'brutal', 'BrutalInput.js'),
+  path.join('src', 'components', 'Navbar.js'),
+  path.join('src', 'components', 'Sidebar.js'),
 ];
 
 for (const file of files) {
-  const filePath = path.join('src', 'components', 'brutal', file);
-  const code = fs.readFileSync(filePath, 'utf8');
+  const code = fs.readFileSync(file, 'utf8');
   const result = babel.transformSync(code, {
-    filename: filePath,
+    filename: file,
     configFile: path.resolve('./babel.config.js')
   });
   if (!result || !result.code) {
@@ -24,4 +24,4 @@ for (const file of files) {
   console.log(`✓ ${file} passed babel compilation`);
 }
 
-console.log('All brutal primitives passed Babel transformation successfully!');
+console.log('All shell components passed Babel transformation successfully!');
