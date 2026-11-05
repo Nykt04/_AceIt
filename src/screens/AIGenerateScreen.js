@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, ActivityIndicator, Alert, Switch, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
 import { generateQuestions } from '../services/aiService';
@@ -248,7 +249,7 @@ export default function AIGenerateScreen() {
         {/* Error Message */}
         {error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.errorIcon}>⚠️</Text>
+            <MaterialIcons name="warning" size={24} color={theme.error} style={styles.errorIcon} />
             <Text style={styles.error}>{error}</Text>
           </View>
         ) : null}

@@ -265,7 +265,7 @@ export const extractTextFromFile = async (file) => {
         return {
           text: result.text,
           isEmpty: true,
-          warning: `⚠️ NO READABLE CONTENT DETECTED\n\nYour document doesn't contain extractable text. This could mean:\n\n• Document has only images (OCR was attempted but unsuccessful)\n• Document is empty or corrupted\n• Format is not standard DOCX\n\n💡 SOLUTIONS:\n1. Ensure images in the document are clear and readable\n2. Try using a different OCR tool (smallpdf.com, ilovepdf.com)\n3. Type out the content manually\n4. Save and re-upload the document`,
+          warning: `[!] NO READABLE CONTENT DETECTED\n\nYour document doesn't contain extractable text. This could mean:\n\n• Document has only images (OCR was attempted but unsuccessful)\n• Document is empty or corrupted\n• Format is not standard DOCX\n\n[*] SOLUTIONS:\n1. Ensure images in the document are clear and readable\n2. Try using a different OCR tool (smallpdf.com, ilovepdf.com)\n3. Type out the content manually\n4. Save and re-upload the document`,
         };
       }
       return result;
@@ -276,7 +276,7 @@ export const extractTextFromFile = async (file) => {
         return {
           text: result.text,
           isEmpty: true,
-          warning: `⚠️ SCANNED PDF DETECTED\n\nYour PDF appears to be scanned images with no extractable text.\n\n💡 SOLUTIONS:\n1. Use an OCR tool: smallpdf.com, ilovepdf.com\n2. Or try uploading as image files first, then use OCR\n3. If text-based, ensure PDF is not corrupted`,
+          warning: `[!] SCANNED PDF DETECTED\n\nYour PDF appears to be scanned images with no extractable text.\n\n[*] SOLUTIONS:\n1. Use an OCR tool: smallpdf.com, ilovepdf.com\n2. Or try uploading as image files first, then use OCR\n3. If text-based, ensure PDF is not corrupted`,
         };
       }
       return result;
@@ -287,7 +287,7 @@ export const extractTextFromFile = async (file) => {
       return {
         text: '',
         isEmpty: true,
-        warning: `⚠️ IMAGE FILE UPLOADED\n\nDirect image upload is not yet supported. Please:\n\n1. Use an OCR tool to extract text from your image:\n   - Online: smallpdf.com, ilovepdf.com\n   - Local: Google Lens, Microsoft Lens\n\n2. Save the extracted text as a .txt, .pdf, or .docx file\n\n3. Upload the text file instead`,
+        warning: `[!] IMAGE FILE UPLOADED\n\nDirect image upload is not yet supported. Please:\n\n1. Use an OCR tool to extract text from your image:\n   - Online: smallpdf.com, ilovepdf.com\n   - Local: Google Lens, Microsoft Lens\n\n2. Save the extracted text as a .txt, .pdf, or .docx file\n\n3. Upload the text file instead`,
       };
     } else {
       throw new Error('Unsupported file type. Please upload a DOCX, PDF, or TXT file.');

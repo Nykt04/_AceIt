@@ -127,6 +127,7 @@ function FlashcardView({ terms, questions }) {
       <View style={styles.flashcardContainer}>
         {/* Front */}
         <Animated.View
+          pointerEvents={flipped ? 'none' : 'auto'}
           style={[
             styles.flashcard,
             styles.flashcardFront,
@@ -163,6 +164,7 @@ function FlashcardView({ terms, questions }) {
 
         {/* Back */}
         <Animated.View
+          pointerEvents={flipped ? 'auto' : 'none'}
           style={[
             styles.flashcard,
             styles.flashcardBack,

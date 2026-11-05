@@ -135,9 +135,12 @@ export default function Sidebar({ isOpen, onClose }) {
               onPress={onClose}
               accessibilityLabel="Close menu"
               accessibilityRole="button"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={({ pressed }) => [
                 styles.closeButton,
                 {
+                  width: 38,
+                  height: 38,
                   backgroundColor: theme.card,
                   borderColor: borderColor,
                   borderWidth: 2,

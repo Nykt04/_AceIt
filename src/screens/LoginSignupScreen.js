@@ -843,7 +843,7 @@ export default function LoginSignupScreen() {
         <View style={styles.confirmationContainer}>
           <View style={styles.confirmationContent}>
             <View style={styles.checkmarkCircle}>
-              <Text style={styles.checkmarkIcon}>✉️</Text>
+              <MaterialIcons name="mail" size={48} color={theme.primaryAccent} />
             </View>
             <Text style={styles.confirmationTitle}>Check Your Email</Text>
             <Text style={styles.confirmationSubtitle}>
@@ -883,7 +883,7 @@ export default function LoginSignupScreen() {
         <View style={styles.confirmationContainer}>
           <View style={styles.confirmationContent}>
             <View style={styles.checkmarkCircle}>
-              <Text style={styles.checkmarkIcon}>🔐</Text>
+              <MaterialIcons name="lock" size={48} color={theme.primaryAccent} />
             </View>
             <Text style={styles.confirmationTitle}>Completing Sign-In</Text>
             <Text style={styles.confirmationSubtitle}>
@@ -1226,7 +1226,7 @@ export default function LoginSignupScreen() {
             ) : (
               <>
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={{ fontSize: 48, marginBottom: 16 }}>✅</Text>
+                  <MaterialIcons name="check-circle" size={48} color={theme.success} />
                   <Text style={styles.modalTitle}>Check Your Email</Text>
                 </View>
                 <Text style={styles.successMessage}>

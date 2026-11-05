@@ -65,9 +65,9 @@ export default function FileUploadQuestionsScreen() {
         // Since we're in React Native, we can't directly use mammoth
         // Show user instructions for image-containing documents
         Alert.alert(
-          '⚠️ Important',
+          '[!] Important',
           'Document files with images need special handling.\n\n' +
-          '✅ SOLUTION:\n' +
+          '[✓] SOLUTION:\n' +
           '1. If your document contains images:\n' +
           '   - Use an OCR tool (Google Lens, smallpdf.com)\n' +
           '   - Extract text and save as .txt file\n' +
@@ -93,9 +93,9 @@ export default function FileUploadQuestionsScreen() {
     // For PDF files
     if (fileNameLower.endsWith('.pdf')) {
       Alert.alert(
-        '📄 PDF File Detected',
+        '[file] PDF File Detected',
         'PDF support in React Native requires uploading through the web version.\n\n' +
-        '✅ SOLUTION:\n' +
+        '[✓] SOLUTION:\n' +
         '1. Access Study Buddy on a web browser\n' +
         '2. Upload your PDF file there\n' +
         '3. Or convert PDF to text:\n' +
@@ -168,7 +168,7 @@ export default function FileUploadQuestionsScreen() {
             Alert.alert(
               'Cannot Process File',
               'This file appears to contain only images or is incompatible.\n\n' +
-              '📝 SOLUTION:\n' +
+              'SOLUTION:\n' +
               'Convert your images to text first:\n' +
               '1. Use Google Lens\n' +
               '2. Use online OCR tool\n' +
@@ -191,7 +191,7 @@ export default function FileUploadQuestionsScreen() {
       Alert.alert(
         'No Content',
         'Please select a file with text content first.\n\n' +
-        '💡 If your file contains images:\n' +
+        '[*] If your file contains images:\n' +
         '1. Use an OCR tool to extract text\n' +
         '2. Save as .txt file\n' +
         '3. Upload the .txt file'
@@ -307,7 +307,7 @@ export default function FileUploadQuestionsScreen() {
         {!existingSet && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionIcon}>✏️</Text>
+              <MaterialIcons name="edit" size={24} color={theme.primaryAccent} style={styles.sectionIcon} />
               <Text style={styles.sectionTitle}>Set Title</Text>
             </View>
             <TextInput
@@ -336,7 +336,7 @@ export default function FileUploadQuestionsScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.fileIcon}>✅</Text>
+                <MaterialIcons name="check-circle" size={24} color="#10b981" style={styles.fileIcon} />
                 <Text style={styles.fileText}>{fileName}</Text>
                 <Text style={styles.fileSize}>
                   {(selectedFile.size / 1024).toFixed(2)} KB • {fileContent.length} characters
@@ -350,7 +350,7 @@ export default function FileUploadQuestionsScreen() {
             onPress={handleSelectFile}
             activeOpacity={0.8}
           >
-            <Text style={styles.selectButtonIcon}>📂</Text>
+            <MaterialIcons name="folder-open" size={24} color={theme.primaryAccent} style={styles.selectButtonIcon} />
             <Text style={styles.selectButtonText}>Select File</Text>
           </TouchableOpacity>
         </View>
@@ -358,12 +358,12 @@ export default function FileUploadQuestionsScreen() {
         {/* Number of Questions Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionIcon}>🎯</Text>
+            <MaterialIcons name="track-changes" size={24} color={theme.primaryAccent} style={styles.sectionIcon} />
             <Text style={styles.sectionTitle}>Number of Questions</Text>
           </View>
           
           <View style={styles.questionInputContainer}>
-            <Text style={styles.inputPrefix}>📝</Text>
+            <MaterialIcons name="note" size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
             <TextInput
               style={styles.questionInput}
               placeholder="e.g., 10, 20, 30..."
@@ -377,11 +377,14 @@ export default function FileUploadQuestionsScreen() {
 
         {/* How It Works */}
         <View style={styles.tipsBox}>
-          <Text style={styles.tipsTitle}>💡 How It Works</Text>
-          <Text style={styles.tipItem}>1️⃣ Upload your study material</Text>
-          <Text style={styles.tipItem}>2️⃣ Specify number of questions</Text>
-          <Text style={styles.tipItem}>3️⃣ AI generates both questions and terms</Text>
-          <Text style={styles.tipItem}>4️⃣ Review and study instantly</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <MaterialIcons name="lightbulb" size={20} color={theme.primaryAccent} style={{ marginRight: 8 }} />
+            <Text style={styles.tipsTitle}>How It Works</Text>
+          </View>
+          <Text style={styles.tipItem}>• Upload your study material</Text>
+          <Text style={styles.tipItem}>• Specify number of questions</Text>
+          <Text style={styles.tipItem}>• AI generates both questions and terms</Text>
+          <Text style={styles.tipItem}>• Review and study instantly</Text>
         </View>
 
         {/* Generate Button */}

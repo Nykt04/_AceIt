@@ -429,7 +429,7 @@ export default function SetDetailScreen() {
                 disabled={converting}
                 icon={
                   converting ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <MaterialIcons name="hourglass-empty" size={20} color="#FFFFFF" />
                   ) : (
                     <MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />
                   )

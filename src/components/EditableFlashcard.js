@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '../context/ThemeContext';
 
 export default function EditableFlashcard({ term, definition, index, onEdit, onDelete, onAddTerm, style, showAddButton }) {
@@ -107,21 +108,24 @@ export default function EditableFlashcard({ term, definition, index, onEdit, onD
           style={[styles.actionBtn, { backgroundColor: theme.primaryAccent }]}
           onPress={() => setShowEditModal(true)}
         >
-          <Text style={styles.actionBtnText}>✏️ Edit</Text>
+          <MaterialIcons name="edit" size={18} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={styles.actionBtnText}>Edit</Text>
         </TouchableOpacity>
         {showAddButton && (
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: '#10b981' }]}
             onPress={() => onAddTerm?.()}
           >
-            <Text style={styles.actionBtnText}>➕ Add</Text>
+            <MaterialIcons name="add" size={20} color="#fff" style={{ marginRight: 4 }} />
+            <Text style={styles.actionBtnText}>Add</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: '#ef4444' }]}
           onPress={() => onDelete(index)}
         >
-          <Text style={styles.actionBtnText}>🗑️ Delete</Text>
+          <MaterialIcons name="delete" size={20} color="#fff" style={{ marginRight: 4 }} />
+          <Text style={styles.actionBtnText}>Delete</Text>
         </TouchableOpacity>
       </View>
 

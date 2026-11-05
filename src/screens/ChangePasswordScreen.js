@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '../context/ThemeContext';
 import { changePassword, resetPasswordWithToken } from '../services/authService';
 import { parseAuthError } from '../services/errorHandler';
@@ -166,7 +167,7 @@ export default function ChangePasswordScreen() {
       }
 
       console.log('[ChangePassword] Password changed successfully');
-      showSuccess('Success', 'Your password has been changed successfully! 🎉');
+      showSuccess('Success', 'Your password has been changed successfully! [✓]');
       
       // Clear form after successful change
       setTimeout(() => {
@@ -218,7 +219,7 @@ export default function ChangePasswordScreen() {
       }
 
       console.log('[ChangePassword] Password reset successfully');
-      showSuccess('Success', 'Your password has been reset successfully! 🎉');
+      showSuccess('Success', 'Your password has been reset successfully! [✓]');
       
       // Clear storage and form
       await AsyncStorage.removeItem('passwordResetToken');

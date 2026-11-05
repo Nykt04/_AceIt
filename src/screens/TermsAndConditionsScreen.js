@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -182,9 +183,12 @@ export default function TermsAndConditionsScreen() {
         {/* Error Message */}
         {agreeError && !isAuthenticated && (
           <View style={[styles.errorMessage, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]}>
-            <Text style={[styles.errorText, { color: '#dc2626' }]}>
-              ⚠️ Please agree to the Terms & Conditions to continue
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialIcons name="warning" size={20} color="#dc2626" />
+              <Text style={[styles.errorText, { color: '#dc2626' }]}>
+                Please agree to the Terms & Conditions to continue
+              </Text>
+            </View>
           </View>
         )}
 

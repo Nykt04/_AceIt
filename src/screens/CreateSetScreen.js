@@ -101,7 +101,7 @@ export default function CreateSetScreen() {
 
       // Add generated questions to existing ones
       setQuestions((q) => [...q, ...generatedQuestions]);
-      Alert.alert('Success', `Generated ${generatedQuestions.length} questions from your ${validTerms.length} terms! 🎉`);
+      Alert.alert('Success', `Generated ${generatedQuestions.length} questions from your ${validTerms.length} terms! [✓]`);
     } catch (error) {
       console.error('[CreateSet] Convert error:', error);
       Alert.alert('Error', error.message || 'Failed to convert terms to questions');
