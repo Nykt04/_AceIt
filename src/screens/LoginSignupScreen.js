@@ -18,7 +18,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import Navbar from '../components/Navbar';
-import Sidebar from '../components/Sidebar';
 import { signIn, signUp, signInWithGoogle, sendWelcomeEmail, requestPasswordReset } from '../services/authService';
 import { parseAuthError, isValidPassword } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
@@ -32,7 +31,6 @@ export default function LoginSignupScreen() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -312,8 +310,7 @@ export default function LoginSignupScreen() {
   if (awaitingConfirmation) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <Navbar onMenuPress={() => setSidebarOpen(true)} />
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Navbar showMenu={false} showSettings={false} />
         <View style={styles.centerContainer}>
           <View
             style={[
@@ -381,8 +378,7 @@ export default function LoginSignupScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Navbar onMenuPress={() => setSidebarOpen(true)} />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Navbar showMenu={false} showSettings={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.authWrapper}>

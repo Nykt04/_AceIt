@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '../context/ThemeContext';
 
-export default function Navbar({ onMenuPress }) {
+export default function Navbar({ onMenuPress, showMenu = true, showSettings = true }) {
   const navigation = useNavigation();
   const { theme, isDarkMode, toggleTheme } = useTheme();
 
@@ -41,34 +41,41 @@ export default function Navbar({ onMenuPress }) {
       ]}
     >
       {/* Menu Drawer Toggle */}
-      <Pressable
-        onPress={() => {
-          console.log('[Navbar] Menu button pressed');
-          onMenuPress?.();
-        }}
-        accessibilityLabel="Open menu"
-        accessibilityRole="button"
-        style={({ pressed }) => [
-          styles.iconButton,
-          {
-            backgroundColor: theme.card,
-            borderColor: borderColor,
-            borderWidth: borderWidth,
-            transform: [
-              { translateX: pressed ? 2 : 0 },
-              { translateY: pressed ? 2 : 0 },
-            ],
-          },
-          getPressableShadow(pressed),
-        ]}
-      >
-        <MaterialIcons name="menu" size={24} color={theme.text} />
-      </Pressable>
+      {showMenu && (
+        <Pressable
+          onPress={() => {
+            console.log('[Navbar] Menu button pressed');
+            onMenuPress?.();
+          }}
+          accessibilityLabel="Open menu"
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.iconButton,
+            {
+              backgroundColor: theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+              transform: [
+                { translateX: pressed ? 2 : 0 },
+                { translateY: pressed ? 2 : 0 },
+              ],
+            },
+            getPressableShadow(pressed),
+          ]}
+        >
+          <MaterialIcons name="menu" size={24} color={theme.text} />
+        </Pressable>
+      )}
 
       {/* Brand Title / Logo */}
       <Pressable
-        onPress={() => navigation.navigate('Home')}
-        accessibilityRole="button"
+        onPress={() => {
+          if (showMenu) {
+            navigation.navigate('Home');
+          }
+        }}
+        accessibilityRole={showMenu ? 'button' : 'none'}
+        disabled={!showMenu}
         style={styles.logoContainer}
       >
         <View
@@ -115,27 +122,29 @@ export default function Navbar({ onMenuPress }) {
           />
         </Pressable>
 
-        <Pressable
-          onPress={() => navigation.navigate('Settings')}
-          accessibilityLabel="Settings"
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.settingsButton,
-            {
-              backgroundColor: theme.card,
-              borderColor: borderColor,
-              borderWidth: borderWidth,
-              transform: [
-                { translateX: pressed ? 2 : 0 },
-                { translateY: pressed ? 2 : 0 },
-              ],
-            },
-            getPressableShadow(pressed),
-          ]}
-        >
-          <MaterialIcons name="settings" size={20} color={theme.text} />
-          <Text style={[styles.settingsText, { color: theme.text }]}>SETTINGS</Text>
-        </Pressable>
+        {showSettings && (
+          <Pressable
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityLabel="Settings"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.settingsButton,
+              {
+                backgroundColor: theme.card,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+                transform: [
+                  { translateX: pressed ? 2 : 0 },
+                  { translateY: pressed ? 2 : 0 },
+                ],
+              },
+              getPressableShadow(pressed),
+            ]}
+          >
+            <MaterialIcons name="settings" size={20} color={theme.text} />
+            <Text style={[styles.settingsText, { color: theme.text }]}>SETTINGS</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
