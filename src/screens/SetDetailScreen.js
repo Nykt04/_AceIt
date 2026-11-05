@@ -22,10 +22,33 @@ import soundManager from '../services/soundService';
 import EditableFlashcard from '../components/EditableFlashcard';
 import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 
-// Interactive Flip Index Card Component
+// Interactive Flip Index Card Component with 3D Flip and Spring Micro-Interactions
 const InteractiveIndexCard = ({ term, definition, index, theme, cardWidth }) => {
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isDown, setIsDown] = useState(false);
+  const flipAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const delay = Math.min(index * 35, 300);
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 7,
+          tension: 85,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 160,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]).start();
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [index, opacityAnim, slideAnim]);
 
   const borderColor = theme.border || '#111827';
   const shadowColor = theme.shadow || '#111827';
@@ -44,104 +67,118 @@ const InteractiveIndexCard = ({ term, definition, index, theme, cardWidth }) => 
 
   const handleFlip = () => {
     soundManager.playButtonClick();
+    const nextVal = isFlipped ? 0 : 1;
+    Animated.spring(flipAnim, {
+      toValue: nextVal,
+      friction: 7,
+      tension: 65,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
     setIsFlipped(!isFlipped);
   };
 
   return (
-    <Pressable
-      onPress={handleFlip}
-      onPressIn={() => setIsDown(true)}
-      onPressOut={() => setIsDown(false)}
-      style={[
-        styles.flipCard,
-        {
-          width: cardWidth,
-          backgroundColor: isFlipped ? (theme.isDark ? '#232731' : '#F4F5F7') : theme.card,
-          borderColor: borderColor,
-          borderWidth: borderWidth,
-          transform: [
-            { translateX: isDown ? 2 : 0 },
-            { translateY: isDown ? 2 : 0 },
-          ],
-        },
-        Platform.OS === 'web' && {
-          boxShadow: isDown
-            ? `1px 1px 0px ${shadowColor}`
-            : `3px 3px 0px ${shadowColor}`,
-          cursor: 'pointer',
-          transition: 'transform 0.08s ease, box-shadow 0.08s ease, background-color 0.15s ease',
-        },
-      ]}
-      accessibilityLabel={`Card ${index + 1}: ${isFlipped ? 'Definition' : 'Term'}. Tap to flip.`}
+    <Animated.View
+      style={{
+        width: cardWidth,
+        opacity: opacityAnim,
+        transform: [{ translateY: slideAnim }],
+      }}
     >
-      {/* Card Header Strip */}
-      <View style={styles.flipCardHeader}>
-        <View style={styles.flipCardHeaderLeft}>
-          <View
-            style={[
-              styles.cardNumberBadge,
-              {
-                backgroundColor: theme.muted,
-                borderColor: borderColor,
-                borderWidth: 1.5,
-              },
-            ]}
-          >
-            <Text style={[styles.cardNumberText, { color: theme.text }]}>#{index + 1}</Text>
+      <Pressable
+        onPress={handleFlip}
+        style={({ pressed, hovered }) => {
+          const isDown = pressed;
+          const isHover = hovered && !isDown;
+          const curShadow = isDown ? 1 : isHover ? 5 : 3;
+          const trans = isDown ? 2 : isHover ? -2 : 0;
+
+          return [
+            styles.flipCard,
+            {
+              backgroundColor: isFlipped ? (theme.isDark ? '#232731' : '#F4F5F7') : theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+              transform: [{ translateX: trans }, { translateY: trans }],
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `${curShadow}px ${curShadow}px 0px ${shadowColor}`,
+              cursor: 'pointer',
+              transition: 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease',
+            },
+          ];
+        }}
+        accessibilityLabel={`Card ${index + 1}: ${isFlipped ? 'Definition' : 'Term'}. Tap to flip.`}
+      >
+        {/* Card Header Strip */}
+        <View style={styles.flipCardHeader}>
+          <View style={styles.flipCardHeaderLeft}>
+            <View
+              style={[
+                styles.cardNumberBadge,
+                {
+                  backgroundColor: theme.muted,
+                  borderColor: borderColor,
+                  borderWidth: 1.5,
+                },
+              ]}
+            >
+              <Text style={[styles.cardNumberText, { color: theme.text }]}>#{index + 1}</Text>
+            </View>
+            <BrutalBadge
+              label={isFlipped ? 'DEFINITION' : 'TERM'}
+              color={isFlipped ? (theme.accent || '#FCD34D') : theme.primary}
+              textColor={isFlipped ? '#111827' : '#FFFFFF'}
+            />
           </View>
-          <BrutalBadge
-            label={isFlipped ? 'DEFINITION' : 'TERM'}
-            color={isFlipped ? (theme.accent || '#FCD34D') : theme.primary}
-            textColor={isFlipped ? '#111827' : '#FFFFFF'}
-          />
+
+          {Platform.OS === 'web' && (
+            <TouchableOpacity
+              onPress={handleSpeak}
+              style={[
+                styles.speakButton,
+                {
+                  borderColor: borderColor,
+                  borderWidth: 1.5,
+                  backgroundColor: theme.card,
+                },
+              ]}
+              accessibilityLabel="Speak card text"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="volume-up" size={16} color={theme.text} />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {Platform.OS === 'web' && (
-          <TouchableOpacity
-            onPress={handleSpeak}
-            style={[
-              styles.speakButton,
-              {
-                borderColor: borderColor,
-                borderWidth: 1.5,
-                backgroundColor: theme.card,
-              },
-            ]}
-            accessibilityLabel="Speak card text"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="volume-up" size={16} color={theme.text} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Card Main Body */}
-      <View style={styles.flipCardBody}>
-        {isFlipped ? (
-          <Text style={[styles.definitionText, { color: theme.text }]}>
-            {definition || 'No definition provided.'}
-          </Text>
-        ) : (
-          <Text style={[styles.termText, { color: theme.text }]}>
-            {term || 'Empty term'}
-          </Text>
-        )}
-      </View>
-
-      {/* Card Footer Hint */}
-      <View style={styles.flipCardFooter}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <MaterialIcons
-            name={isFlipped ? 'replay' : 'flip'}
-            size={14}
-            color={theme.textTertiary}
-          />
-          <Text style={[styles.flipHintText, { color: theme.textTertiary }]}>
-            {isFlipped ? 'TAP TO SHOW TERM' : 'TAP TO REVEAL DEFINITION'}
-          </Text>
+        {/* Card Main Body */}
+        <View style={styles.flipCardBody}>
+          {isFlipped ? (
+            <Text style={[styles.definitionText, { color: theme.text }]}>
+              {definition || 'No definition provided.'}
+            </Text>
+          ) : (
+            <Text style={[styles.termText, { color: theme.text }]}>
+              {term || 'Empty term'}
+            </Text>
+          )}
         </View>
-      </View>
-    </Pressable>
+
+        {/* Card Footer Hint */}
+        <View style={styles.flipCardFooter}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <MaterialIcons
+              name={isFlipped ? 'replay' : 'flip'}
+              size={14}
+              color={theme.textTertiary}
+            />
+            <Text style={[styles.flipHintText, { color: theme.textTertiary }]}>
+              {isFlipped ? 'TAP TO SHOW TERM' : 'TAP TO REVEAL DEFINITION'}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 };
 
@@ -154,6 +191,26 @@ export default function SetDetailScreen() {
   const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'edit'
   const [set, setSet] = useState(null);
   const [converting, setConverting] = useState(false);
+
+  // Staggered entry animation
+  const headerAnim = useRef(new Animated.Value(-16)).current;
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(headerAnim, {
+        toValue: 0,
+        friction: 7,
+        tension: 90,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(headerOpacity, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+    ]).start();
+  }, [headerAnim, headerOpacity]);
 
   const { width } = useWindowDimensions();
 
@@ -350,33 +407,35 @@ export default function SetDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrapper}>
-          {/* Set Header Card */}
-          <BrutalCard accentColor={theme.primary} headerTitle="STUDY DECK OVERVIEW">
-            <Text style={[styles.title, { color: theme.text }]}>{set.title}</Text>
-            {set.description ? (
-              <Text style={[styles.desc, { color: theme.textSecondary }]}>
-                {set.description}
-              </Text>
-            ) : null}
+          {/* Animated Set Header Card */}
+          <Animated.View style={{ opacity: headerOpacity, transform: [{ translateY: headerAnim }] }}>
+            <BrutalCard accentColor={theme.primary} headerTitle="STUDY DECK OVERVIEW">
+              <Text style={[styles.title, { color: theme.text }]}>{set.title}</Text>
+              {set.description ? (
+                <Text style={[styles.desc, { color: theme.textSecondary }]}>
+                  {set.description}
+                </Text>
+              ) : null}
 
-            <View style={styles.badgeRow}>
-              <BrutalBadge
-                label={`${termsOnly} TERMS`}
-                color={theme.primary}
-                textColor="#FFFFFF"
-              />
-              <BrutalBadge
-                label={`${questionsOnly} QUESTIONS`}
-                color={theme.brandSecondary || '#EA580C'}
-                textColor="#FFFFFF"
-              />
-              <BrutalBadge
-                label="READY TO STUDY"
-                color={theme.success || '#10B981'}
-                textColor="#FFFFFF"
-              />
-            </View>
-          </BrutalCard>
+              <View style={styles.badgeRow}>
+                <BrutalBadge
+                  label={`${termsOnly} TERMS`}
+                  color={theme.primary}
+                  textColor="#FFFFFF"
+                />
+                <BrutalBadge
+                  label={`${questionsOnly} QUESTIONS`}
+                  color={theme.brandSecondary || '#EA580C'}
+                  textColor="#FFFFFF"
+                />
+                <BrutalBadge
+                  label="READY TO STUDY"
+                  color={theme.success || '#10B981'}
+                  textColor="#FFFFFF"
+                />
+              </View>
+            </BrutalCard>
+          </Animated.View>
 
           {/* Study Modes */}
           {hasContent ? (
@@ -386,32 +445,34 @@ export default function SetDetailScreen() {
               </Text>
 
               <View style={[styles.modeCardsRow, width >= 640 && { flexDirection: 'row' }]}>
-                {/* Flashcards Mode */}
+                {/* Flashcards Mode with Spring Hover */}
                 <Pressable
                   onPress={() => {
                     soundManager.playButtonClick();
                     navigation.navigate('Study', { set, mode: 'flashcards' });
                   }}
-                  style={({ pressed }) => [
-                    styles.modeCard,
-                    width >= 640 && { flex: 1 },
-                    {
-                      backgroundColor: theme.card,
-                      borderColor: borderColor,
-                      borderWidth: borderWidth,
-                      transform: [
-                        { translateX: pressed ? 2 : 0 },
-                        { translateY: pressed ? 2 : 0 },
-                      ],
-                    },
-                    Platform.OS === 'web' && {
-                      boxShadow: pressed
-                        ? `1px 1px 0px ${shadowColor}`
-                        : `3px 3px 0px ${shadowColor}`,
-                      cursor: 'pointer',
-                      transition: 'transform 0.08s ease, box-shadow 0.08s ease',
-                    },
-                  ]}
+                  style={({ pressed, hovered }) => {
+                    const isDown = pressed;
+                    const isHover = hovered && !isDown;
+                    const curOffset = isDown ? 1 : isHover ? 5 : 3;
+                    const trans = isDown ? 2 : isHover ? -2 : 0;
+
+                    return [
+                      styles.modeCard,
+                      width >= 640 && { flex: 1 },
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                        transform: [{ translateX: trans }, { translateY: trans }],
+                      },
+                      Platform.OS === 'web' && {
+                        boxShadow: `${curOffset}px ${curOffset}px 0px ${shadowColor}`,
+                        cursor: 'pointer',
+                        transition: 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      },
+                    ];
+                  }}
                 >
                   <View
                     style={[
@@ -436,32 +497,34 @@ export default function SetDetailScreen() {
                   </View>
                 </Pressable>
 
-                {/* Quiz Mode */}
+                {/* Quiz Mode with Spring Hover */}
                 <Pressable
                   onPress={() => {
                     soundManager.playButtonClick();
                     navigation.navigate('Study', { set, mode: 'quiz' });
                   }}
-                  style={({ pressed }) => [
-                    styles.modeCard,
-                    width >= 640 && { flex: 1 },
-                    {
-                      backgroundColor: theme.card,
-                      borderColor: borderColor,
-                      borderWidth: borderWidth,
-                      transform: [
-                        { translateX: pressed ? 2 : 0 },
-                        { translateY: pressed ? 2 : 0 },
-                      ],
-                    },
-                    Platform.OS === 'web' && {
-                      boxShadow: pressed
-                        ? `1px 1px 0px ${shadowColor}`
-                        : `3px 3px 0px ${shadowColor}`,
-                      cursor: 'pointer',
-                      transition: 'transform 0.08s ease, box-shadow 0.08s ease',
-                    },
-                  ]}
+                  style={({ pressed, hovered }) => {
+                    const isDown = pressed;
+                    const isHover = hovered && !isDown;
+                    const curOffset = isDown ? 1 : isHover ? 5 : 3;
+                    const trans = isDown ? 2 : isHover ? -2 : 0;
+
+                    return [
+                      styles.modeCard,
+                      width >= 640 && { flex: 1 },
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                        transform: [{ translateX: trans }, { translateY: trans }],
+                      },
+                      Platform.OS === 'web' && {
+                        boxShadow: `${curOffset}px ${curOffset}px 0px ${shadowColor}`,
+                        cursor: 'pointer',
+                        transition: 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      },
+                    ];
+                  }}
                 >
                   <View
                     style={[
@@ -513,17 +576,21 @@ export default function SetDetailScreen() {
                       },
                     ]}
                   >
-                    <TouchableOpacity
+                    <Pressable
                       onPress={() => {
                         soundManager.playButtonClick();
                         setViewMode('preview');
                       }}
-                      style={[
+                      style={({ pressed, hovered }) => [
                         styles.segmentBtn,
                         viewMode === 'preview' && {
                           backgroundColor: theme.card,
                           borderColor: borderColor,
                           borderWidth: 1.5,
+                        },
+                        Platform.OS === 'web' && {
+                          cursor: 'pointer',
+                          transition: 'all 0.1s ease',
                         },
                       ]}
                     >
@@ -543,19 +610,23 @@ export default function SetDetailScreen() {
                       >
                         FLIP GRID
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
 
-                    <TouchableOpacity
+                    <Pressable
                       onPress={() => {
                         soundManager.playButtonClick();
                         setViewMode('edit');
                       }}
-                      style={[
+                      style={({ pressed, hovered }) => [
                         styles.segmentBtn,
                         viewMode === 'edit' && {
                           backgroundColor: theme.card,
                           borderColor: borderColor,
                           borderWidth: 1.5,
+                        },
+                        Platform.OS === 'web' && {
+                          cursor: 'pointer',
+                          transition: 'all 0.1s ease',
                         },
                       ]}
                     >
@@ -575,12 +646,12 @@ export default function SetDetailScreen() {
                       >
                         EDIT CARDS
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
                 </View>
               </View>
 
-              {/* Display: Flip-Card Grid Preview */}
+              {/* Display: Flip-Card Grid Preview with Staggered Cascading Entry */}
               {viewMode === 'preview' ? (
                 <View>
                   {set.terms && set.terms.length > 0 ? (

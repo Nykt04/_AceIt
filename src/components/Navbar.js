@@ -8,25 +8,32 @@ export default function Navbar({ onMenuPress, showMenu = true, showSettings = tr
   const navigation = useNavigation();
   const { theme, isDarkMode, toggleTheme } = useTheme();
 
-  const borderColor = theme.border || '#121212';
-  const shadowColor = theme.shadow || '#121212';
-  const borderWidth = theme.borderWidth || 3;
+  const borderColor = theme.border || '#111827';
+  const shadowColor = theme.shadow || '#111827';
+  const borderWidth = theme.borderWidth || 2;
 
-  const getPressableShadow = (pressed, offset = 3) => {
-    const cur = pressed ? 1 : offset;
-    return Platform.OS === 'web'
-      ? {
-          boxShadow: `${cur}px ${cur}px 0px ${shadowColor}`,
-          cursor: 'pointer',
-          transition: 'transform 0.08s ease, box-shadow 0.08s ease',
-        }
-      : {
-          shadowColor: shadowColor,
-          shadowOffset: { width: cur, height: cur },
-          shadowOpacity: 1,
-          shadowRadius: 0,
-          elevation: cur,
-        };
+  const getPressableMotion = (pressed, hovered, offset = 3) => {
+    const isDown = pressed;
+    const isHover = hovered && !isDown;
+    const cur = isDown ? 1 : isHover ? offset + 1 : offset;
+    const trans = isDown ? 2 : isHover ? -1 : 0;
+
+    return {
+      transform: [{ translateX: trans }, { translateY: trans }],
+      ...(Platform.OS === 'web'
+        ? {
+            boxShadow: `${cur}px ${cur}px 0px ${shadowColor}`,
+            cursor: 'pointer',
+            transition: 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          }
+        : {
+            shadowColor: shadowColor,
+            shadowOffset: { width: cur, height: cur },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: cur,
+          }),
+    };
   };
 
   return (
@@ -49,18 +56,14 @@ export default function Navbar({ onMenuPress, showMenu = true, showSettings = tr
           }}
           accessibilityLabel="Open menu"
           accessibilityRole="button"
-          style={({ pressed }) => [
+          style={({ pressed, hovered }) => [
             styles.iconButton,
             {
               backgroundColor: theme.card,
               borderColor: borderColor,
               borderWidth: borderWidth,
-              transform: [
-                { translateX: pressed ? 2 : 0 },
-                { translateY: pressed ? 2 : 0 },
-              ],
             },
-            getPressableShadow(pressed),
+            getPressableMotion(pressed, hovered, 3),
           ]}
         >
           <MaterialIcons name="menu" size={24} color={theme.text} />
@@ -78,21 +81,21 @@ export default function Navbar({ onMenuPress, showMenu = true, showSettings = tr
         disabled={!showMenu}
         style={styles.logoContainer}
       >
-        <View
-          style={[
-            styles.brandBadge,
-            {
-              backgroundColor: theme.primary,
-              borderColor: borderColor,
-              borderWidth: borderWidth,
-            },
-            Platform.OS === 'web' && {
-              boxShadow: `3px 3px 0px ${shadowColor}`,
-            },
-          ]}
-        >
-          <Text style={styles.brandText}>ACEIT</Text>
-        </View>
+        {({ pressed, hovered }) => (
+          <View
+            style={[
+              styles.brandBadge,
+              {
+                backgroundColor: theme.primary,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+              getPressableMotion(pressed && showMenu, hovered && showMenu, 3),
+            ]}
+          >
+            <Text style={styles.brandText}>ACEIT</Text>
+          </View>
+        )}
       </Pressable>
 
       {/* Right Controls: Theme Toggle & Settings */}
@@ -101,18 +104,14 @@ export default function Navbar({ onMenuPress, showMenu = true, showSettings = tr
           onPress={toggleTheme}
           accessibilityLabel="Toggle light and dark mode"
           accessibilityRole="button"
-          style={({ pressed }) => [
+          style={({ pressed, hovered }) => [
             styles.iconButton,
             {
               backgroundColor: theme.card,
               borderColor: borderColor,
               borderWidth: borderWidth,
-              transform: [
-                { translateX: pressed ? 2 : 0 },
-                { translateY: pressed ? 2 : 0 },
-              ],
             },
-            getPressableShadow(pressed),
+            getPressableMotion(pressed, hovered, 3),
           ]}
         >
           <MaterialIcons
@@ -127,18 +126,14 @@ export default function Navbar({ onMenuPress, showMenu = true, showSettings = tr
             onPress={() => navigation.navigate('Settings')}
             accessibilityLabel="Settings"
             accessibilityRole="button"
-            style={({ pressed }) => [
+            style={({ pressed, hovered }) => [
               styles.settingsButton,
               {
                 backgroundColor: theme.card,
                 borderColor: borderColor,
                 borderWidth: borderWidth,
-                transform: [
-                  { translateX: pressed ? 2 : 0 },
-                  { translateY: pressed ? 2 : 0 },
-                ],
               },
-              getPressableShadow(pressed),
+              getPressableMotion(pressed, hovered, 3),
             ]}
           >
             <MaterialIcons name="settings" size={20} color={theme.text} />
@@ -161,8 +156,8 @@ const styles = StyleSheet.create({
     userSelect: 'none',
   },
   iconButton: {
-    width: 46,
-    height: 46,
+    width: 44,
+    height: 44,
     borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
@@ -190,7 +185,7 @@ const styles = StyleSheet.create({
   settingsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 46,
+    height: 44,
     paddingHorizontal: 14,
     borderRadius: 4,
     gap: 6,
@@ -198,7 +193,6 @@ const styles = StyleSheet.create({
   settingsText: {
     fontSize: 13,
     fontWeight: '900',
-    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
 });

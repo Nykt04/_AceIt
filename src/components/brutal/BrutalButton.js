@@ -42,7 +42,7 @@ export function BrutalButton({
 
   const shadowColor = theme.shadow || '#121212';
   const borderColor = theme.border || '#121212';
-  const borderWidth = theme.borderWidth || 3;
+  const borderWidth = theme.borderWidth || 2;
 
   return (
     <Pressable
@@ -52,12 +52,15 @@ export function BrutalButton({
       onHoverOut={() => setIsHovered(false)}
       style={({ pressed }) => {
         const isDown = pressed && !disabled;
-        const currentOffset = isDown ? 1 : 3;
+        const isHover = isHovered && !isDown && !disabled;
+        const currentOffset = isDown ? 1 : isHover ? 4 : 3;
+        const transX = isDown ? 2 : isHover ? -1 : 0;
+        const transY = isDown ? 2 : isHover ? -1 : 0;
 
         const webShadow = Platform.OS === 'web' ? {
           boxShadow: `${currentOffset}px ${currentOffset}px 0px ${shadowColor}`,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+          transition: 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)',
         } : {
           shadowColor: shadowColor,
           shadowOffset: { width: currentOffset, height: currentOffset },
@@ -73,8 +76,8 @@ export function BrutalButton({
             borderColor: borderColor,
             borderWidth: borderWidth,
             transform: [
-              { translateX: isDown ? 2 : 0 },
-              { translateY: isDown ? 2 : 0 },
+              { translateX: transX },
+              { translateY: transY },
             ],
           },
           webShadow,

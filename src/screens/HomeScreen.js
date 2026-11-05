@@ -22,28 +22,39 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { BrutalCard, BrutalButton, BrutalSkeleton, BrutalBadge } from '../components/brutal';
 
-// Physical Deck Stack Card Component
+// Physical Deck Stack Card Component with 3D Layer Spread and Tactile Spring Physics
 const PhysicalDeckCard = ({ item, index, navigation, onDelete, theme, cardWidth }) => {
-  const [isDown, setIsDown] = useState(false);
-  const slideAnim = useRef(new Animated.Value(24)).current;
+  const [isHovered, setIsHovered] = useState(false);
+  const slideAnim = useRef(new Animated.Value(28)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 220,
-        delay: Math.min(index * 40, 300),
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 220,
-        delay: Math.min(index * 40, 300),
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-    ]).start();
-  }, [index, opacityAnim, slideAnim]);
+    const delay = Math.min(index * 45, 300);
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 6,
+          tension: 85,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 6,
+          tension: 85,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 160,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]).start();
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [index, opacityAnim, scaleAnim, slideAnim]);
 
   const termCount = item.terms?.length || item.flashcards?.length || 0;
   const questionCount = item.questions?.length || 0;
@@ -106,29 +117,43 @@ const PhysicalDeckCard = ({ item, index, navigation, onDelete, theme, cardWidth 
         {
           width: cardWidth,
           opacity: opacityAnim,
-          transform: [{ translateY: slideAnim }],
+          transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
         },
       ]}
     >
-      {/* 3D Stack Effect - Bottom Offset Layer 2 */}
+      {/* 3D Stack Layer 2 (Fans out on hover) */}
       <View
         style={[
           styles.stackLayer2,
           {
+            top: isHovered ? 9 : 6,
+            left: isHovered ? 9 : 6,
+            right: isHovered ? -9 : -6,
+            bottom: isHovered ? -9 : -6,
             backgroundColor: theme.muted,
             borderColor: borderColor,
             borderWidth: borderWidth,
+            ...(Platform.OS === 'web' && {
+              transition: 'all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }),
           },
         ]}
       />
-      {/* 3D Stack Effect - Middle Offset Layer 1 */}
+      {/* 3D Stack Layer 1 (Fans out on hover) */}
       <View
         style={[
           styles.stackLayer1,
           {
+            top: isHovered ? 5 : 3,
+            left: isHovered ? 5 : 3,
+            right: isHovered ? -5 : -3,
+            bottom: isHovered ? -5 : -3,
             backgroundColor: theme.card,
             borderColor: borderColor,
             borderWidth: borderWidth,
+            ...(Platform.OS === 'web' && {
+              transition: 'all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            }),
           },
         ]}
       />
@@ -139,27 +164,29 @@ const PhysicalDeckCard = ({ item, index, navigation, onDelete, theme, cardWidth 
           soundManager.playButtonClick();
           navigation.navigate('SetDetail', { set: item });
         }}
-        onPressIn={() => setIsDown(true)}
-        onPressOut={() => setIsDown(false)}
-        style={[
-          styles.mainDeckCard,
-          {
-            backgroundColor: theme.card,
-            borderColor: borderColor,
-            borderWidth: borderWidth,
-            transform: [
-              { translateX: isDown ? 2 : 0 },
-              { translateY: isDown ? 2 : 0 },
-            ],
-          },
-          Platform.OS === 'web' && {
-            boxShadow: isDown
-              ? `1px 1px 0px ${shadowColor}`
-              : `3px 3px 0px ${shadowColor}`,
-            cursor: 'pointer',
-            transition: 'transform 0.08s ease, box-shadow 0.08s ease',
-          },
-        ]}
+        onHoverIn={() => setIsHovered(true)}
+        onHoverOut={() => setIsHovered(false)}
+        style={({ pressed, hovered }) => {
+          const isDown = pressed;
+          const isHover = hovered && !isDown;
+          const curShadow = isDown ? 1 : isHover ? 6 : 3;
+          const trans = isDown ? 2 : isHover ? -3 : 0;
+
+          return [
+            styles.mainDeckCard,
+            {
+              backgroundColor: theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+              transform: [{ translateX: trans }, { translateY: trans }],
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `${curShadow}px ${curShadow}px 0px ${shadowColor}`,
+              cursor: 'pointer',
+              transition: 'transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            },
+          ];
+        }}
       >
         {/* Top Header: Badge + Delete Icon */}
         <View style={styles.cardHeaderRow}>
@@ -245,8 +272,8 @@ const PhysicalDeckCard = ({ item, index, navigation, onDelete, theme, cardWidth 
           />
         </View>
 
-        {/* Action Button: Study Deck */}
-        <TouchableOpacity
+        {/* Action Button: Study Deck with Hover Lift */}
+        <View
           style={[
             styles.studyButton,
             {
@@ -258,16 +285,10 @@ const PhysicalDeckCard = ({ item, index, navigation, onDelete, theme, cardWidth 
               boxShadow: `2px 2px 0px ${shadowColor}`,
             },
           ]}
-          onPress={(e) => {
-            e.stopPropagation?.();
-            soundManager.playButtonClick();
-            navigation.navigate('SetDetail', { set: item });
-          }}
-          accessibilityLabel={`Study ${item.title}`}
         >
           <Text style={styles.studyButtonText}>STUDY DECK</Text>
           <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" />
-        </TouchableOpacity>
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -281,11 +302,63 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'TERMS' | 'QUESTIONS' | 'RECENT'
 
+  // Staggered Entry Animation Hooks
+  const heroAnim = useRef(new Animated.Value(-24)).current;
+  const heroOpacity = useRef(new Animated.Value(0)).current;
+  const statsAnim = useRef(new Animated.Value(20)).current;
+  const statsOpacity = useRef(new Animated.Value(0)).current;
+  const toolbarAnim = useRef(new Animated.Value(14)).current;
+  const toolbarOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.stagger(60, [
+      Animated.parallel([
+        Animated.spring(heroAnim, {
+          toValue: 0,
+          friction: 7,
+          tension: 90,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(heroOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]),
+      Animated.parallel([
+        Animated.spring(statsAnim, {
+          toValue: 0,
+          friction: 7,
+          tension: 85,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(statsOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]),
+      Animated.parallel([
+        Animated.spring(toolbarAnim, {
+          toValue: 0,
+          friction: 7,
+          tension: 85,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(toolbarOpacity, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]),
+    ]).start();
+  }, [heroAnim, heroOpacity, statsAnim, statsOpacity, toolbarAnim, toolbarOpacity]);
+
   const { width } = useWindowDimensions();
 
   // Responsive column calculation constrained to 1200px container
   const cardWidth = useMemo(() => {
-    const containerWidth = Math.min(width, 1200) - 32; // 32px padding
+    const containerWidth = Math.min(width, 1200) - 32;
     const gap = 16;
     if (containerWidth >= 960) {
       // 3 clean columns on desktop
@@ -413,14 +486,16 @@ export default function HomeScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.contentWrapper}>
-          {/* Neubrutalism Hero Header with Integrated Actions */}
-          <View
+          {/* Animated Hero Header with Spring Drop */}
+          <Animated.View
             style={[
               styles.heroBanner,
               {
                 backgroundColor: theme.card,
                 borderColor: borderColor,
                 borderWidth: borderWidth,
+                opacity: heroOpacity,
+                transform: [{ translateY: heroAnim }],
               },
               Platform.OS === 'web' && {
                 boxShadow: `4px 4px 0px ${shadowColor}`,
@@ -447,7 +522,7 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
-              {/* Header Action Buttons (Always accessible, no floating clutter) */}
+              {/* Integrated Header Actions */}
               <View style={[styles.heroActionsRow, !isDesktop && { marginTop: 16 }]}>
                 <BrutalButton
                   title="AI GENERATE"
@@ -469,113 +544,91 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Stats Bar (1 row of 4 on desktop, 2x2 on mobile) */}
+          {/* Animated Stats Bar with Spring Drop */}
           {studySets.length > 0 && (
-            <View style={styles.statsBanner}>
+            <Animated.View
+              style={[
+                styles.statsBanner,
+                {
+                  opacity: statsOpacity,
+                  transform: [{ translateY: statsAnim }],
+                },
+              ]}
+            >
               <View style={styles.statsGrid}>
-                <View
-                  style={[
-                    styles.statCard,
-                    {
-                      minWidth: isDesktop ? 160 : '47%',
-                      backgroundColor: theme.card,
-                      borderColor: borderColor,
-                      borderWidth: borderWidth,
-                    },
-                    Platform.OS === 'web' && {
-                      boxShadow: `3px 3px 0px ${shadowColor}`,
-                    },
-                  ]}
-                >
-                  <MaterialIcons name="menu-book" size={26} color={theme.primary} />
-                  <View style={styles.statCardContent}>
-                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalItems}</Text>
-                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Total Items</Text>
-                    <Text style={[styles.statCardChange, { color: theme.success || '#10B981' }]}>
-                      +{stats.itemsThisWeek} this week
-                    </Text>
+                {[
+                  {
+                    icon: 'menu-book',
+                    color: theme.primary,
+                    value: stats.totalItems,
+                    label: 'Total Items',
+                    change: `+${stats.itemsThisWeek} this week`,
+                  },
+                  {
+                    icon: 'assignment',
+                    color: theme.accent || '#FCD34D',
+                    value: stats.totalTerms,
+                    label: 'Terms',
+                  },
+                  {
+                    icon: 'help-outline',
+                    color: theme.brandSecondary || '#EA580C',
+                    value: stats.totalQuestions,
+                    label: 'Questions',
+                  },
+                  {
+                    icon: 'folder-open',
+                    color: theme.textSecondary,
+                    value: stats.totalSets,
+                    label: 'Decks',
+                  },
+                ].map((stat, idx) => (
+                  <View
+                    key={stat.label}
+                    style={[
+                      styles.statCard,
+                      {
+                        minWidth: isDesktop ? 160 : '47%',
+                        backgroundColor: theme.card,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                      },
+                      Platform.OS === 'web' && {
+                        boxShadow: `3px 3px 0px ${shadowColor}`,
+                        transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name={stat.icon} size={26} color={stat.color} />
+                    <View style={styles.statCardContent}>
+                      <Text style={[styles.statCardValue, { color: theme.text }]}>{stat.value}</Text>
+                      <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
+                      {stat.change && (
+                        <Text style={[styles.statCardChange, { color: theme.success || '#10B981' }]}>
+                          {stat.change}
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-
-                <View
-                  style={[
-                    styles.statCard,
-                    {
-                      minWidth: isDesktop ? 160 : '47%',
-                      backgroundColor: theme.card,
-                      borderColor: borderColor,
-                      borderWidth: borderWidth,
-                    },
-                    Platform.OS === 'web' && {
-                      boxShadow: `3px 3px 0px ${shadowColor}`,
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name="assignment"
-                    size={26}
-                    color={theme.accent || '#FCD34D'}
-                  />
-                  <View style={styles.statCardContent}>
-                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalTerms}</Text>
-                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Terms</Text>
-                  </View>
-                </View>
-
-                <View
-                  style={[
-                    styles.statCard,
-                    {
-                      minWidth: isDesktop ? 160 : '47%',
-                      backgroundColor: theme.card,
-                      borderColor: borderColor,
-                      borderWidth: borderWidth,
-                    },
-                    Platform.OS === 'web' && {
-                      boxShadow: `3px 3px 0px ${shadowColor}`,
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name="help-outline"
-                    size={26}
-                    color={theme.brandSecondary || '#EA580C'}
-                  />
-                  <View style={styles.statCardContent}>
-                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalQuestions}</Text>
-                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Questions</Text>
-                  </View>
-                </View>
-
-                <View
-                  style={[
-                    styles.statCard,
-                    {
-                      minWidth: isDesktop ? 160 : '47%',
-                      backgroundColor: theme.card,
-                      borderColor: borderColor,
-                      borderWidth: borderWidth,
-                    },
-                    Platform.OS === 'web' && {
-                      boxShadow: `3px 3px 0px ${shadowColor}`,
-                    },
-                  ]}
-                >
-                  <MaterialIcons name="folder-open" size={26} color={theme.textSecondary} />
-                  <View style={styles.statCardContent}>
-                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalSets}</Text>
-                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Decks</Text>
-                  </View>
-                </View>
+                ))}
               </View>
-            </View>
+            </Animated.View>
           )}
 
-          {/* Quick Search & Filter Toolbar (Side-by-side on desktop) */}
+          {/* Animated Quick Search & Filter Toolbar */}
           {studySets.length > 0 && (
-            <View style={[styles.toolbarContainer, isDesktop && styles.toolbarRow]}>
+            <Animated.View
+              style={[
+                styles.toolbarContainer,
+                isDesktop && styles.toolbarRow,
+                {
+                  opacity: toolbarOpacity,
+                  transform: [{ translateY: toolbarAnim }],
+                },
+              ]}
+            >
               {/* Search Box */}
               <View
                 style={[
@@ -609,7 +662,7 @@ export default function HomeScreen() {
                 )}
               </View>
 
-              {/* Filter Category Pills */}
+              {/* Filter Category Pills with Spring Press */}
               <View style={styles.filterPillsRow}>
                 {[
                   { key: 'ALL', label: `ALL (${studySets.length})` },
@@ -619,26 +672,33 @@ export default function HomeScreen() {
                 ].map((pill) => {
                   const isActive = activeFilter === pill.key;
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={pill.key}
                       onPress={() => {
                         soundManager.playButtonClick();
                         setActiveFilter(pill.key);
                       }}
-                      style={[
-                        styles.filterPill,
-                        {
-                          backgroundColor: isActive ? theme.primary : theme.card,
-                          borderColor: borderColor,
-                          borderWidth: borderWidth,
-                        },
-                        Platform.OS === 'web' && {
-                          boxShadow: isActive
-                            ? `1px 1px 0px ${shadowColor}`
-                            : `2px 2px 0px ${shadowColor}`,
-                          cursor: 'pointer',
-                        },
-                      ]}
+                      style={({ pressed, hovered }) => {
+                        const isDown = pressed;
+                        const isHover = hovered && !isDown;
+                        const curOffset = isDown ? 1 : isHover ? 3 : 2;
+                        const trans = isDown ? 2 : isHover ? -1 : 0;
+
+                        return [
+                          styles.filterPill,
+                          {
+                            backgroundColor: isActive ? theme.primary : theme.card,
+                            borderColor: borderColor,
+                            borderWidth: borderWidth,
+                            transform: [{ translateX: trans }, { translateY: trans }],
+                          },
+                          Platform.OS === 'web' && {
+                            boxShadow: `${curOffset}px ${curOffset}px 0px ${shadowColor}`,
+                            cursor: 'pointer',
+                            transition: 'transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.1s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                          },
+                        ];
+                      }}
                     >
                       <Text
                         style={[
@@ -651,11 +711,11 @@ export default function HomeScreen() {
                       >
                         {pill.label}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </View>
-            </View>
+            </Animated.View>
           )}
 
           {/* Study Sets Grid Header */}
@@ -685,7 +745,7 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Decks Responsive Grid */}
+          {/* Decks Responsive Grid with Spring Cascade */}
           {studySets.length === 0 ? (
             <View
               style={[
@@ -963,19 +1023,11 @@ const styles = StyleSheet.create({
   },
   stackLayer2: {
     position: 'absolute',
-    top: 6,
-    left: 6,
-    right: -6,
-    bottom: -6,
     borderRadius: 4,
     zIndex: 1,
   },
   stackLayer1: {
     position: 'absolute',
-    top: 3,
-    left: 3,
-    right: -3,
-    bottom: -3,
     borderRadius: 4,
     zIndex: 2,
   },
