@@ -1,14 +1,33 @@
-import React from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  TouchableOpacity,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useNotification } from '../context/NotificationContext';
+import { useTheme } from '../context/ThemeContext';
+import soundManager from '../services/soundService';
 
 export const NotificationDisplay = () => {
   const { notifications, removeNotification } = useNotification();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 640;
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View
+      style={[
+        styles.container,
+        isDesktop ? styles.desktopContainer : styles.mobileContainer,
+      ]}
+      pointerEvents="box-none"
+    >
       {notifications.map((notification) => (
-        <Toast
+        <BrutalToast
           key={notification.id}
           notification={notification}
           onDismiss={() => removeNotification(notification.id)}
@@ -18,83 +37,192 @@ export const NotificationDisplay = () => {
   );
 };
 
-const Toast = ({ notification, onDismiss }) => {
-  const animatedOpacity = React.useRef(new Animated.Value(0)).current;
+const BrutalToast = ({ notification, onDismiss }) => {
+  const { theme } = useTheme();
+  const scaleAnim = useRef(new Animated.Value(0.6)).current;
+  const translateYAnim = useRef(new Animated.Value(-40)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(1)).current;
 
-  React.useEffect(() => {
-    Animated.sequence([
-      Animated.timing(animatedOpacity, {
+  const duration = notification.duration || 4000;
+
+  useEffect(() => {
+    // Sound on pop out
+    try {
+      soundManager.playButtonClick();
+    } catch (_) {}
+
+    // Spring Pop-Out Sequence
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
         toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
+        friction: 5,
+        tension: 110,
+        useNativeDriver: Platform.OS !== 'web',
       }),
-      Animated.delay(3700),
-      Animated.timing(animatedOpacity, {
+      Animated.spring(translateYAnim, {
         toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
+        friction: 6,
+        tension: 90,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      // Progress bar countdown
+      Animated.timing(progressAnim, {
+        toValue: 0,
+        duration: duration,
+        useNativeDriver: false,
+      }),
+    ]).start();
+
+    // Auto dismiss timer
+    const timer = setTimeout(() => {
+      dismissToast();
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const dismissToast = () => {
+    Animated.parallel([
+      Animated.timing(translateYAnim, {
+        toValue: -20,
+        duration: 140,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 140,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.85,
+        duration: 140,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start(() => {
       onDismiss();
     });
-  }, [onDismiss]);
+  };
 
-  const getBackgroundColor = () => {
+  const getAccentConfig = () => {
     switch (notification.type) {
-      case 'success':
-        return '#10b981';
       case 'error':
-        return '#ef4444';
+        return {
+          color: theme.error || '#EF4444',
+          badgeText: 'DELETED / ERROR',
+          iconName: 'delete-forever',
+        };
+      case 'success':
+        return {
+          color: theme.success || '#10B981',
+          badgeText: 'SUCCESS / ADDED',
+          iconName: 'check-circle',
+        };
       case 'warning':
-        return '#f59e0b';
+        return {
+          color: theme.accent || '#F59E0B',
+          badgeText: 'WARNING',
+          iconName: 'warning',
+        };
       case 'info':
-        return '#3b82f6';
       default:
-        return '#6366f1';
+        return {
+          color: theme.primary || '#3B82F6',
+          badgeText: 'NOTICE',
+          iconName: 'info',
+        };
     }
   };
 
-  const getIcon = () => {
-    switch (notification.type) {
-      case 'success':
-        return '✓';
-      case 'error':
-        return '✕';
-      case 'warning':
-        return '⚠';
-      case 'info':
-        return 'ℹ';
-      default:
-        return '•';
-    }
-  };
+  const config = getAccentConfig();
+  const borderColor = theme.border || '#111827';
+  const shadowColor = theme.shadow || '#111827';
+  const borderWidth = theme.borderWidth || 2;
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <Animated.View
       style={[
-        styles.toastContainer,
+        styles.toastWrapper,
         {
-          opacity: animatedOpacity,
-          backgroundColor: getBackgroundColor(),
+          opacity: opacityAnim,
+          transform: [{ translateY: translateYAnim }, { scale: scaleAnim }],
         },
       ]}
     >
-      <TouchableOpacity
-        style={styles.toast}
-        onPress={onDismiss}
-        activeOpacity={0.9}
+      <View
+        style={[
+          styles.toastCard,
+          {
+            backgroundColor: theme.card,
+            borderColor: borderColor,
+            borderWidth: borderWidth,
+          },
+          Platform.OS === 'web' && {
+            boxShadow: `5px 5px 0px ${shadowColor}`,
+          },
+        ]}
       >
-        <Text style={styles.icon}>{getIcon()}</Text>
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{notification.title}</Text>
-          {notification.message && (
-            <Text style={styles.message}>{notification.message}</Text>
-          )}
+        {/* Top Accent Strip */}
+        <View
+          style={[
+            styles.accentStrip,
+            {
+              backgroundColor: config.color,
+              borderBottomColor: borderColor,
+              borderBottomWidth: borderWidth,
+            },
+          ]}
+        >
+          <View style={styles.badgeRow}>
+            <MaterialIcons name={config.iconName} size={16} color="#FFFFFF" />
+            <Text style={styles.badgeText}>{config.badgeText}</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={dismissToast}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.closeBtn}
+            accessibilityLabel="Dismiss notification"
+          >
+            <MaterialIcons name="close" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={onDismiss} style={styles.closeButton}>
-          <Text style={styles.closeIcon}>×</Text>
-        </TouchableOpacity>
-      </TouchableOpacity>
+
+        {/* Content Body */}
+        <View style={styles.toastBody}>
+          <Text style={[styles.toastTitle, { color: theme.text }]}>
+            {notification.title}
+          </Text>
+          {notification.message ? (
+            <Text style={[styles.toastMessage, { color: theme.textSecondary }]}>
+              {notification.message}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* Progress Countdown Bar */}
+        <View style={[styles.progressTrack, { backgroundColor: theme.muted }]}>
+          <Animated.View
+            style={[
+              styles.progressBar,
+              {
+                width: progressWidth,
+                backgroundColor: config.color,
+              },
+            ]}
+          />
+        </View>
+      </View>
     </Animated.View>
   );
 };
@@ -103,55 +231,72 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 9999,
+    zIndex: 99999,
     pointerEvents: 'box-none',
   },
-  toastContainer: {
-    margin: 12,
-    marginTop: 8,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  desktopContainer: {
+    top: 24,
+    right: 24,
+    width: 380,
   },
-  toast: {
+  mobileContainer: {
+    top: 16,
+    left: 16,
+    right: 16,
+  },
+  toastWrapper: {
+    marginBottom: 14,
+  },
+  toastCard: {
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  accentStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
-  icon: {
-    fontSize: 18,
-    marginRight: 12,
-    fontWeight: '700',
-    color: '#fff',
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  textContainer: {
-    flex: 1,
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  title: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 2,
+  closeBtn: {
+    padding: 2,
+    borderRadius: 2,
   },
-  message: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
+  toastBody: {
+    padding: 14,
+  },
+  toastTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  toastMessage: {
+    fontSize: 13,
+    fontWeight: '500',
     lineHeight: 18,
   },
-  closeButton: {
-    padding: 8,
-    marginLeft: 12,
+  progressTrack: {
+    height: 3,
+    width: '100%',
+    overflow: 'hidden',
   },
-  closeIcon: {
-    fontSize: 24,
-    color: '#fff',
-    fontWeight: '300',
+  progressBar: {
+    height: '100%',
   },
 });
+
+export default NotificationDisplay;

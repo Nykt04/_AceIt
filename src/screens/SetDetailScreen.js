@@ -21,6 +21,7 @@ import { generateQuestionsFromTerms } from '../services/aiService';
 import soundManager from '../services/soundService';
 import EditableFlashcard from '../components/EditableFlashcard';
 import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
+import { showNotification, showSuccess, showError, showInfo, NotificationType } from '../services/notificationService';
 
 // Interactive Flip Index Card Component with 3D Flip and Spring Micro-Interactions
 const InteractiveIndexCard = ({ term, definition, index, theme, cardWidth }) => {
@@ -277,9 +278,10 @@ export default function SetDetailScreen() {
     if (!proceed) return;
     const ok = await deleteStudySet(set.id);
     if (!ok) {
-      Alert.alert('Error', 'Could not delete the set.');
+      showError('DELETE FAILED', 'Could not delete the set.');
       return;
     }
+    showNotification('DECK DELETED', `"${set.title}" was permanently removed.`, NotificationType.ERROR);
     navigation.goBack();
   };
 
@@ -287,7 +289,7 @@ export default function SetDetailScreen() {
     const updatedTerms = [...(set.terms || [])];
     updatedTerms[index] = updatedTerm;
     await updateStudySet(set.id, { terms: updatedTerms });
-    Alert.alert('Success', 'Term updated!');
+    showSuccess('TERM UPDATED', `Saved "${updatedTerm.term || 'Term'}"`);
   };
 
   const handleDeleteTerm = (index) => {
@@ -299,8 +301,9 @@ export default function SetDetailScreen() {
       try {
         const updatedTerms = set.terms.filter((_, i) => i !== index);
         await updateStudySet(set.id, { terms: updatedTerms });
+        showNotification('TERM DELETED', `"${termName}" was removed from deck.`, NotificationType.ERROR);
       } catch (error) {
-        Alert.alert('Error', 'Failed to delete term: ' + error.message);
+        showError('DELETE FAILED', error.message || 'Failed to delete term');
       }
     };
 
@@ -318,7 +321,7 @@ export default function SetDetailScreen() {
     const updatedQuestions = [...(set.questions || [])];
     updatedQuestions[index] = updatedQuestion;
     await updateStudySet(set.id, { questions: updatedQuestions });
-    Alert.alert('Success', 'Question updated!');
+    showSuccess('QUESTION UPDATED', 'Question updated in bank.');
   };
 
   const handleDeleteQuestion = (index) => {
@@ -326,8 +329,9 @@ export default function SetDetailScreen() {
       try {
         const updatedQuestions = set.questions.filter((_, i) => i !== index);
         await updateStudySet(set.id, { questions: updatedQuestions });
+        showNotification('QUESTION DELETED', 'Question removed from bank.', NotificationType.ERROR);
       } catch (error) {
-        Alert.alert('Error', 'Failed to delete question: ' + error.message);
+        showError('DELETE FAILED', error.message || 'Failed to delete question');
       }
     };
 
@@ -346,6 +350,7 @@ export default function SetDetailScreen() {
     const updatedTerms = [...(set.terms || []), { term: '', definition: '' }];
     await updateStudySet(set.id, { terms: updatedTerms });
     setViewMode('edit');
+    showSuccess('TERM ADDED', 'New card added. Ready to edit!');
   };
 
   const handleConvertToQuestions = async () => {
@@ -366,7 +371,7 @@ export default function SetDetailScreen() {
       const allQuestions = [...existingQuestions, ...generatedQuestions];
       await updateStudySet(set.id, { questions: allQuestions });
       setSet({ ...set, questions: allQuestions });
-      Alert.alert('Success', `Generated ${generatedQuestions.length} questions from terms!`);
+      showSuccess('QUESTIONS GENERATED', `Created ${generatedQuestions.length} practice questions!`);
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to convert terms');
     } finally {
@@ -799,13 +804,29 @@ export default function SetDetailScreen() {
                 title="EXPORT AS PDF"
                 variant="outline"
                 icon={<MaterialIcons name="picture-as-pdf" size={20} color={theme.text} />}
-                onPress={() => exportStudySet(set, 'pdf')}
+                onPress={async () => {
+                soundManager.playButtonClick();
+                try {
+                  await exportStudySet(set, 'pdf');
+                  showInfo('DECK EXPORTED', `Exported "${set.title}" as PDF.`);
+                } catch (e) {
+                  showError('EXPORT FAILED', e.message || 'Export error');
+                }
+              }}
               />
               <BrutalButton
                 title="EXPORT AS DOCX"
                 variant="outline"
                 icon={<MaterialIcons name="description" size={20} color={theme.text} />}
-                onPress={() => exportStudySet(set, 'docx')}
+                onPress={async () => {
+                soundManager.playButtonClick();
+                try {
+                  await exportStudySet(set, 'docx');
+                  showInfo('DECK EXPORTED', `Exported "${set.title}" as DOCX.`);
+                } catch (e) {
+                  showError('EXPORT FAILED', e.message || 'Export error');
+                }
+              }}
               />
               <BrutalButton
                 title="DELETE DECK"

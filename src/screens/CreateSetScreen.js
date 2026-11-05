@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { showSuccess, showError } from '../services/notificationService';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, KeyboardAvoidingView, Platform, Alert, Animated, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useStudy } from '../context/StudyContext';
@@ -113,7 +114,7 @@ export default function CreateSetScreen() {
   const save = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      Alert.alert('Missing title', 'Give your set a title.');
+      showError('TITLE REQUIRED', 'Give your set a title before saving.');
       return;
     }
     const validTerms = terms.filter((t) => t.term.trim() || t.definition.trim());
@@ -137,9 +138,11 @@ export default function CreateSetScreen() {
     try {
       if (editingSet) {
         await updateStudySet(editingSet.id, { title: trimmedTitle, description: description.trim(), terms: validTerms, questions });
+        showSuccess('DECK UPDATED', `"${trimmedTitle}" saved successfully.`);
         navigation.goBack();
       } else {
         const newSet = await addStudySet({ title: trimmedTitle, description: description.trim(), terms: validTerms, questions });
+        showSuccess('DECK CREATED', `"${trimmedTitle}" has been added to your decks!`);
         navigation.replace('SetDetail', { set: newSet });
       }
     } catch (e) {

@@ -21,6 +21,7 @@ import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { BrutalCard, BrutalButton, BrutalSkeleton, BrutalBadge } from '../components/brutal';
+import { showNotification, showError, NotificationType } from '../services/notificationService';
 
 // Physical Deck Stack Card Component with 3D Layer Spread and Tactile Spring Physics
 const PhysicalDeckCard = ({ item, index, navigation, onDelete, theme, cardWidth }) => {
@@ -380,9 +381,13 @@ export default function HomeScreen() {
   }, [navigation, refresh]);
 
   const handleDelete = async (id) => {
+    const targetSet = studySets.find((s) => String(s.id) === String(id));
+    const title = targetSet?.title || 'Study deck';
     const ok = await deleteStudySet(id);
-    if (!ok) {
-      Alert.alert('Error', 'Failed to delete set. Please try again.');
+    if (ok) {
+      showNotification('DECK REMOVED', `"${title}" was permanently deleted.`, NotificationType.ERROR);
+    } else {
+      showError('DELETE FAILED', 'Failed to delete set. Please try again.');
     }
   };
 
