@@ -48,7 +48,7 @@ const createStyles = (theme) => {
       marginBottom: 16,
       padding: 20,
       borderRadius: 4,
-      backgroundColor: theme.primary,
+      backgroundColor: theme.card,
       borderWidth: borderWidth,
       borderColor: borderColor,
       ...(Platform.OS === 'web' && {
@@ -57,12 +57,12 @@ const createStyles = (theme) => {
     },
     heroBadge: {
       alignSelf: 'flex-start',
-      backgroundColor: theme.accent || '#FFDE59',
+      backgroundColor: theme.accent || '#FCD34D',
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 3,
-      borderWidth: 2,
-      borderColor: '#121212',
+      borderWidth: borderWidth,
+      borderColor: borderColor,
       marginBottom: 10,
     },
     heroBadgeText: {
@@ -75,14 +75,14 @@ const createStyles = (theme) => {
     heroTitle: {
       fontSize: 28,
       fontWeight: '900',
-      color: '#FFFFFF',
+      color: theme.text,
       letterSpacing: 0.5,
       marginBottom: 6,
     },
     heroSubtitle: {
       fontSize: 14,
-      color: '#F4F4F4',
-      fontWeight: '700',
+      color: theme.textSecondary,
+      fontWeight: '600',
       lineHeight: 20,
     },
 

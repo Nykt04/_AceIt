@@ -97,7 +97,7 @@ export default function Navbar({ onMenuPress }) {
           style={({ pressed }) => [
             styles.iconButton,
             {
-              backgroundColor: isDarkMode ? '#2A2A2A' : '#FFDE59',
+              backgroundColor: theme.card,
               borderColor: borderColor,
               borderWidth: borderWidth,
               transform: [
@@ -111,7 +111,7 @@ export default function Navbar({ onMenuPress }) {
           <MaterialIcons
             name={isDarkMode ? 'light-mode' : 'dark-mode'}
             size={22}
-            color={isDarkMode ? '#FFFFFF' : '#121212'}
+            color={isDarkMode ? '#FCD34D' : '#374151'}
           />
         </Pressable>
 
@@ -122,7 +122,7 @@ export default function Navbar({ onMenuPress }) {
           style={({ pressed }) => [
             styles.settingsButton,
             {
-              backgroundColor: theme.brandSecondary || '#FF5722',
+              backgroundColor: theme.card,
               borderColor: borderColor,
               borderWidth: borderWidth,
               transform: [
@@ -133,8 +133,8 @@ export default function Navbar({ onMenuPress }) {
             getPressableShadow(pressed),
           ]}
         >
-          <MaterialIcons name="settings" size={20} color="#FFFFFF" />
-          <Text style={styles.settingsText}>SETTINGS</Text>
+          <MaterialIcons name="settings" size={20} color={theme.text} />
+          <Text style={[styles.settingsText, { color: theme.text }]}>SETTINGS</Text>
         </Pressable>
       </View>
     </View>

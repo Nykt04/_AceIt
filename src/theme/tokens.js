@@ -1,45 +1,44 @@
-// Neubrutalism Design Tokens
+// Neubrutalism Design Tokens - Eye-Friendly & Balanced Palette
 export const BRUTAL_TOKENS = {
-  borderWidth: 3,
+  borderWidth: 2,
   borderRadius: 4,
-  shadowOffset: 4,
+  shadowOffset: 3,
   colors: {
     light: {
-      background: '#FFFDF5', // Warm Cream
+      background: '#F8F9FA', // Clean neutral architectural paper (no harsh yellow glare)
       card: '#FFFFFF',
-      text: '#121212',
-      textSecondary: '#4A4A4A',
-      textTertiary: '#767676',
-      border: '#121212',
-      shadow: '#121212',
-      primary: '#2563EB', // Electric Cobalt
-      brandSecondary: '#FF5722', // Safety Orange
-      accent: '#FFDE59', // Cyber Yellow
+      text: '#111827', // Deep zinc black (clear & comfortable)
+      textSecondary: '#4B5563',
+      textTertiary: '#9CA3AF',
+      border: '#111827', // Crisp solid dark border
+      shadow: '#111827', // Crisp solid offset drop shadow
+      primary: '#3B82F6', // Clean royal blue
+      brandSecondary: '#EA580C', // Warm burnt orange
+      accent: '#FDE047', // Soft buttery amber yellow (non-fluorescent)
       success: '#10B981',
       error: '#EF4444',
-      muted: '#F4F2EA',
+      muted: '#E5E7EB',
     },
     dark: {
-      background: '#121212', // Pitch Black
-      card: '#1E1E1E',
-      text: '#FFFFFF',
-      textSecondary: '#D1D5DB',
-      textTertiary: '#9CA3AF',
-      border: '#FFFFFF',
-      shadow: '#FFFFFF', // High-contrast stark white offset shadow
-      primary: '#3B82F6',
-      brandSecondary: '#FF7043',
-      accent: '#FACC15',
+      background: '#0F1117', // Comfortable deep carbon slate (eliminates pitch black eye strain)
+      card: '#1A1D24', // Distinct, comfortable elevated card surface
+      text: '#F3F4F6', // Clean off-white (prevents harsh white halation)
+      textSecondary: '#9CA3AF',
+      textTertiary: '#6B7280',
+      border: '#374151', // Refined slate border (eliminates blinding white outlines)
+      shadow: '#000000', // Real physical depth shadow (eliminates white glowing halos)
+      primary: '#60A5FA', // Accessible soft sky/indigo blue
+      brandSecondary: '#FB923C', // Softened warm amber
+      accent: '#FCD34D',
       success: '#34D399',
       error: '#F87171',
-      muted: '#2A2A2A',
+      muted: '#262A34',
     }
   }
 };
 
 export const LIGHT_THEME = {
   isDark: false,
-  // Brutal tokens
   background: BRUTAL_TOKENS.colors.light.background,
   card: BRUTAL_TOKENS.colors.light.card,
   text: BRUTAL_TOKENS.colors.light.text,
@@ -55,7 +54,7 @@ export const LIGHT_THEME = {
   borderRadius: BRUTAL_TOKENS.borderRadius,
   shadowOffset: BRUTAL_TOKENS.shadowOffset,
 
-  // Backward-compatible aliasing for unmigrated screens
+  // Backward-compatible aliasing
   secondary: BRUTAL_TOKENS.colors.light.card,
   tertiary: BRUTAL_TOKENS.colors.light.muted,
   primaryAccent: BRUTAL_TOKENS.colors.light.primary,
@@ -69,7 +68,6 @@ export const LIGHT_THEME = {
 
 export const DARK_THEME = {
   isDark: true,
-  // Brutal tokens
   background: BRUTAL_TOKENS.colors.dark.background,
   card: BRUTAL_TOKENS.colors.dark.card,
   text: BRUTAL_TOKENS.colors.dark.text,
@@ -85,7 +83,7 @@ export const DARK_THEME = {
   borderRadius: BRUTAL_TOKENS.borderRadius,
   shadowOffset: BRUTAL_TOKENS.shadowOffset,
 
-  // Backward-compatible aliasing for unmigrated screens
+  // Backward-compatible aliasing
   secondary: BRUTAL_TOKENS.colors.dark.card,
   tertiary: BRUTAL_TOKENS.colors.dark.muted,
   primaryAccent: BRUTAL_TOKENS.colors.dark.primary,
@@ -93,7 +91,7 @@ export const DARK_THEME = {
   success: BRUTAL_TOKENS.colors.dark.success,
   error: BRUTAL_TOKENS.colors.dark.error,
   errorLight: '#FCA5A5',
-  errorBg: '#4C2626',
+  errorBg: '#3E1F1F',
   errorBorder: '#7F1D1D',
 };
 

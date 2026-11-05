@@ -5,10 +5,10 @@ const path = require('path');
 
 // 1. Verify Tokens
 const tokensContent = fs.readFileSync('src/theme/tokens.js', 'utf8');
-assert(tokensContent.includes("borderWidth: 3"), 'borderWidth 3');
-assert(tokensContent.includes("shadowOffset: 4"), 'shadowOffset 4');
-assert(tokensContent.includes("#FFFDF5"), 'Warm cream present');
-assert(tokensContent.includes("#2563EB"), 'Electric cobalt present');
+assert(tokensContent.includes("borderWidth: 2"), 'borderWidth 2');
+assert(tokensContent.includes("shadowOffset: 3"), 'shadowOffset 3');
+assert(tokensContent.includes("#F8F9FA"), 'Clean neutral paper present');
+assert(tokensContent.includes("#3B82F6"), 'Clean royal blue present');
 
 // 2. Verify Babel AST compilation for all touched files
 const files = [
