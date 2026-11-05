@@ -283,21 +283,21 @@ export default function HomeScreen() {
 
   const { width } = useWindowDimensions();
 
-  // Responsive column calculation
+  // Responsive column calculation constrained to 1200px container
   const cardWidth = useMemo(() => {
-    const horizontalPadding = 32;
+    const containerWidth = Math.min(width, 1200) - 32; // 32px padding
     const gap = 16;
-    if (width >= 1024) {
-      // 3 columns on large screens
-      const available = width - horizontalPadding - gap * 2;
+    if (containerWidth >= 960) {
+      // 3 clean columns on desktop
+      const available = containerWidth - gap * 2;
       return Math.floor(available / 3);
-    } else if (width >= 640) {
-      // 2 columns on tablet / medium viewports
-      const available = width - horizontalPadding - gap;
+    } else if (containerWidth >= 600) {
+      // 2 columns on tablet / split view
+      const available = containerWidth - gap;
       return Math.floor(available / 2);
     } else {
-      // 1 column on mobile screens
-      return width - horizontalPadding;
+      // 1 column on mobile
+      return containerWidth;
     }
   }, [width]);
 
@@ -380,15 +380,18 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         <Navbar onMenuPress={() => setSidebarOpen(true)} />
-        <View style={{ padding: 16 }}>
+        <View style={styles.contentWrapper}>
           <BrutalSkeleton height={110} style={{ marginBottom: 16 }} />
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
             <BrutalSkeleton height={80} style={{ flex: 1 }} />
             <BrutalSkeleton height={80} style={{ flex: 1 }} />
+            <BrutalSkeleton height={80} style={{ flex: 1 }} />
+            <BrutalSkeleton height={80} style={{ flex: 1 }} />
           </View>
           <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
-            <BrutalSkeleton height={200} style={{ flex: 1, minWidth: 280 }} />
-            <BrutalSkeleton height={200} style={{ flex: 1, minWidth: 280 }} />
+            <BrutalSkeleton height={240} style={{ flex: 1, minWidth: 280 }} />
+            <BrutalSkeleton height={240} style={{ flex: 1, minWidth: 280 }} />
+            <BrutalSkeleton height={240} style={{ flex: 1, minWidth: 280 }} />
           </View>
         </View>
       </SafeAreaView>
@@ -396,6 +399,7 @@ export default function HomeScreen() {
   }
 
   const stats = calculateStats();
+  const isDesktop = width >= 768;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -408,143 +412,257 @@ export default function HomeScreen() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Neubrutalism Hero Header */}
-        <View
-          style={[
-            styles.heroBanner,
-            {
-              backgroundColor: theme.card,
-              borderColor: borderColor,
-              borderWidth: borderWidth,
-            },
-            Platform.OS === 'web' && {
-              boxShadow: `4px 4px 0px ${shadowColor}`,
-            },
-          ]}
-        >
+        <View style={styles.contentWrapper}>
+          {/* Neubrutalism Hero Header with Integrated Actions */}
           <View
             style={[
-              styles.heroBadge,
+              styles.heroBanner,
               {
-                backgroundColor: theme.accent || '#FCD34D',
+                backgroundColor: theme.card,
                 borderColor: borderColor,
                 borderWidth: borderWidth,
               },
+              Platform.OS === 'web' && {
+                boxShadow: `4px 4px 0px ${shadowColor}`,
+              },
             ]}
           >
-            <Text style={styles.heroBadgeText}>DASHBOARD</Text>
-          </View>
-          <Text style={[styles.heroTitle, { color: theme.text }]}>STUDY DECKS</Text>
-          <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
-            Master your knowledge with tactile flashcards and quizzes.
-          </Text>
-        </View>
-
-        {/* Stats Grid */}
-        {studySets.length > 0 && (
-          <View style={styles.statsBanner}>
-            <View style={styles.statsGrid}>
-              <View
-                style={[
-                  styles.statCard,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: borderColor,
-                    borderWidth: borderWidth,
-                  },
-                  Platform.OS === 'web' && {
-                    boxShadow: `3px 3px 0px ${shadowColor}`,
-                  },
-                ]}
-              >
-                <MaterialIcons name="menu-book" size={28} color={theme.primary} />
-                <View style={styles.statCardContent}>
-                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalItems}</Text>
-                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Total Items</Text>
-                  <Text style={[styles.statCardChange, { color: theme.success || '#10B981' }]}>
-                    +{stats.itemsThisWeek} this week
-                  </Text>
+            <View style={[styles.heroRow, isDesktop && { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+              <View style={{ flex: 1, paddingRight: isDesktop ? 20 : 0 }}>
+                <View
+                  style={[
+                    styles.heroBadge,
+                    {
+                      backgroundColor: theme.accent || '#FCD34D',
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                  ]}
+                >
+                  <Text style={styles.heroBadgeText}>DASHBOARD</Text>
                 </View>
+                <Text style={[styles.heroTitle, { color: theme.text }]}>STUDY DECKS</Text>
+                <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+                  Master your knowledge with tactile flashcards and quizzes.
+                </Text>
               </View>
 
-              <View
-                style={[
-                  styles.statCard,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: borderColor,
-                    borderWidth: borderWidth,
-                  },
-                  Platform.OS === 'web' && {
-                    boxShadow: `3px 3px 0px ${shadowColor}`,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name="assignment"
-                  size={28}
-                  color={theme.accent || '#FCD34D'}
+              {/* Header Action Buttons (Always accessible, no floating clutter) */}
+              <View style={[styles.heroActionsRow, !isDesktop && { marginTop: 16 }]}>
+                <BrutalButton
+                  title="AI GENERATE"
+                  variant="secondary"
+                  icon={<MaterialIcons name="auto-awesome" size={18} color="#FFFFFF" />}
+                  onPress={() => {
+                    soundManager.playButtonClick();
+                    navigation.navigate('AIGenerate');
+                  }}
                 />
-                <View style={styles.statCardContent}>
-                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalTerms}</Text>
-                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Terms</Text>
-                </View>
-              </View>
-
-              <View
-                style={[
-                  styles.statCard,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: borderColor,
-                    borderWidth: borderWidth,
-                  },
-                  Platform.OS === 'web' && {
-                    boxShadow: `3px 3px 0px ${shadowColor}`,
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name="help-outline"
-                  size={28}
-                  color={theme.brandSecondary || '#EA580C'}
+                <BrutalButton
+                  title="NEW SET"
+                  variant="primary"
+                  icon={<MaterialIcons name="add" size={20} color="#FFFFFF" />}
+                  onPress={() => {
+                    soundManager.playButtonClick();
+                    navigation.navigate('CreateSet');
+                  }}
                 />
-                <View style={styles.statCardContent}>
-                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalQuestions}</Text>
-                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Questions</Text>
-                </View>
-              </View>
-
-              <View
-                style={[
-                  styles.statCard,
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: borderColor,
-                    borderWidth: borderWidth,
-                  },
-                  Platform.OS === 'web' && {
-                    boxShadow: `3px 3px 0px ${shadowColor}`,
-                  },
-                ]}
-              >
-                <MaterialIcons name="folder-open" size={28} color={theme.textSecondary} />
-                <View style={styles.statCardContent}>
-                  <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalSets}</Text>
-                  <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Decks</Text>
-                </View>
               </View>
             </View>
           </View>
-        )}
 
-        {/* Quick Search & Filter Toolbar */}
-        {studySets.length > 0 && (
-          <View style={styles.toolbarContainer}>
-            {/* Search Input */}
+          {/* Stats Bar (1 row of 4 on desktop, 2x2 on mobile) */}
+          {studySets.length > 0 && (
+            <View style={styles.statsBanner}>
+              <View style={styles.statsGrid}>
+                <View
+                  style={[
+                    styles.statCard,
+                    {
+                      minWidth: isDesktop ? 160 : '47%',
+                      backgroundColor: theme.card,
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                    Platform.OS === 'web' && {
+                      boxShadow: `3px 3px 0px ${shadowColor}`,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name="menu-book" size={26} color={theme.primary} />
+                  <View style={styles.statCardContent}>
+                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalItems}</Text>
+                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Total Items</Text>
+                    <Text style={[styles.statCardChange, { color: theme.success || '#10B981' }]}>
+                      +{stats.itemsThisWeek} this week
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.statCard,
+                    {
+                      minWidth: isDesktop ? 160 : '47%',
+                      backgroundColor: theme.card,
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                    Platform.OS === 'web' && {
+                      boxShadow: `3px 3px 0px ${shadowColor}`,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="assignment"
+                    size={26}
+                    color={theme.accent || '#FCD34D'}
+                  />
+                  <View style={styles.statCardContent}>
+                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalTerms}</Text>
+                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Terms</Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.statCard,
+                    {
+                      minWidth: isDesktop ? 160 : '47%',
+                      backgroundColor: theme.card,
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                    Platform.OS === 'web' && {
+                      boxShadow: `3px 3px 0px ${shadowColor}`,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="help-outline"
+                    size={26}
+                    color={theme.brandSecondary || '#EA580C'}
+                  />
+                  <View style={styles.statCardContent}>
+                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalQuestions}</Text>
+                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Questions</Text>
+                  </View>
+                </View>
+
+                <View
+                  style={[
+                    styles.statCard,
+                    {
+                      minWidth: isDesktop ? 160 : '47%',
+                      backgroundColor: theme.card,
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                    Platform.OS === 'web' && {
+                      boxShadow: `3px 3px 0px ${shadowColor}`,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name="folder-open" size={26} color={theme.textSecondary} />
+                  <View style={styles.statCardContent}>
+                    <Text style={[styles.statCardValue, { color: theme.text }]}>{stats.totalSets}</Text>
+                    <Text style={[styles.statCardLabel, { color: theme.textSecondary }]}>Decks</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Quick Search & Filter Toolbar (Side-by-side on desktop) */}
+          {studySets.length > 0 && (
+            <View style={[styles.toolbarContainer, isDesktop && styles.toolbarRow]}>
+              {/* Search Box */}
+              <View
+                style={[
+                  styles.searchBox,
+                  isDesktop && { flex: 1, maxWidth: 420 },
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                  },
+                  Platform.OS === 'web' && {
+                    boxShadow: `3px 3px 0px ${shadowColor}`,
+                  },
+                ]}
+              >
+                <MaterialIcons name="search" size={22} color={theme.textSecondary} />
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text }]}
+                  placeholder="Search decks by title or keyword..."
+                  placeholderTextColor={theme.textTertiary || '#9CA3AF'}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setSearchQuery('')}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <MaterialIcons name="close" size={20} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Filter Category Pills */}
+              <View style={styles.filterPillsRow}>
+                {[
+                  { key: 'ALL', label: `ALL (${studySets.length})` },
+                  { key: 'TERMS', label: 'TERMS' },
+                  { key: 'QUESTIONS', label: 'QUESTIONS' },
+                  { key: 'RECENT', label: 'RECENT' },
+                ].map((pill) => {
+                  const isActive = activeFilter === pill.key;
+                  return (
+                    <TouchableOpacity
+                      key={pill.key}
+                      onPress={() => {
+                        soundManager.playButtonClick();
+                        setActiveFilter(pill.key);
+                      }}
+                      style={[
+                        styles.filterPill,
+                        {
+                          backgroundColor: isActive ? theme.primary : theme.card,
+                          borderColor: borderColor,
+                          borderWidth: borderWidth,
+                        },
+                        Platform.OS === 'web' && {
+                          boxShadow: isActive
+                            ? `1px 1px 0px ${shadowColor}`
+                            : `2px 2px 0px ${shadowColor}`,
+                          cursor: 'pointer',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.filterPillText,
+                          {
+                            color: isActive ? '#FFFFFF' : theme.text,
+                            fontWeight: isActive ? '900' : '700',
+                          },
+                        ]}
+                      >
+                        {pill.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Study Sets Grid Header */}
+          {studySets.length > 0 && (
             <View
               style={[
-                styles.searchBox,
+                styles.sectionHeader,
                 {
                   backgroundColor: theme.card,
                   borderColor: borderColor,
@@ -555,223 +673,120 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              <MaterialIcons name="search" size={22} color={theme.textSecondary} />
-              <TextInput
-                style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Search decks by title or keyword..."
-                placeholderTextColor={theme.textTertiary || '#9CA3AF'}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setSearchQuery('')}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <MaterialIcons name="close" size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
-              )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MaterialIcons name="style" size={22} color={theme.primary} />
+                <Text style={[styles.sectionHeaderText, { color: theme.text }]}>
+                  DECKS ({filteredSets.length})
+                </Text>
+              </View>
+              <Text style={[styles.sectionHeaderSub, { color: theme.textSecondary }]}>
+                GRID VIEW
+              </Text>
             </View>
+          )}
 
-            {/* Filter Category Pills */}
-            <View style={styles.filterPillsRow}>
-              {[
-                { key: 'ALL', label: `ALL (${studySets.length})` },
-                { key: 'TERMS', label: 'TERMS' },
-                { key: 'QUESTIONS', label: 'QUESTIONS' },
-                { key: 'RECENT', label: 'RECENT' },
-              ].map((pill) => {
-                const isActive = activeFilter === pill.key;
+          {/* Decks Responsive Grid */}
+          {studySets.length === 0 ? (
+            <View
+              style={[
+                styles.emptyContainer,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: `4px 4px 0px ${shadowColor}`,
+                },
+              ]}
+            >
+              <MaterialIcons
+                name="library-books"
+                size={54}
+                color={theme.textTertiary}
+              />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>NO STUDY SETS YET</Text>
+              <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
+                Create your first deck manually or generate one instantly using our AI assistant.
+              </Text>
+              <View style={styles.emptyActions}>
+                <BrutalButton
+                  title="CREATE SET MANUALLY"
+                  variant="primary"
+                  icon={<MaterialIcons name="add" size={20} color="#FFFFFF" />}
+                  onPress={() => {
+                    soundManager.playButtonClick();
+                    navigation.navigate('CreateSet');
+                  }}
+                />
+                <BrutalButton
+                  title="AI GENERATE SET"
+                  variant="secondary"
+                  icon={<MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />}
+                  onPress={() => {
+                    soundManager.playButtonClick();
+                    navigation.navigate('AIGenerate');
+                  }}
+                />
+              </View>
+            </View>
+          ) : filteredSets.length === 0 ? (
+            <View
+              style={[
+                styles.emptyFilteredContainer,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: `4px 4px 0px ${shadowColor}`,
+                },
+              ]}
+            >
+              <MaterialIcons name="search-off" size={48} color={theme.textTertiary} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>NO MATCHING DECKS</Text>
+              <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
+                No decks found matching "{searchQuery}". Try a different search or filter.
+              </Text>
+              <BrutalButton
+                title="RESET FILTERS"
+                variant="outline"
+                onPress={() => {
+                  soundManager.playButtonClick();
+                  setSearchQuery('');
+                  setActiveFilter('ALL');
+                }}
+              />
+            </View>
+          ) : (
+            <View style={styles.gridContainer}>
+              {filteredSets.map((item, index) => {
+                const setItem = { ...item, id: String(item.id) };
                 return (
-                  <TouchableOpacity
-                    key={pill.key}
-                    onPress={() => {
-                      soundManager.playButtonClick();
-                      setActiveFilter(pill.key);
+                  <PhysicalDeckCard
+                    key={setItem.id}
+                    item={setItem}
+                    index={index}
+                    cardWidth={cardWidth}
+                    navigation={{
+                      ...navigation,
+                      navigate: (screen, params) => {
+                        const latestSet =
+                          studySets.find((s) => String(s.id) === String(item.id)) ||
+                          setItem;
+                        navigation.navigate(screen, { ...params, set: latestSet });
+                      },
                     }}
-                    style={[
-                      styles.filterPill,
-                      {
-                        backgroundColor: isActive ? theme.primary : theme.card,
-                        borderColor: borderColor,
-                        borderWidth: borderWidth,
-                      },
-                      Platform.OS === 'web' && {
-                        boxShadow: isActive
-                          ? `1px 1px 0px ${shadowColor}`
-                          : `2px 2px 0px ${shadowColor}`,
-                        cursor: 'pointer',
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.filterPillText,
-                        {
-                          color: isActive ? '#FFFFFF' : theme.text,
-                          fontWeight: isActive ? '900' : '700',
-                        },
-                      ]}
-                    >
-                      {pill.label}
-                    </Text>
-                  </TouchableOpacity>
+                    onDelete={handleDelete}
+                    theme={theme}
+                  />
                 );
               })}
             </View>
-          </View>
-        )}
-
-        {/* Study Sets Grid Header */}
-        {studySets.length > 0 && (
-          <View
-            style={[
-              styles.sectionHeader,
-              {
-                backgroundColor: theme.card,
-                borderColor: borderColor,
-                borderWidth: borderWidth,
-              },
-              Platform.OS === 'web' && {
-                boxShadow: `3px 3px 0px ${shadowColor}`,
-              },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <MaterialIcons name="style" size={22} color={theme.primary} />
-              <Text style={[styles.sectionHeaderText, { color: theme.text }]}>
-                DECKS ({filteredSets.length})
-              </Text>
-            </View>
-            <Text style={[styles.sectionHeaderSub, { color: theme.textSecondary }]}>
-              GRID VIEW
-            </Text>
-          </View>
-        )}
-
-        {/* Decks Responsive Grid or Empty States */}
-        {studySets.length === 0 ? (
-          <View
-            style={[
-              styles.emptyContainer,
-              {
-                backgroundColor: theme.card,
-                borderColor: borderColor,
-                borderWidth: borderWidth,
-              },
-              Platform.OS === 'web' && {
-                boxShadow: `4px 4px 0px ${shadowColor}`,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name="library-books"
-              size={54}
-              color={theme.textTertiary}
-            />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>NO STUDY SETS YET</Text>
-            <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
-              Create your first deck manually or generate one instantly using our AI assistant.
-            </Text>
-            <View style={styles.emptyActions}>
-              <BrutalButton
-                title="CREATE SET MANUALLY"
-                variant="primary"
-                icon={<MaterialIcons name="add" size={20} color="#FFFFFF" />}
-                onPress={() => {
-                  soundManager.playButtonClick();
-                  navigation.navigate('CreateSet');
-                }}
-              />
-              <BrutalButton
-                title="AI GENERATE SET"
-                variant="secondary"
-                icon={<MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />}
-                onPress={() => {
-                  soundManager.playButtonClick();
-                  navigation.navigate('AIGenerate');
-                }}
-              />
-            </View>
-          </View>
-        ) : filteredSets.length === 0 ? (
-          <View
-            style={[
-              styles.emptyFilteredContainer,
-              {
-                backgroundColor: theme.card,
-                borderColor: borderColor,
-                borderWidth: borderWidth,
-              },
-              Platform.OS === 'web' && {
-                boxShadow: `4px 4px 0px ${shadowColor}`,
-              },
-            ]}
-          >
-            <MaterialIcons name="search-off" size={48} color={theme.textTertiary} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>NO MATCHING DECKS</Text>
-            <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
-              No decks found matching "{searchQuery}". Try a different search or filter.
-            </Text>
-            <BrutalButton
-              title="RESET FILTERS"
-              variant="outline"
-              onPress={() => {
-                soundManager.playButtonClick();
-                setSearchQuery('');
-                setActiveFilter('ALL');
-              }}
-            />
-          </View>
-        ) : (
-          <View style={styles.gridContainer}>
-            {filteredSets.map((item, index) => {
-              const setItem = { ...item, id: String(item.id) };
-              return (
-                <PhysicalDeckCard
-                  key={setItem.id}
-                  item={setItem}
-                  index={index}
-                  cardWidth={cardWidth}
-                  navigation={{
-                    ...navigation,
-                    navigate: (screen, params) => {
-                      const latestSet =
-                        studySets.find((s) => String(s.id) === String(item.id)) ||
-                        setItem;
-                      navigation.navigate(screen, { ...params, set: latestSet });
-                    },
-                  }}
-                  onDelete={handleDelete}
-                  theme={theme}
-                />
-              );
-            })}
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
-
-      {/* Floating Action Buttons */}
-      <View style={styles.fabRow}>
-        <BrutalButton
-          title="AI GENERATE"
-          variant="secondary"
-          icon={<MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />}
-          onPress={() => {
-            soundManager.playButtonClick();
-            navigation.navigate('AIGenerate');
-          }}
-        />
-        <BrutalButton
-          title="NEW SET"
-          variant="primary"
-          icon={<MaterialIcons name="add" size={22} color="#FFFFFF" />}
-          onPress={() => {
-            soundManager.playButtonClick();
-            navigation.navigate('CreateSet');
-          }}
-        />
-      </View>
     </SafeAreaView>
   );
 }
@@ -782,16 +797,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 110,
+    paddingBottom: 60,
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
 
   // Hero Banner
   heroBanner: {
-    marginHorizontal: 16,
-    marginTop: 16,
     marginBottom: 16,
     padding: 20,
     borderRadius: 4,
+  },
+  heroRow: {
+    flexDirection: 'column',
   },
   heroBadge: {
     alignSelf: 'flex-start',
@@ -818,11 +841,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 20,
   },
+  heroActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
 
   // Stats Grid
   statsBanner: {
-    marginHorizontal: 16,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -832,7 +860,6 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    minWidth: '47%',
     borderRadius: 4,
     padding: 14,
     flexDirection: 'row',
@@ -861,9 +888,13 @@ const styles = StyleSheet.create({
 
   // Toolbar (Search & Filter Pills)
   toolbarContainer: {
-    marginHorizontal: 16,
     marginBottom: 16,
     gap: 12,
+  },
+  toolbarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   searchBox: {
     flexDirection: 'row',
@@ -897,8 +928,7 @@ const styles = StyleSheet.create({
 
   // Section Header
   sectionHeader: {
-    marginHorizontal: 16,
-    marginBottom: 14,
+    marginBottom: 16,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 4,
@@ -922,7 +952,6 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 16,
     gap: 16,
     alignItems: 'stretch',
   },
@@ -930,7 +959,7 @@ const styles = StyleSheet.create({
   // Physical Deck Stack Styles
   deckWrapper: {
     position: 'relative',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   stackLayer2: {
     position: 'absolute',
@@ -957,7 +986,7 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'column',
     justifyContent: 'space-between',
-    minHeight: 240,
+    minHeight: 250,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -1039,14 +1068,12 @@ const styles = StyleSheet.create({
   emptyContainer: {
     paddingHorizontal: 20,
     paddingVertical: 32,
-    marginHorizontal: 16,
     borderRadius: 4,
     alignItems: 'center',
   },
   emptyFilteredContainer: {
     paddingHorizontal: 20,
     paddingVertical: 32,
-    marginHorizontal: 16,
     borderRadius: 4,
     alignItems: 'center',
   },
@@ -1068,14 +1095,5 @@ const styles = StyleSheet.create({
     gap: 12,
     width: '100%',
     maxWidth: 280,
-  },
-
-  // FAB
-  fabRow: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    flexDirection: 'row',
-    gap: 12,
   },
 });

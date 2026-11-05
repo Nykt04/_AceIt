@@ -157,17 +157,21 @@ export default function SetDetailScreen() {
 
   const { width } = useWindowDimensions();
 
-  // Responsive column width for index cards grid
+  // Responsive column width for index cards grid (constrained to 1200px)
   const cardWidth = useMemo(() => {
-    const horizontalPadding = 32;
+    const containerWidth = Math.min(width, 1200) - 32;
     const gap = 14;
-    if (width >= 640) {
-      // 2 columns on tablet and desktop
-      const available = width - horizontalPadding - gap;
+    if (containerWidth >= 960) {
+      // 3 cards on desktop
+      const available = containerWidth - gap * 2;
+      return Math.floor(available / 3);
+    } else if (containerWidth >= 600) {
+      // 2 cards on tablet
+      const available = containerWidth - gap;
       return Math.floor(available / 2);
     } else {
-      // 1 column on mobile
-      return width - horizontalPadding;
+      // 1 card on mobile
+      return containerWidth;
     }
   }, [width]);
 
@@ -274,7 +278,7 @@ export default function SetDetailScreen() {
       if (window.confirm('Delete this question?')) performDelete();
     } else {
       Alert.alert('Delete Question', 'Delete this question?', [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel', onPress: () => {} },
         { text: 'Delete', style: 'destructive', onPress: performDelete },
       ]);
     }
@@ -315,7 +319,7 @@ export default function SetDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Top Bar */}
+      {/* Top Bar (Constrained to 1200px) */}
       <View
         style={[
           styles.navBar,
@@ -326,416 +330,420 @@ export default function SetDetailScreen() {
           },
         ]}
       >
-        <BrutalButton
-          title="BACK TO DECKS"
-          variant="outline"
-          icon={<MaterialIcons name="arrow-back" size={18} color={theme.text} />}
-          onPress={() => {
-            soundManager.playButtonClick();
-            navigation.goBack();
-          }}
-        />
-        <BrutalBadge
-          label={`${termsOnly + questionsOnly} ITEMS`}
-          color={theme.accent || '#FCD34D'}
-          textColor="#111827"
-        />
+        <View style={styles.navBarInner}>
+          <BrutalButton
+            title="BACK TO DECKS"
+            variant="outline"
+            icon={<MaterialIcons name="arrow-back" size={18} color={theme.text} />}
+            onPress={() => {
+              soundManager.playButtonClick();
+              navigation.goBack();
+            }}
+          />
+          <BrutalBadge
+            label={`${termsOnly + questionsOnly} ITEMS`}
+            color={theme.accent || '#FCD34D'}
+            textColor="#111827"
+          />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Set Header Card */}
-        <BrutalCard accentColor={theme.primary} headerTitle="STUDY DECK OVERVIEW">
-          <Text style={[styles.title, { color: theme.text }]}>{set.title}</Text>
-          {set.description ? (
-            <Text style={[styles.desc, { color: theme.textSecondary }]}>
-              {set.description}
-            </Text>
-          ) : null}
+        <View style={styles.contentWrapper}>
+          {/* Set Header Card */}
+          <BrutalCard accentColor={theme.primary} headerTitle="STUDY DECK OVERVIEW">
+            <Text style={[styles.title, { color: theme.text }]}>{set.title}</Text>
+            {set.description ? (
+              <Text style={[styles.desc, { color: theme.textSecondary }]}>
+                {set.description}
+              </Text>
+            ) : null}
 
-          <View style={styles.badgeRow}>
-            <BrutalBadge
-              label={`${termsOnly} TERMS`}
-              color={theme.primary}
-              textColor="#FFFFFF"
-            />
-            <BrutalBadge
-              label={`${questionsOnly} QUESTIONS`}
-              color={theme.brandSecondary || '#EA580C'}
-              textColor="#FFFFFF"
-            />
-            <BrutalBadge
-              label="READY TO STUDY"
-              color={theme.success || '#10B981'}
-              textColor="#FFFFFF"
-            />
-          </View>
-        </BrutalCard>
-
-        {/* Study Modes */}
-        {hasContent ? (
-          <View style={styles.modesSection}>
-            <Text style={[styles.sectionHeading, { color: theme.text }]}>
-              STUDY MODES
-            </Text>
-
-            <View style={[styles.modeCardsRow, width >= 640 && { flexDirection: 'row' }]}>
-              {/* Flashcards Mode */}
-              <Pressable
-                onPress={() => {
-                  soundManager.playButtonClick();
-                  navigation.navigate('Study', { set, mode: 'flashcards' });
-                }}
-                style={({ pressed }) => [
-                  styles.modeCard,
-                  width >= 640 && { flex: 1 },
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: borderColor,
-                    borderWidth: borderWidth,
-                    transform: [
-                      { translateX: pressed ? 2 : 0 },
-                      { translateY: pressed ? 2 : 0 },
-                    ],
-                  },
-                  Platform.OS === 'web' && {
-                    boxShadow: pressed
-                      ? `1px 1px 0px ${shadowColor}`
-                      : `3px 3px 0px ${shadowColor}`,
-                    cursor: 'pointer',
-                    transition: 'transform 0.08s ease, box-shadow 0.08s ease',
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.modeStripe,
-                    {
-                      backgroundColor: theme.primary,
-                      borderBottomWidth: borderWidth,
-                      borderBottomColor: borderColor,
-                    },
-                  ]}
-                >
-                  <MaterialIcons name="style" size={22} color="#FFFFFF" />
-                  <Text style={styles.modeStripeTitle}>FLASHCARDS MODE</Text>
-                </View>
-                <View style={styles.modeBody}>
-                  <Text style={[styles.modeDesc, { color: theme.textSecondary }]}>
-                    Interactive flip cards with tactile self-rating physics.
-                  </Text>
-                  <Text style={[styles.modeAction, { color: theme.primary }]}>
-                    START FLASHCARDS →
-                  </Text>
-                </View>
-              </Pressable>
-
-              {/* Quiz Mode */}
-              <Pressable
-                onPress={() => {
-                  soundManager.playButtonClick();
-                  navigation.navigate('Study', { set, mode: 'quiz' });
-                }}
-                style={({ pressed }) => [
-                  styles.modeCard,
-                  width >= 640 && { flex: 1 },
-                  {
-                    backgroundColor: theme.card,
-                    borderColor: borderColor,
-                    borderWidth: borderWidth,
-                    transform: [
-                      { translateX: pressed ? 2 : 0 },
-                      { translateY: pressed ? 2 : 0 },
-                    ],
-                  },
-                  Platform.OS === 'web' && {
-                    boxShadow: pressed
-                      ? `1px 1px 0px ${shadowColor}`
-                      : `3px 3px 0px ${shadowColor}`,
-                    cursor: 'pointer',
-                    transition: 'transform 0.08s ease, box-shadow 0.08s ease',
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.modeStripe,
-                    {
-                      backgroundColor: theme.brandSecondary || '#EA580C',
-                      borderBottomWidth: borderWidth,
-                      borderBottomColor: borderColor,
-                    },
-                  ]}
-                >
-                  <MaterialIcons name="psychology" size={22} color="#FFFFFF" />
-                  <Text style={styles.modeStripeTitle}>QUIZ MODE</Text>
-                </View>
-                <View style={styles.modeBody}>
-                  <Text style={[styles.modeDesc, { color: theme.textSecondary }]}>
-                    Multiple choice challenge with immediate grading.
-                  </Text>
-                  <Text
-                    style={[
-                      styles.modeAction,
-                      { color: theme.brandSecondary || '#EA580C' },
-                    ]}
-                  >
-                    START QUIZ →
-                  </Text>
-                </View>
-              </Pressable>
+            <View style={styles.badgeRow}>
+              <BrutalBadge
+                label={`${termsOnly} TERMS`}
+                color={theme.primary}
+                textColor="#FFFFFF"
+              />
+              <BrutalBadge
+                label={`${questionsOnly} QUESTIONS`}
+                color={theme.brandSecondary || '#EA580C'}
+                textColor="#FFFFFF"
+              />
+              <BrutalBadge
+                label="READY TO STUDY"
+                color={theme.success || '#10B981'}
+                textColor="#FFFFFF"
+              />
             </View>
+          </BrutalCard>
 
-            {/* Deck Cards Section: View Switcher (Flip Grid vs Edit Mode) */}
-            <View style={styles.cardsHeaderSection}>
-              <View style={styles.cardsHeaderTitleRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <MaterialIcons name="grid-view" size={20} color={theme.primary} />
-                  <Text style={[styles.sectionHeading, { color: theme.text, marginBottom: 0 }]}>
-                    DECK CARDS ({termsOnly})
-                  </Text>
-                </View>
+          {/* Study Modes */}
+          {hasContent ? (
+            <View style={styles.modesSection}>
+              <Text style={[styles.sectionHeading, { color: theme.text }]}>
+                STUDY MODES
+              </Text>
 
-                {/* View Mode Segmented Controls */}
-                <View
-                  style={[
-                    styles.segmentedContainer,
+              <View style={[styles.modeCardsRow, width >= 640 && { flexDirection: 'row' }]}>
+                {/* Flashcards Mode */}
+                <Pressable
+                  onPress={() => {
+                    soundManager.playButtonClick();
+                    navigation.navigate('Study', { set, mode: 'flashcards' });
+                  }}
+                  style={({ pressed }) => [
+                    styles.modeCard,
+                    width >= 640 && { flex: 1 },
                     {
-                      backgroundColor: theme.muted,
+                      backgroundColor: theme.card,
                       borderColor: borderColor,
                       borderWidth: borderWidth,
+                      transform: [
+                        { translateX: pressed ? 2 : 0 },
+                        { translateY: pressed ? 2 : 0 },
+                      ],
+                    },
+                    Platform.OS === 'web' && {
+                      boxShadow: pressed
+                        ? `1px 1px 0px ${shadowColor}`
+                        : `3px 3px 0px ${shadowColor}`,
+                      cursor: 'pointer',
+                      transition: 'transform 0.08s ease, box-shadow 0.08s ease',
                     },
                   ]}
                 >
-                  <TouchableOpacity
-                    onPress={() => {
-                      soundManager.playButtonClick();
-                      setViewMode('preview');
-                    }}
-                    style={[
-                      styles.segmentBtn,
-                      viewMode === 'preview' && {
-                        backgroundColor: theme.card,
-                        borderColor: borderColor,
-                        borderWidth: 1.5,
-                      },
-                    ]}
-                  >
-                    <MaterialIcons
-                      name="flip"
-                      size={15}
-                      color={viewMode === 'preview' ? theme.primary : theme.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.segmentBtnText,
-                        {
-                          color: viewMode === 'preview' ? theme.text : theme.textSecondary,
-                          fontWeight: viewMode === 'preview' ? '900' : '700',
-                        },
-                      ]}
-                    >
-                      FLIP GRID
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => {
-                      soundManager.playButtonClick();
-                      setViewMode('edit');
-                    }}
-                    style={[
-                      styles.segmentBtn,
-                      viewMode === 'edit' && {
-                        backgroundColor: theme.card,
-                        borderColor: borderColor,
-                        borderWidth: 1.5,
-                      },
-                    ]}
-                  >
-                    <MaterialIcons
-                      name="edit"
-                      size={15}
-                      color={viewMode === 'edit' ? theme.primary : theme.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.segmentBtnText,
-                        {
-                          color: viewMode === 'edit' ? theme.text : theme.textSecondary,
-                          fontWeight: viewMode === 'edit' ? '900' : '700',
-                        },
-                      ]}
-                    >
-                      EDIT CARDS
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-
-            {/* Display: Flip-Card Grid Preview */}
-            {viewMode === 'preview' ? (
-              <View>
-                {set.terms && set.terms.length > 0 ? (
-                  <View style={styles.cardsGridContainer}>
-                    {set.terms.map((term, index) => (
-                      <InteractiveIndexCard
-                        key={`preview-card-${index}`}
-                        term={term.term}
-                        definition={term.definition}
-                        index={index}
-                        theme={theme}
-                        cardWidth={cardWidth}
-                      />
-                    ))}
-                  </View>
-                ) : (
                   <View
                     style={[
-                      styles.emptyBox,
+                      styles.modeStripe,
                       {
-                        backgroundColor: theme.card,
+                        backgroundColor: theme.primary,
+                        borderBottomWidth: borderWidth,
+                        borderBottomColor: borderColor,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name="style" size={22} color="#FFFFFF" />
+                    <Text style={styles.modeStripeTitle}>FLASHCARDS MODE</Text>
+                  </View>
+                  <View style={styles.modeBody}>
+                    <Text style={[styles.modeDesc, { color: theme.textSecondary }]}>
+                      Interactive flip cards with tactile self-rating physics.
+                    </Text>
+                    <Text style={[styles.modeAction, { color: theme.primary }]}>
+                      START FLASHCARDS →
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {/* Quiz Mode */}
+                <Pressable
+                  onPress={() => {
+                    soundManager.playButtonClick();
+                    navigation.navigate('Study', { set, mode: 'quiz' });
+                  }}
+                  style={({ pressed }) => [
+                    styles.modeCard,
+                    width >= 640 && { flex: 1 },
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                      transform: [
+                        { translateX: pressed ? 2 : 0 },
+                        { translateY: pressed ? 2 : 0 },
+                      ],
+                    },
+                    Platform.OS === 'web' && {
+                      boxShadow: pressed
+                        ? `1px 1px 0px ${shadowColor}`
+                        : `3px 3px 0px ${shadowColor}`,
+                      cursor: 'pointer',
+                      transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.modeStripe,
+                      {
+                        backgroundColor: theme.brandSecondary || '#EA580C',
+                        borderBottomWidth: borderWidth,
+                        borderBottomColor: borderColor,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name="psychology" size={22} color="#FFFFFF" />
+                    <Text style={styles.modeStripeTitle}>QUIZ MODE</Text>
+                  </View>
+                  <View style={styles.modeBody}>
+                    <Text style={[styles.modeDesc, { color: theme.textSecondary }]}>
+                      Multiple choice challenge with immediate grading.
+                    </Text>
+                    <Text
+                      style={[
+                        styles.modeAction,
+                        { color: theme.brandSecondary || '#EA580C' },
+                      ]}
+                    >
+                      START QUIZ →
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
+
+              {/* Deck Cards Section: View Switcher (Flip Grid vs Edit Mode) */}
+              <View style={styles.cardsHeaderSection}>
+                <View style={styles.cardsHeaderTitleRow}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <MaterialIcons name="grid-view" size={20} color={theme.primary} />
+                    <Text style={[styles.sectionHeading, { color: theme.text, marginBottom: 0 }]}>
+                      DECK CARDS ({termsOnly})
+                    </Text>
+                  </View>
+
+                  {/* View Mode Segmented Controls */}
+                  <View
+                    style={[
+                      styles.segmentedContainer,
+                      {
+                        backgroundColor: theme.muted,
                         borderColor: borderColor,
                         borderWidth: borderWidth,
                       },
                     ]}
                   >
-                    <Text style={[styles.emptyTitle, { color: theme.text }]}>NO TERMS IN DECK</Text>
-                    <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-                      Add your first flashcard term to start previewing and studying.
-                    </Text>
-                    <BrutalButton
-                      title="+ ADD FIRST TERM"
-                      variant="primary"
-                      onPress={handleAddTerm}
-                    />
-                  </View>
-                )}
+                    <TouchableOpacity
+                      onPress={() => {
+                        soundManager.playButtonClick();
+                        setViewMode('preview');
+                      }}
+                      style={[
+                        styles.segmentBtn,
+                        viewMode === 'preview' && {
+                          backgroundColor: theme.card,
+                          borderColor: borderColor,
+                          borderWidth: 1.5,
+                        },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="flip"
+                        size={15}
+                        color={viewMode === 'preview' ? theme.primary : theme.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.segmentBtnText,
+                          {
+                            color: viewMode === 'preview' ? theme.text : theme.textSecondary,
+                            fontWeight: viewMode === 'preview' ? '900' : '700',
+                          },
+                        ]}
+                      >
+                        FLIP GRID
+                      </Text>
+                    </TouchableOpacity>
 
-                {set.terms && set.terms.length > 0 && (
-                  <BrutalButton
-                    title="+ ADD NEW TERM"
-                    variant="outline"
-                    icon={<MaterialIcons name="add" size={18} color={theme.text} />}
-                    onPress={handleAddTerm}
-                    style={{ marginTop: 14 }}
-                  />
-                )}
+                    <TouchableOpacity
+                      onPress={() => {
+                        soundManager.playButtonClick();
+                        setViewMode('edit');
+                      }}
+                      style={[
+                        styles.segmentBtn,
+                        viewMode === 'edit' && {
+                          backgroundColor: theme.card,
+                          borderColor: borderColor,
+                          borderWidth: 1.5,
+                        },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="edit"
+                        size={15}
+                        color={viewMode === 'edit' ? theme.primary : theme.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.segmentBtnText,
+                          {
+                            color: viewMode === 'edit' ? theme.text : theme.textSecondary,
+                            fontWeight: viewMode === 'edit' ? '900' : '700',
+                          },
+                        ]}
+                      >
+                        EDIT CARDS
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-            ) : (
-              /* Display: Full Inline Editable Cards */
-              <View style={styles.editorContainer}>
-                {set.terms && set.terms.length > 0 && (
-                  <View style={{ marginBottom: 18 }}>
-                    <View style={styles.editorHeaderRow}>
-                      <Text style={[styles.editorSectionTitle, { color: theme.text }]}>
-                        EDITING TERMS ({set.terms.length})
+
+              {/* Display: Flip-Card Grid Preview */}
+              {viewMode === 'preview' ? (
+                <View>
+                  {set.terms && set.terms.length > 0 ? (
+                    <View style={styles.cardsGridContainer}>
+                      {set.terms.map((term, index) => (
+                        <InteractiveIndexCard
+                          key={`preview-card-${index}`}
+                          term={term.term}
+                          definition={term.definition}
+                          index={index}
+                          theme={theme}
+                          cardWidth={cardWidth}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <View
+                      style={[
+                        styles.emptyBox,
+                        {
+                          backgroundColor: theme.card,
+                          borderColor: borderColor,
+                          borderWidth: borderWidth,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.emptyTitle, { color: theme.text }]}>NO TERMS IN DECK</Text>
+                      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                        Add your first flashcard term to start previewing and studying.
                       </Text>
                       <BrutalButton
-                        title="+ ADD TERM"
-                        variant="secondary"
+                        title="+ ADD FIRST TERM"
+                        variant="primary"
                         onPress={handleAddTerm}
-                        style={{ minHeight: 38, paddingVertical: 6, paddingHorizontal: 12 }}
                       />
                     </View>
-                    {set.terms.map((term, index) => (
-                      <EditableFlashcard
-                        key={`term-${index}`}
-                        term={term.term}
-                        definition={term.definition}
-                        index={index}
-                        onEdit={handleEditTerm}
-                        onDelete={handleDeleteTerm}
-                        showAddButton={index === set.terms.length - 1}
-                        onAddTerm={handleAddTerm}
-                      />
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
+                  )}
 
-            {/* Questions Bank Section */}
-            {set.questions && set.questions.length > 0 && (
-              <View style={{ marginTop: 20 }}>
-                <Text style={[styles.sectionHeading, { color: theme.text }]}>
-                  QUESTION BANK ({set.questions.length})
-                </Text>
-                {set.questions.map((question, index) => (
-                  <EditableFlashcard
-                    key={`question-${index}`}
-                    term={question.question || question.text || 'Question'}
-                    definition={question.answer || ''}
-                    index={index}
-                    onEdit={handleEditQuestion}
-                    onDelete={handleDeleteQuestion}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.emptyBox,
-              {
-                backgroundColor: theme.card,
-                borderColor: borderColor,
-                borderWidth: borderWidth,
-              },
-            ]}
-          >
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>NO ITEMS IN DECK</Text>
-            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-              Add terms manually or generate questions with AI to start studying.
-            </Text>
-            <BrutalButton
-              title="GENERATE WITH AI"
-              variant="primary"
-              icon={<MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />}
-              onPress={() => navigation.navigate('AIGenerate', { existingSet: set })}
-            />
-          </View>
-        )}
+                  {set.terms && set.terms.length > 0 && (
+                    <BrutalButton
+                      title="+ ADD NEW TERM"
+                      variant="outline"
+                      icon={<MaterialIcons name="add" size={18} color={theme.text} />}
+                      onPress={handleAddTerm}
+                      style={{ marginTop: 14 }}
+                    />
+                  )}
+                </View>
+              ) : (
+                /* Display: Full Inline Editable Cards */
+                <View style={styles.editorContainer}>
+                  {set.terms && set.terms.length > 0 && (
+                    <View style={{ marginBottom: 18 }}>
+                      <View style={styles.editorHeaderRow}>
+                        <Text style={[styles.editorSectionTitle, { color: theme.text }]}>
+                          EDITING TERMS ({set.terms.length})
+                        </Text>
+                        <BrutalButton
+                          title="+ ADD TERM"
+                          variant="secondary"
+                          onPress={handleAddTerm}
+                          style={{ minHeight: 38, paddingVertical: 6, paddingHorizontal: 12 }}
+                        />
+                      </View>
+                      {set.terms.map((term, index) => (
+                        <EditableFlashcard
+                          key={`term-${index}`}
+                          term={term.term}
+                          definition={term.definition}
+                          index={index}
+                          onEdit={handleEditTerm}
+                          onDelete={handleDeleteTerm}
+                          showAddButton={index === set.terms.length - 1}
+                          onAddTerm={handleAddTerm}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
 
-        {/* Deck Utilities & Actions */}
-        <View style={styles.utilitiesSection}>
-          <Text style={[styles.sectionHeading, { color: theme.text }]}>DECK UTILITIES</Text>
-          <View style={styles.utilityGrid}>
-            {set.terms && set.terms.length > 0 && (
+              {/* Questions Bank Section */}
+              {set.questions && set.questions.length > 0 && (
+                <View style={{ marginTop: 20 }}>
+                  <Text style={[styles.sectionHeading, { color: theme.text }]}>
+                    QUESTION BANK ({set.questions.length})
+                  </Text>
+                  {set.questions.map((question, index) => (
+                    <EditableFlashcard
+                      key={`question-${index}`}
+                      term={question.question || question.text || 'Question'}
+                      definition={question.answer || ''}
+                      index={index}
+                      onEdit={handleEditQuestion}
+                      onDelete={handleDeleteQuestion}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <View
+              style={[
+                styles.emptyBox,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+              ]}
+            >
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>NO ITEMS IN DECK</Text>
+              <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                Add terms manually or generate questions with AI to start studying.
+              </Text>
               <BrutalButton
-                title={converting ? 'CONVERTING...' : 'AI CONVERT TO QUESTIONS'}
-                variant="secondary"
-                disabled={converting}
-                icon={
-                  converting ? (
-                    <MaterialIcons name="hourglass-empty" size={20} color="#FFFFFF" />
-                  ) : (
-                    <MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />
-                  )
-                }
-                onPress={handleConvertToQuestions}
+                title="GENERATE WITH AI"
+                variant="primary"
+                icon={<MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />}
+                onPress={() => navigation.navigate('AIGenerate', { existingSet: set })}
               />
-            )}
-            <BrutalButton
-              title="EXPORT AS PDF"
-              variant="outline"
-              icon={<MaterialIcons name="picture-as-pdf" size={20} color={theme.text} />}
-              onPress={() => exportStudySet(set, 'pdf')}
-            />
-            <BrutalButton
-              title="EXPORT AS DOCX"
-              variant="outline"
-              icon={<MaterialIcons name="description" size={20} color={theme.text} />}
-              onPress={() => exportStudySet(set, 'docx')}
-            />
-            <BrutalButton
-              title="DELETE DECK"
-              variant="danger"
-              icon={<MaterialIcons name="delete" size={20} color="#FFFFFF" />}
-              onPress={onDelete}
-              style={{ marginTop: 8 }}
-            />
+            </View>
+          )}
+
+          {/* Deck Utilities & Actions */}
+          <View style={styles.utilitiesSection}>
+            <Text style={[styles.sectionHeading, { color: theme.text }]}>DECK UTILITIES</Text>
+            <View style={styles.utilityGrid}>
+              {set.terms && set.terms.length > 0 && (
+                <BrutalButton
+                  title={converting ? 'CONVERTING...' : 'AI CONVERT TO QUESTIONS'}
+                  variant="secondary"
+                  disabled={converting}
+                  icon={
+                    converting ? (
+                      <MaterialIcons name="hourglass-empty" size={20} color="#FFFFFF" />
+                    ) : (
+                      <MaterialIcons name="auto-awesome" size={20} color="#FFFFFF" />
+                    )
+                  }
+                  onPress={handleConvertToQuestions}
+                />
+              )}
+              <BrutalButton
+                title="EXPORT AS PDF"
+                variant="outline"
+                icon={<MaterialIcons name="picture-as-pdf" size={20} color={theme.text} />}
+                onPress={() => exportStudySet(set, 'pdf')}
+              />
+              <BrutalButton
+                title="EXPORT AS DOCX"
+                variant="outline"
+                icon={<MaterialIcons name="description" size={20} color={theme.text} />}
+                onPress={() => exportStudySet(set, 'docx')}
+              />
+              <BrutalButton
+                title="DELETE DECK"
+                variant="danger"
+                icon={<MaterialIcons name="delete" size={20} color="#FFFFFF" />}
+                onPress={onDelete}
+                style={{ marginTop: 8 }}
+              />
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -753,15 +761,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  navBarInner: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   scrollContent: {
-    padding: 16,
     paddingBottom: 40,
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   title: {
     fontSize: 24,
