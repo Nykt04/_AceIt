@@ -12,12 +12,9 @@ export const SoundType = {
   WRONG_ANSWER: 'wrongAnswer',
 };
 
-// Sound files - load differently for native vs web
+// Sound files for React Native platforms
 let SOUND_DATA = {};
-
-// Only attempt to load sound files on native platforms
 if (!IS_WEB) {
-  // This block only runs on native (React Native) environments
   SOUND_DATA = {
     [SoundType.BUTTON_CLICK]: require('../../assets/sounds/clickButton.mp3'),
     [SoundType.CORRECT_ANSWER]: require('../../assets/sounds/correct.mp3'),
@@ -34,48 +31,104 @@ class SoundManager {
     this.volume = 0.7;
     this.initialized = false;
     this.initPromise = null;
+    this.audioContext = null;
+
+    // Immediately kick off initialization in background
+    this.initialize().catch(() => {});
+  }
+
+  getWebAudioContext() {
+    if (!IS_WEB) return null;
+    if (!this.audioContext && typeof window !== 'undefined') {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        this.audioContext = new AudioCtx();
+      }
+    }
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume().catch(() => {});
+    }
+    return this.audioContext;
+  }
+
+  playWebTone(type) {
+    const ctx = this.getWebAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      gain.gain.value = Math.min(0.2, this.volume * 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === SoundType.BUTTON_CLICK) {
+        // Subtle tactile pop
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.04);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        osc.start(now);
+        osc.stop(now + 0.04);
+      } else if (type === SoundType.CORRECT_ANSWER || type === SoundType.SUCCESS) {
+        // High upbeat dual chime
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      } else if (type === SoundType.WRONG_ANSWER || type === SoundType.ERROR) {
+        // Low soft thud
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+        gain.gain.setValueAtTime(gain.gain.value, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      }
+    } catch {
+      // AudioContext autoplay restrictions are handled silently
+    }
   }
 
   async initialize() {
-    // Prevent multiple initializations
     if (this.initPromise) {
       return this.initPromise;
     }
 
     this.initPromise = (async () => {
       try {
-        console.log('[SoundManager] Initializing audio...');
-        
-        // Skip Audio setup on web
-        if (!IS_WEB) {
-          await Audio.setAudioModeAsync({
-            allowsRecordingIOS: false,
-            interruptionMode: Audio.InterruptionMode.DoNotMix,
-            playsInSilentModeIOS: true,
-            staysActiveInBackground: false,
-          });
-          console.log('[SoundManager] Audio mode set');
-        } else {
-          console.log('[SoundManager] Running in web environment - sounds will be muted');
+        if (IS_WEB) {
+          // On web, use Web Audio API synthesis
+          this.initialized = true;
+          return;
         }
 
-        // Load all sounds using require statements
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          interruptionMode: Audio.InterruptionMode.DoNotMix,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+
         for (const [soundType, soundModule] of Object.entries(SOUND_DATA)) {
           try {
-            console.log(`[SoundManager] Loading ${soundType}...`);
             const { sound } = await Audio.Sound.createAsync(soundModule);
             this.sounds[soundType] = sound;
-            console.log(`✓ [SoundManager] Loaded sound: ${soundType}`);
-          } catch (error) {
-            console.warn(`⚠ [SoundManager] Failed to load sound ${soundType}:`, error?.message || error);
+          } catch {
+            /* skip individual sound failure */
           }
         }
 
         this.initialized = true;
-        console.log(`✓ [SoundManager] Initialized! Enabled: ${this.soundEnabled}, Volume: ${this.volume}, Web: ${IS_WEB}`);
-      } catch (error) {
-        console.warn('⚠ [SoundManager] Failed to initialize audio:', error?.message || error);
-        this.initialized = true; // Mark as initialized even if there's an error to prevent retry loops
+      } catch {
+        this.initialized = true;
       }
     })();
 
@@ -83,46 +136,36 @@ class SoundManager {
   }
 
   async play(soundType) {
-    if (!this.soundEnabled) {
-      console.log(`[SoundManager] Sound disabled, skipping ${soundType}`);
-      return;
-    }
-    
-    // Wait for initialization if it's still in progress
-    if (!this.initialized && this.initPromise) {
-      console.log(`[SoundManager] Waiting for initialization before playing ${soundType}...`);
-      await this.initPromise;
-    }
-    
+    if (!this.soundEnabled) return;
+
     if (!this.initialized) {
-      console.log(`[SoundManager] Not initialized, skipping ${soundType}`);
+      if (this.initPromise) {
+        await this.initPromise;
+      } else {
+        await this.initialize();
+      }
+    }
+
+    if (IS_WEB) {
+      this.playWebTone(soundType);
       return;
     }
 
     try {
       const sound = this.sounds[soundType];
-      if (!sound) {
-        console.warn(`[SoundManager] Sound not loaded: ${soundType}`);
-        return;
-      }
+      if (!sound) return;
 
-      console.log(`[SoundManager] Playing ${soundType} at volume ${this.volume}`);
-
-      // Set volume
       await sound.setVolumeAsync(this.volume);
 
-      // Stop if already playing and reset position
       const status = await sound.getStatusAsync();
       if (status.isLoaded && status.isPlaying) {
         await sound.stopAsync();
         await sound.setPositionAsync(0);
       }
 
-      // Play the sound
       await sound.playAsync();
-      console.log(`[SoundManager] ✓ Playing ${soundType}`);
-    } catch (error) {
-      console.warn(`⚠ [SoundManager] Error playing sound ${soundType}:`, error);
+    } catch {
+      /* ignore native play glitch */
     }
   }
 
@@ -164,8 +207,8 @@ class SoundManager {
           }
         }
       }
-    } catch (error) {
-      console.warn('⚠ Error stopping all sounds:', error);
+    } catch {
+      /* ignore */
     }
   }
 
@@ -178,14 +221,11 @@ class SoundManager {
       }
       this.sounds = {};
       this.initialized = false;
-      console.log('✓ Sound Manager cleaned up');
-    } catch (error) {
-      console.warn('⚠ Error cleaning up sounds:', error);
+    } catch {
+      /* ignore */
     }
   }
 }
 
-// Export singleton instance
 export const soundManager = new SoundManager();
-
 export default soundManager;

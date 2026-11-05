@@ -17,7 +17,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
-import { generateQuestionsFromText } from '../services/aiService';
+import { generateQuestionsFromText, generateStudyDeck } from '../services/aiService';
 import soundManager from '../services/soundService';
 import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 import { showSuccess, showError } from '../services/notificationService';
@@ -161,17 +161,31 @@ export default function FileUploadQuestionsScreen() {
     setLoading(true);
 
     try {
-      const questions = await generateQuestionsFromText(fileContent, questionCount);
+      let questions = [];
+      let terms = [];
 
-      if (!questions || questions.length === 0) {
+      try {
+        const deckResult = await generateStudyDeck(fileContent, {
+          questionCount,
+          flashcardCount: questionCount,
+          isDocument: true,
+        });
+        questions = deckResult.questions || [];
+        terms = deckResult.flashcards || [];
+      } catch {
+        // Fallback to direct questions generator
+        questions = await generateQuestionsFromText(fileContent, questionCount);
+        terms = questions.map((q, i) => ({
+          id: `t-${Date.now()}-${i}`,
+          term: q.type === 'true_false' ? `Concept #${i + 1}` : (q.options?.[q.correctIndex] || `Key Term #${i + 1}`),
+          definition: q.explanation || q.question,
+        }));
+      }
+
+      if ((!questions || questions.length === 0) && (!terms || terms.length === 0)) {
         showError('No questions generated. Try uploading more detailed notes.');
         return;
       }
-
-      const terms = questions.map((q) => ({
-        term: q.question || 'Question',
-        definition: q.explanation || q.correctAnswer?.toString() || 'Answer',
-      }));
 
       soundManager.playSuccess();
 

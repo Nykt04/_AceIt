@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -66,7 +66,7 @@ function FlashcardView({ terms, questions }) {
     }).start();
   }, [index, flipAnim, slideAnim]);
 
-  const flipCard = () => {
+  const flipCard = useCallback(() => {
     soundManager.playButtonClick();
     Animated.spring(flipAnim, {
       toValue: flipped ? 0 : 1,
@@ -74,8 +74,47 @@ function FlashcardView({ terms, questions }) {
       tension: 35,
       useNativeDriver: Platform.OS !== 'web',
     }).start();
-    setFlipped(!flipped);
-  };
+    setFlipped((prev) => !prev);
+  }, [flipped, flipAnim]);
+
+  const handleNext = useCallback(() => {
+    if (index < cards.length - 1) {
+      soundManager.playButtonClick();
+      setIndex((i) => i + 1);
+      setFlipped(false);
+    }
+  }, [index, cards.length]);
+
+  const handlePrev = useCallback(() => {
+    if (index > 0) {
+      soundManager.playButtonClick();
+      setIndex((i) => i - 1);
+      setFlipped(false);
+    }
+  }, [index]);
+
+  // Keyboard navigation on Web
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (e.code === 'Space' || e.key === 'Enter') {
+        e.preventDefault();
+        flipCard();
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        handlePrev();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [flipCard, handleNext, handlePrev]);
 
   const frontOpacity = flipAnim.interpolate({
     inputRange: [0, 0.5, 0.5, 1],
@@ -154,7 +193,7 @@ function FlashcardView({ terms, questions }) {
                 },
               ]}
             >
-              <Text style={styles.cardHeaderStripeText}>FRONT • CLICK TO FLIP</Text>
+              <Text style={styles.cardHeaderStripeText}>FRONT • CLICK OR PRESS SPACE TO FLIP</Text>
             </View>
             <View style={styles.cardContent}>
               <Text style={[styles.cardText, { color: theme.text }]}>{card.front}</Text>
@@ -203,7 +242,7 @@ function FlashcardView({ terms, questions }) {
       {/* Rating & Navigation Buttons */}
       <View style={styles.controlsSection}>
         <BrutalButton
-          title={flipped ? 'FLIP TO FRONT' : 'REVEAL ANSWER (SPACE / TAP)'}
+          title={flipped ? 'FLIP TO FRONT (SPACE)' : 'REVEAL DEFINITION (SPACE)'}
           variant={flipped ? 'outline' : 'secondary'}
           icon={<MaterialIcons name="flip" size={20} color={flipped ? theme.text : '#FFFFFF'} />}
           onPress={flipCard}
@@ -212,25 +251,19 @@ function FlashcardView({ terms, questions }) {
 
         <View style={styles.navRow}>
           <BrutalButton
-            title="PREV"
+            title="PREV (←)"
             variant="outline"
             disabled={index === 0}
             icon={<MaterialIcons name="arrow-back" size={18} color={theme.text} />}
-            onPress={() => {
-              setIndex((i) => Math.max(0, i - 1));
-              setFlipped(false);
-            }}
+            onPress={handlePrev}
             style={{ flex: 1 }}
           />
           <BrutalButton
-            title="NEXT"
+            title="NEXT (→)"
             variant="primary"
             disabled={index === cards.length - 1}
             icon={<MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" />}
-            onPress={() => {
-              setIndex((i) => Math.min(cards.length - 1, i + 1));
-              setFlipped(false);
-            }}
+            onPress={handleNext}
             style={{ flex: 1 }}
           />
         </View>
@@ -244,6 +277,14 @@ function QuizResults({ score, total, pct, onDone }) {
   const borderColor = theme.border || '#121212';
   const shadowColor = theme.shadow || '#121212';
   const borderWidth = theme.borderWidth || 3;
+
+  useEffect(() => {
+    if (pct >= 70) {
+      soundManager.playSuccess();
+    } else {
+      soundManager.playError();
+    }
+  }, [pct]);
 
   return (
     <View style={styles.centered}>
@@ -316,6 +357,7 @@ function QuizView({ questions, onExit }) {
       id: q.id || `q-${i}`,
       options: q.type === 'true_false' ? ['True', 'False'] : q.options || [],
       correctIndex: q.type === 'true_false' ? (q.correctAnswer ? 0 : 1) : q.correctIndex ?? 0,
+      explanation: q.explanation || 'No explanation provided for this question.',
     }));
   }, [questions]);
 
@@ -349,6 +391,7 @@ function QuizView({ questions, onExit }) {
   };
 
   const next = () => {
+    soundManager.playButtonClick();
     if (current + 1 >= items.length) {
       setFinished(true);
     } else {
@@ -357,6 +400,30 @@ function QuizView({ questions, onExit }) {
       setAnswered(false);
     }
   };
+
+  // Keyboard navigation on Web
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      if (!answered) {
+        if (e.key === '1' || e.key.toLowerCase() === 'a') onSelect(0);
+        else if (e.key === '2' || e.key.toLowerCase() === 'b') onSelect(1);
+        else if (e.key === '3' || e.key.toLowerCase() === 'c') onSelect(2);
+        else if (e.key === '4' || e.key.toLowerCase() === 'd') onSelect(3);
+      } else {
+        if (e.code === 'Space' || e.key === 'Enter') {
+          e.preventDefault();
+          next();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [answered, current, items.length]);
 
   if (finished) {
     const pct = Math.round((score / items.length) * 100);
@@ -465,10 +532,54 @@ function QuizView({ questions, onExit }) {
         })}
       </View>
 
+      {/* High-Yield AI Explanation Box */}
+      {answered && item.explanation && (
+        <View
+          style={[
+            styles.explanationBox,
+            {
+              backgroundColor: theme.card,
+              borderColor: borderColor,
+              borderWidth: borderWidth,
+            },
+            Platform.OS === 'web' && {
+              boxShadow: `4px 4px 0px ${shadowColor}`,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.explanationHeader,
+              {
+                backgroundColor: selected === item.correctIndex ? '#10B981' : '#EA580C',
+                borderBottomColor: borderColor,
+                borderBottomWidth: borderWidth,
+              },
+            ]}
+          >
+            <MaterialIcons
+              name={selected === item.correctIndex ? 'check-circle' : 'info'}
+              size={18}
+              color="#FFFFFF"
+            />
+            <Text style={styles.explanationHeaderText}>
+              {selected === item.correctIndex
+                ? 'CORRECT! EXPLANATION'
+                : 'INCORRECT • REVIEW EXPLANATION'}
+            </Text>
+          </View>
+          <View style={styles.explanationBody}>
+            <Text style={[styles.explanationText, { color: theme.text }]}>
+              {item.explanation}
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Next Question Control */}
       {answered && (
         <BrutalButton
-          title={current + 1 >= items.length ? 'FINISH & VIEW RESULTS' : 'NEXT QUESTION →'}
+          title={current + 1 >= items.length ? 'FINISH & VIEW RESULTS' : 'NEXT QUESTION (SPACE / ENTER) →'}
           variant="primary"
           onPress={next}
           style={{ marginTop: 20 }}
@@ -677,6 +788,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     flex: 1,
     marginRight: 8,
+  },
+
+  // Explanation Box
+  explanationBox: {
+    marginTop: 18,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  explanationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  explanationHeaderText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+  },
+  explanationBody: {
+    padding: 14,
+  },
+  explanationText: {
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
   },
 
   // Results

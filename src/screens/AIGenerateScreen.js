@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,18 @@ import {
   SafeAreaView,
   ScrollView,
   Platform,
-  Alert,
   Switch,
-  Animated,
   Pressable,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
-import { generateQuestions } from '../services/aiService';
+import {
+  generateStudyDeck,
+  generateQuestions,
+  generateFlashcards,
+} from '../services/aiService';
 import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
@@ -30,6 +32,10 @@ export default function AIGenerateScreen() {
   const existingSet = route.params?.existingSet;
   const { addStudySet, updateStudySet } = useStudy();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Generation Mode: 'deck' (both), 'quiz' (questions only), 'flashcards' (cards only)
+  const [mode, setMode] = useState('deck');
+  const [difficulty, setDifficulty] = useState('intermediate');
 
   const [topic, setTopic] = useState(existingSet?.title ?? '');
   const [count, setCount] = useState(5);
@@ -50,7 +56,8 @@ export default function AIGenerateScreen() {
       showError('Required: Enter a study topic');
       return;
     }
-    if (!multipleChoice && !trueFalse) {
+
+    if (mode === 'quiz' && !multipleChoice && !trueFalse) {
       setError('Select at least one question type (Multiple Choice or True/False)');
       showError('Select at least one question type');
       return;
@@ -58,13 +65,13 @@ export default function AIGenerateScreen() {
 
     const finalCount = customCount.trim() ? parseInt(customCount, 10) : count;
     if (isNaN(finalCount) || finalCount < 1) {
-      setError('Please enter a valid count of questions (1 or more)');
-      showError('Invalid number of questions');
+      setError('Please enter a valid count (1 or more)');
+      showError('Invalid number of items');
       return;
     }
-    if (finalCount > 100) {
-      setError('Maximum 100 questions allowed per generation');
-      showError('Maximum 100 questions allowed');
+    if (finalCount > 50) {
+      setError('Maximum 50 items allowed per generation');
+      showError('Maximum 50 items allowed');
       return;
     }
 
@@ -73,42 +80,73 @@ export default function AIGenerateScreen() {
     setLoading(true);
 
     try {
-      const questions = await generateQuestions(t, finalCount, { multipleChoice, trueFalse });
-      const terms = questions.map((q) => ({
-        term: q.question || 'Question',
-        definition: q.explanation || q.correctAnswer?.toString() || 'Answer',
-      }));
+      let generatedQuestions = [];
+      let generatedTerms = [];
+      let deckTitle = t;
+
+      if (mode === 'deck') {
+        const result = await generateStudyDeck(t, {
+          questionCount: finalCount,
+          flashcardCount: finalCount,
+          difficulty,
+        });
+        generatedQuestions = result.questions || [];
+        generatedTerms = result.flashcards || [];
+        if (result.title) deckTitle = result.title;
+      } else if (mode === 'quiz') {
+        generatedQuestions = await generateQuestions(
+          t,
+          finalCount,
+          { multipleChoice, trueFalse },
+          difficulty
+        );
+        generatedTerms = generatedQuestions.map((q, i) => ({
+          id: `t-gen-${i}`,
+          term: q.type === 'true_false' ? `Concept #${i + 1}` : (q.options?.[q.correctIndex] || `Key Term #${i + 1}`),
+          definition: q.explanation || q.question,
+        }));
+      } else {
+        // flashcards only
+        generatedTerms = await generateFlashcards(t, finalCount);
+      }
 
       soundManager.playSuccess();
 
       if (existingSet) {
-        const existing = existingSet.questions || [];
-        const existingTerms = existingSet.terms || [];
+        const existingQ = existingSet.questions || [];
+        const existingT = existingSet.terms || [];
+        const updatedQ = [...existingQ, ...generatedQuestions];
+        const updatedT = [...existingT, ...generatedTerms];
+
         await updateStudySet(existingSet.id, {
-          questions: [...existing, ...questions],
-          terms: [...existingTerms, ...terms],
+          questions: updatedQ,
+          terms: updatedT,
         });
-        showSuccess(`Generated ${questions.length} questions for ${existingSet.title}`);
+
+        showSuccess(`Added ${generatedQuestions.length + generatedTerms.length} items to ${existingSet.title}`);
         navigation.navigate('SetDetail', {
           set: {
             ...existingSet,
-            questions: [...existing, ...questions],
-            terms: [...existingTerms, ...terms],
+            questions: updatedQ,
+            terms: updatedT,
           },
         });
       } else {
         const newSet = await addStudySet({
-          title: t,
-          description: 'AI-generated study deck',
-          terms,
-          questions,
+          title: deckTitle,
+          description: `AI-generated ${mode.toUpperCase()} deck (${difficulty})`,
+          terms: generatedTerms,
+          questions: generatedQuestions,
         });
-        showSuccess(`Created new deck "${t}" with ${questions.length} questions`);
+
+        showSuccess(
+          `Created "${deckTitle}" (${generatedTerms.length} cards, ${generatedQuestions.length} questions)`
+        );
         navigation.replace('SetDetail', { set: newSet });
       }
     } catch (e) {
       setError(e.message || 'Generation failed');
-      showError(e.message || 'Could not generate questions. Check API key.');
+      showError(e.message || 'Generation failed. Check your OpenRouter key.');
     } finally {
       setLoading(false);
     }
@@ -119,10 +157,7 @@ export default function AIGenerateScreen() {
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.contentWrapper}>
           {/* Hero Banner */}
           <View
@@ -168,10 +203,10 @@ export default function AIGenerateScreen() {
             </View>
 
             <Text style={[styles.heroTitle, { color: theme.text }]}>
-              GENERATE STUDY QUESTIONS
+              GENERATE STUDY DECK
             </Text>
             <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
-              Enter any concept or curriculum chapter. The engine synthesizes questions and flashcards.
+              Synthesize flashcards, quiz questions, and conceptual explanations from any topic in seconds.
             </Text>
           </View>
 
@@ -197,10 +232,74 @@ export default function AIGenerateScreen() {
             </View>
           ) : null}
 
-          {/* 1. Study Topic Section */}
+          {/* Generation Mode Selector */}
           <BrutalCard
-            headerTitle="1. STUDY TOPIC OR CONCEPT"
+            headerTitle="1. CHOOSE DECK FORMAT"
             accentColor={theme.primary}
+            style={{ marginBottom: 16 }}
+          >
+            <View style={styles.modeGrid}>
+              {[
+                { id: 'deck', title: 'FULL STUDY DECK', desc: 'Flashcards + Quiz Questions', badge: 'RECOMMENDED' },
+                { id: 'quiz', title: 'QUIZ QUESTIONS ONLY', desc: 'Multiple Choice & True/False' },
+                { id: 'flashcards', title: 'FLASHCARDS ONLY', desc: 'Key Terms & Definitions' },
+              ].map((m) => {
+                const isSelected = mode === m.id;
+                return (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => {
+                      soundManager.playButtonClick();
+                      setMode(m.id);
+                    }}
+                    style={({ pressed }) => [
+                      styles.modeCard,
+                      {
+                        backgroundColor: isSelected
+                          ? (theme.isDark ? '#232936' : '#EFF6FF')
+                          : theme.background,
+                        borderColor: isSelected ? theme.primary : borderColor,
+                        borderWidth: isSelected ? 3 : borderWidth,
+                        transform: [{ translateX: pressed ? 2 : 0 }, { translateY: pressed ? 2 : 0 }],
+                      },
+                      Platform.OS === 'web' && {
+                        boxShadow: isSelected
+                          ? `3px 3px 0px ${theme.primary}`
+                          : `2px 2px 0px ${shadowColor}`,
+                        cursor: 'pointer',
+                      },
+                    ]}
+                  >
+                    <View style={styles.modeCardHeader}>
+                      <Text
+                        style={[
+                          styles.modeCardTitle,
+                          { color: isSelected ? theme.primary : theme.text },
+                        ]}
+                      >
+                        {m.title}
+                      </Text>
+                      {m.badge && (
+                        <BrutalBadge
+                          label={m.badge}
+                          color={theme.accent || '#FCD34D'}
+                          textColor="#121212"
+                        />
+                      )}
+                    </View>
+                    <Text style={[styles.modeCardDesc, { color: theme.textSecondary }]}>
+                      {m.desc}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </BrutalCard>
+
+          {/* Study Topic Section */}
+          <BrutalCard
+            headerTitle="2. STUDY TOPIC OR CONCEPT"
+            accentColor={theme.accent || '#FCD34D'}
             style={{ marginBottom: 16 }}
           >
             <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
@@ -219,7 +318,7 @@ export default function AIGenerateScreen() {
                   boxShadow: `2px 2px 0px ${shadowColor}`,
                 },
               ]}
-              placeholder="e.g. Cellular Respiration, Operating Systems, Spanish Verbs..."
+              placeholder="e.g. Operating Systems, Cellular Respiration, React Hooks..."
               placeholderTextColor={theme.textTertiary || '#9CA3AF'}
               value={topic}
               onChangeText={setTopic}
@@ -227,17 +326,67 @@ export default function AIGenerateScreen() {
             />
           </BrutalCard>
 
-          {/* 2. Number of Questions Section */}
+          {/* Academic Level / Difficulty Section */}
           <BrutalCard
-            headerTitle="2. QUANTITY OF QUESTIONS"
-            accentColor={theme.accent || '#FCD34D'}
+            headerTitle="3. ACADEMIC DIFFICULTY"
+            accentColor={theme.brandSecondary || '#F97316'}
+            style={{ marginBottom: 16 }}
+          >
+            <View style={styles.presetsGrid}>
+              {[
+                { id: 'beginner', label: 'BEGINNER' },
+                { id: 'intermediate', label: 'INTERMEDIATE' },
+                { id: 'advanced', label: 'ADVANCED' },
+              ].map((diff) => {
+                const isSelected = difficulty === diff.id;
+                return (
+                  <Pressable
+                    key={diff.id}
+                    onPress={() => {
+                      soundManager.playButtonClick();
+                      setDifficulty(diff.id);
+                    }}
+                    style={({ pressed }) => [
+                      styles.presetBtn,
+                      {
+                        backgroundColor: isSelected ? theme.primary : theme.background,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                        transform: [{ translateX: pressed || isSelected ? 2 : 0 }, { translateY: pressed || isSelected ? 2 : 0 }],
+                      },
+                      Platform.OS === 'web' && {
+                        boxShadow: isSelected
+                          ? `1px 1px 0px ${shadowColor}`
+                          : `3px 3px 0px ${shadowColor}`,
+                        cursor: 'pointer',
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.presetBtnText,
+                        { color: isSelected ? '#FFFFFF' : theme.text },
+                      ]}
+                    >
+                      {diff.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </BrutalCard>
+
+          {/* Item Count Section */}
+          <BrutalCard
+            headerTitle="4. QUANTITY"
+            accentColor={theme.primary}
             style={{ marginBottom: 16 }}
           >
             <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
-              Select preset amount:
+              Items per set:
             </Text>
             <View style={styles.presetsGrid}>
-              {[3, 5, 10, 15, 20].map((n) => {
+              {[5, 10, 15, 20].map((n) => {
                 const isSelected = count === n && !customCount.trim();
                 return (
                   <Pressable
@@ -253,19 +402,13 @@ export default function AIGenerateScreen() {
                         backgroundColor: isSelected ? theme.primary : theme.background,
                         borderColor: borderColor,
                         borderWidth: borderWidth,
-                        transform: [
-                          { translateX: pressed || isSelected ? 2 : 0 },
-                          { translateY: pressed || isSelected ? 2 : 0 },
-                        ],
+                        transform: [{ translateX: pressed || isSelected ? 2 : 0 }, { translateY: pressed || isSelected ? 2 : 0 }],
                       },
                       Platform.OS === 'web' && {
                         boxShadow: isSelected
                           ? `1px 1px 0px ${shadowColor}`
-                          : pressed
-                          ? `1px 1px 0px ${shadowColor}`
                           : `3px 3px 0px ${shadowColor}`,
                         cursor: 'pointer',
-                        transition: 'transform 0.08s ease, box-shadow 0.08s ease',
                       },
                     ]}
                   >
@@ -299,7 +442,7 @@ export default function AIGenerateScreen() {
                     boxShadow: `2px 2px 0px ${shadowColor}`,
                   },
                 ]}
-                placeholder="Custom number (e.g. 25, 50)"
+                placeholder="e.g. 8, 12, 25"
                 placeholderTextColor={theme.textTertiary || '#9CA3AF'}
                 value={customCount}
                 onChangeText={(text) => {
@@ -316,65 +459,67 @@ export default function AIGenerateScreen() {
             </View>
           </BrutalCard>
 
-          {/* 3. Question Formats Section */}
-          <BrutalCard
-            headerTitle="3. QUESTION FORMATS"
-            accentColor={theme.brandSecondary || '#F97316'}
-            style={{ marginBottom: 20 }}
-          >
-            <View style={styles.toggleRow}>
-              <View style={styles.toggleTextCol}>
-                <Text style={[styles.toggleTitle, { color: theme.text }]}>Multiple Choice</Text>
-                <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
-                  4 answer options with detailed explanation
-                </Text>
+          {/* Question Formats (if quiz or deck mode) */}
+          {mode !== 'flashcards' && (
+            <BrutalCard
+              headerTitle="5. QUESTION TYPES"
+              accentColor={theme.brandSecondary || '#F97316'}
+              style={{ marginBottom: 20 }}
+            >
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleTextCol}>
+                  <Text style={[styles.toggleTitle, { color: theme.text }]}>Multiple Choice</Text>
+                  <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
+                    4 options with detailed conceptual explanations
+                  </Text>
+                </View>
+                <Switch
+                  value={multipleChoice}
+                  onValueChange={(val) => {
+                    soundManager.playButtonClick();
+                    setMultipleChoice(val);
+                  }}
+                  trackColor={{
+                    false: theme.isDark ? '#374151' : '#CBD5E1',
+                    true: theme.primary,
+                  }}
+                  thumbColor="#FFFFFF"
+                />
               </View>
-              <Switch
-                value={multipleChoice}
-                onValueChange={(val) => {
-                  soundManager.playButtonClick();
-                  setMultipleChoice(val);
-                }}
-                trackColor={{
-                  false: theme.isDark ? '#374151' : '#CBD5E1',
-                  true: theme.primary,
-                }}
-                thumbColor="#FFFFFF"
+
+              <View
+                style={[
+                  styles.divider,
+                  { borderBottomColor: theme.isDark ? '#374151' : '#E2E8F0', borderBottomWidth: 1 },
+                ]}
               />
-            </View>
 
-            <View
-              style={[
-                styles.divider,
-                { borderBottomColor: theme.isDark ? '#374151' : '#E2E8F0', borderBottomWidth: 1 },
-              ]}
-            />
-
-            <View style={styles.toggleRow}>
-              <View style={styles.toggleTextCol}>
-                <Text style={[styles.toggleTitle, { color: theme.text }]}>True / False</Text>
-                <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
-                  Rapid concept validation statements
-                </Text>
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleTextCol}>
+                  <Text style={[styles.toggleTitle, { color: theme.text }]}>True / False</Text>
+                  <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
+                    Rapid concept validation assertions
+                  </Text>
+                </View>
+                <Switch
+                  value={trueFalse}
+                  onValueChange={(val) => {
+                    soundManager.playButtonClick();
+                    setTrueFalse(val);
+                  }}
+                  trackColor={{
+                    false: theme.isDark ? '#374151' : '#CBD5E1',
+                    true: theme.primary,
+                  }}
+                  thumbColor="#FFFFFF"
+                />
               </View>
-              <Switch
-                value={trueFalse}
-                onValueChange={(val) => {
-                  soundManager.playButtonClick();
-                  setTrueFalse(val);
-                }}
-                trackColor={{
-                  false: theme.isDark ? '#374151' : '#CBD5E1',
-                  true: theme.primary,
-                }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </BrutalCard>
+            </BrutalCard>
+          )}
 
           {/* Action Button */}
           <BrutalButton
-            title={loading ? 'SYNTHESIZING QUESTIONS...' : 'GENERATE QUESTIONS WITH AI'}
+            title={loading ? 'SYNTHESIZING DECK WITH AI...' : 'GENERATE STUDY DECK'}
             variant="primary"
             icon={<MaterialIcons name="auto-awesome" size={22} color="#FFFFFF" />}
             onPress={generate}
@@ -401,17 +546,17 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   heroBanner: {
-    marginBottom: 16,
     padding: 20,
     borderRadius: 4,
+    marginBottom: 16,
   },
   heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 10,
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 10,
   },
   heroBadge: {
     paddingHorizontal: 10,
@@ -421,25 +566,24 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     fontSize: 11,
     fontWeight: '900',
-    color: '#111827',
-    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
-    letterSpacing: 0.8,
+    color: '#121212',
+    letterSpacing: 1,
   },
   contextPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 3,
   },
   contextPillText: {
-    fontSize: 10,
-    fontWeight: '900',
+    fontSize: 11,
+    fontWeight: '800',
     color: '#FFFFFF',
-    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+    letterSpacing: 0.5,
   },
   heroTitle: {
     fontSize: 24,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
     marginBottom: 6,
   },
   heroSubtitle: {
@@ -450,39 +594,65 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     padding: 14,
     borderRadius: 4,
     marginBottom: 16,
+    gap: 12,
   },
   errorText: {
     fontSize: 13,
     fontWeight: '700',
     flex: 1,
+    lineHeight: 18,
   },
-  inputLabel: {
+
+  // Mode Selection
+  modeGrid: {
+    gap: 10,
+  },
+  modeCard: {
+    padding: 14,
+    borderRadius: 4,
+  },
+  modeCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  modeCardTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  modeCardDesc: {
     fontSize: 12,
+    fontWeight: '600',
+  },
+
+  inputLabel: {
+    fontSize: 13,
     fontWeight: '700',
     marginBottom: 10,
   },
   textInput: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 4,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    borderRadius: 4,
   },
   presetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 12,
   },
   presetBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 4,
+    flex: 1,
     minWidth: 80,
+    paddingVertical: 10,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -490,17 +660,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.5,
-    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
   },
   customCountContainer: {
-    marginTop: 4,
+    marginTop: 6,
   },
   customCountInput: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 4,
     fontSize: 14,
     fontWeight: '600',
+    borderRadius: 4,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -510,7 +679,7 @@ const styles = StyleSheet.create({
   },
   toggleTextCol: {
     flex: 1,
-    paddingRight: 16,
+    paddingRight: 12,
   },
   toggleTitle: {
     fontSize: 14,
@@ -519,9 +688,9 @@ const styles = StyleSheet.create({
   },
   toggleDesc: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   divider: {
-    marginVertical: 10,
+    marginVertical: 8,
   },
 });
