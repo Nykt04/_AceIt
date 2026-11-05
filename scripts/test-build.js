@@ -27,6 +27,7 @@ const files = [
   path.join('src', 'screens', 'TermsAndConditionsScreen.js'),
   path.join('src', 'screens', 'PrivacyPolicyScreen.js'),
   path.join('src', 'screens', 'AboutScreen.js'),
+  path.join('src', 'screens', 'LoginSignupScreen.js'),
 ];
 
 for (const file of files) {
