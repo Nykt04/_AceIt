@@ -1,22 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   ScrollView,
   Alert,
-  Animated,
   KeyboardAvoidingView,
   Platform,
   Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useTheme } from '../context/ThemeContext';
+import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
+import { showSuccess, showError } from '../services/notificationService';
 
 export default function HelpSupportScreen() {
   const navigation = useNavigation();
@@ -25,152 +27,221 @@ export default function HelpSupportScreen() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const submitScale = useRef(new Animated.Value(1)).current;
 
   const email = 'giankarloreguindin811@gmail.com';
-  const subject_encoded = encodeURIComponent(subject || 'Support Request - AceIt');
-  const message_encoded = encodeURIComponent(message || 'Hi, I need help with...');
+
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 2;
 
   const handleSendEmail = async () => {
     if (!subject.trim()) {
-      Alert.alert('Required', 'Please enter a subject');
+      showError('Please enter a message subject');
       return;
     }
     if (!message.trim()) {
-      Alert.alert('Required', 'Please enter your message');
+      showError('Please write your message or bug report');
       return;
     }
 
+    soundManager.playButtonClick();
     setLoading(true);
-    Animated.sequence([
-      Animated.timing(submitScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(submitScale, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
 
     try {
-      const mailtoURL = `mailto:${email}?subject=${subject_encoded}&body=${message_encoded}`;
+      const subjectEncoded = encodeURIComponent(subject || 'Support Request - AceIt');
+      const messageEncoded = encodeURIComponent(message || 'Hi, I need help with...');
+      const mailtoURL = `mailto:${email}?subject=${subjectEncoded}&body=${messageEncoded}`;
       const canOpen = await Linking.canOpenURL(mailtoURL);
-      
+
       if (canOpen) {
         await Linking.openURL(mailtoURL);
-        Alert.alert('Success', 'Your default email app has been opened. Please send the email from there.');
+        showSuccess('Opened your mail client');
         setSubject('');
         setMessage('');
       } else {
-        // Fallback: show the email address
         Alert.alert(
-          'Email Support',
-          `Please email us at:\n${email}\n\nSubject: ${subject}\n\nMessage: ${message}`,
-          [{ text: 'Copy Email', onPress: () => copyToClipboard(email) }, { text: 'OK' }]
+          'Email Support Directly',
+          `Contact our support desk at:\n${email}\n\nSubject: ${subject}`,
+          [{ text: 'OK' }]
         );
       }
     } catch (error) {
-      Alert.alert('Error', 'Unable to open email client');
+      showError('Unable to open email client');
     } finally {
       setLoading(false);
     }
   };
 
-  const copyToClipboard = (text) => {
-    // For web, we'd use a different approach
-    Alert.alert('Copied', `${text} has been copied`);
-  };
-
-  const styles = createStyles(theme);
+  const FAQS = [
+    {
+      q: 'How do I create or import a study deck?',
+      a: 'Tap "+ NEW SET" from your dashboard or open the navigation menu and select "CREATE SET" or "UPLOAD QUESTIONS" for documents.',
+    },
+    {
+      q: 'How does AI question generation work?',
+      a: 'The AceIt AI engine analyzes your topic or lecture text, extracting key concepts into 4-option multiple-choice items and rapid true/false drills.',
+    },
+    {
+      q: 'Are my decks synced in the cloud?',
+      a: 'Yes, your decks automatically persist to your account and local storage so your revision history is always ready.',
+    },
+    {
+      q: 'How do I review flashcards with tactile feedback?',
+      a: 'Open any deck and tap "START FLASHCARD STUDY". Cards flip on click with instant 3D perspective physics.',
+    },
+  ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Text style={styles.backText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.title}>Help & Support</Text>
-          </View>
 
-          <View style={styles.content}>
-            <View style={styles.infoBox}>
-              <Text style={styles.infoTitle}>📧 Contact Us</Text>
-              <Text style={styles.infoText}>Email: {email}</Text>
-              <Text style={styles.infoSubtext}>We'll get back to you as soon as possible</Text>
-            </View>
-
-            <View style={styles.faqSection}>
-              <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-              
-              <View style={styles.faqItem}>
-                <Text style={styles.faqQuestion}>❓ How do I create a study set?</Text>
-                <Text style={styles.faqAnswer}>Navigate to Home and tap the "Create Set" button to create a new study set. Add terms, questions, or upload a file.</Text>
-              </View>
-
-              <View style={styles.faqItem}>
-                <Text style={styles.faqQuestion}>❓ Can I sync my sets across devices?</Text>
-                <Text style={styles.faqAnswer}>Yes! All your study sets are automatically saved to your account and will sync across all your devices.</Text>
-              </View>
-
-              <View style={styles.faqItem}>
-                <Text style={styles.faqQuestion}>❓ How do I use AI to generate questions?</Text>
-                <Text style={styles.faqAnswer}>In any study set, tap "AI Generate" to automatically create quiz questions based on your terms.</Text>
-              </View>
-
-              <View style={styles.faqItem}>
-                <Text style={styles.faqQuestion}>❓ How do I change my password?</Text>
-                <Text style={styles.faqAnswer}>Go to Settings → Change Password to securely update your password.</Text>
-              </View>
-            </View>
-
-            <View style={styles.form}>
-              <Text style={styles.formTitle}>Send us a message</Text>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Subject</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="What do you need help with?"
-                  placeholderTextColor={theme.textTertiary}
-                  value={subject}
-                  onChangeText={setSubject}
-                  editable={!loading}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Message</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="Describe your issue or question..."
-                  placeholderTextColor={theme.textTertiary}
-                  multiline
-                  numberOfLines={6}
-                  value={message}
-                  onChangeText={setMessage}
-                  editable={!loading}
-                />
-              </View>
-
-              <Animated.View style={{ transform: [{ scale: submitScale }] }}>
-                <TouchableOpacity
-                  style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                  onPress={handleSendEmail}
-                  disabled={loading}
-                  activeOpacity={0.8}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.contentWrapper}>
+            {/* Hero Banner */}
+            <View
+              style={[
+                styles.heroBanner,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: `4px 4px 0px ${shadowColor}`,
+                },
+              ]}
+            >
+              <View style={styles.heroTopRow}>
+                <View
+                  style={[
+                    styles.heroBadge,
+                    {
+                      backgroundColor: theme.accent || '#FCD34D',
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                  ]}
                 >
-                  <Text style={styles.submitText}>{loading ? 'Opening...' : 'Send Message'}</Text>
-                </TouchableOpacity>
-              </Animated.View>
+                  <Text style={styles.heroBadgeText}>SUPPORT DESK // FAQ & CONTACT</Text>
+                </View>
+                <BrutalBadge
+                  label="DIRECT RESPONSE"
+                  color={theme.primary}
+                  textColor="#FFFFFF"
+                />
+              </View>
+
+              <Text style={[styles.heroTitle, { color: theme.text }]}>
+                HELP & DOCUMENTATION
+              </Text>
+              <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+                Browse answers to common questions or dispatch a message directly to our engineering desk.
+              </Text>
             </View>
+
+            {/* Direct Contact Card */}
+            <BrutalCard
+              headerTitle="DIRECT DESK CONTACT"
+              accentColor={theme.primary}
+              style={{ marginBottom: 16 }}
+            >
+              <View style={styles.emailStrip}>
+                <MaterialIcons name="email" size={24} color={theme.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.emailLabel, { color: theme.textSecondary }]}>
+                    OFFICIAL SUPPORT EMAIL:
+                  </Text>
+                  <Text style={[styles.emailText, { color: theme.text }]}>{email}</Text>
+                </View>
+              </View>
+            </BrutalCard>
+
+            {/* FAQs Section */}
+            <Text style={[styles.sectionHeading, { color: theme.text }]}>
+              FREQUENTLY ASKED QUESTIONS
+            </Text>
+
+            <View style={styles.faqList}>
+              {FAQS.map((faq, idx) => (
+                <BrutalCard
+                  key={idx}
+                  headerTitle={`FAQ #${idx + 1}`}
+                  accentColor={theme.accent || '#FCD34D'}
+                  style={{ marginBottom: 12 }}
+                >
+                  <Text style={[styles.faqQuestion, { color: theme.text }]}>
+                    {faq.q}
+                  </Text>
+                  <Text style={[styles.faqAnswer, { color: theme.textSecondary }]}>
+                    {faq.a}
+                  </Text>
+                </BrutalCard>
+              ))}
+            </View>
+
+            {/* Message Form Card */}
+            <BrutalCard
+              headerTitle="SEND US A MESSAGE"
+              accentColor={theme.brandSecondary || '#F97316'}
+              style={{ marginBottom: 20 }}
+            >
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                Subject:
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="e.g. Bug with DOCX import, Feature suggestion..."
+                placeholderTextColor={theme.textTertiary || '#9CA3AF'}
+                value={subject}
+                onChangeText={setSubject}
+              />
+
+              <Text style={[styles.inputLabel, { color: theme.textSecondary, marginTop: 12 }]}>
+                Your Message:
+              </Text>
+              <TextInput
+                style={[
+                  styles.textAreaInput,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                    color: theme.text,
+                  },
+                ]}
+                placeholder="Describe your issue or feedback in detail..."
+                placeholderTextColor={theme.textTertiary || '#9CA3AF'}
+                value={message}
+                onChangeText={setMessage}
+                multiline
+                numberOfLines={4}
+              />
+
+              <BrutalButton
+                title={loading ? 'DISPATCHING...' : 'DISPATCH MESSAGE →'}
+                variant="primary"
+                icon={<MaterialIcons name="send" size={20} color="#FFFFFF" />}
+                onPress={handleSendEmail}
+                disabled={loading}
+                style={{ marginTop: 14 }}
+              />
+            </BrutalCard>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -178,133 +249,112 @@ export default function HelpSupportScreen() {
   );
 }
 
-const createStyles = (theme) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
   },
   scrollContent: {
+    paddingBottom: 60,
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  heroBanner: {
+    marginBottom: 16,
     padding: 20,
-    paddingBottom: 100,
-    flexGrow: 1,
+    borderRadius: 4,
   },
-  header: {
-    marginBottom: 32,
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
   },
-  headerIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+  heroBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 3,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: theme.text,
+  heroBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#111827',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+    letterSpacing: 0.8,
   },
-  content: {
-    flex: 1,
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
-  infoBox: {
-    backgroundColor: theme.secondary,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.primaryAccent,
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 30,
+  heroSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
   },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.primaryAccent,
-    marginBottom: 8,
+  emailStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  infoText: {
+  emailLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+  },
+  emailText: {
     fontSize: 14,
-    color: theme.text,
-    marginBottom: 4,
-  },
-  infoSubtext: {
-    fontSize: 12,
-    color: theme.textSecondary,
-  },
-  faqSection: {
-    marginBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
     fontWeight: '700',
-    color: theme.text,
-    marginBottom: 16,
+    marginTop: 2,
   },
-  faqItem: {
-    backgroundColor: theme.secondary,
-    padding: 16,
-    borderRadius: 8,
+  sectionHeading: {
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: theme.border,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+  },
+  faqList: {
+    marginBottom: 16,
   },
   faqQuestion: {
     fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
-    marginBottom: 8,
+    fontWeight: '800',
+    marginBottom: 6,
   },
   faqAnswer: {
     fontSize: 13,
-    color: theme.textSecondary,
+    fontWeight: '500',
     lineHeight: 18,
   },
-  form: {
-    marginTop: 20,
-  },
-  formTitle: {
-    fontSize: 16,
+  inputLabel: {
+    fontSize: 12,
     fontWeight: '700',
-    color: theme.text,
-    marginBottom: 20,
-  },
-  inputGroup: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
     marginBottom: 8,
   },
-  input: {
-    backgroundColor: theme.secondary,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 8,
-    paddingHorizontal: 16,
+  textInput: {
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    color: theme.text,
-    fontSize: 16,
-    fontFamily: 'System',
-  },
-  textArea: {
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  submitButton: {
-    backgroundColor: theme.primaryAccent,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-    shadowColor: theme.primaryAccent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitText: {
-    color: '#fff',
-    fontSize: 16,
+    borderRadius: 4,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  textAreaInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 4,
+    fontSize: 14,
+    fontWeight: '600',
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
 });

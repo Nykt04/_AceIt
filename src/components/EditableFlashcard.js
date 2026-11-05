@@ -25,7 +25,7 @@ export default function EditableFlashcard({ term, definition, index, onEdit, onD
     Animated.timing(flipAnim, {
       toValue: isFlipped ? 0 : 1,
       duration: 300,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
     setIsFlipped(!isFlipped);
   };

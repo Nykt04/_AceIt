@@ -1,14 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Alert,
-  Animated,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -20,35 +17,35 @@ import { changePassword, resetPasswordWithToken } from '../services/authService'
 import { parseAuthError } from '../services/errorHandler';
 import { showError, showSuccess } from '../services/notificationService';
 import { validatePassword } from '../services/inputValidationService';
+import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 
 export default function ChangePasswordScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { theme } = useTheme();
   const isReset = route.params?.isReset || false;
-  
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState({});
-  const submitScale = useRef(new Animated.Value(1)).current;
   const [resetToken, setResetToken] = useState(null);
 
-  // Load reset token from storage if in reset mode
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 2;
+
   useEffect(() => {
     if (isReset) {
       const loadResetToken = async () => {
         try {
           const token = await AsyncStorage.getItem('passwordResetToken');
-          if (token) {
-            setResetToken(token);
-            console.log('[ChangePassword] Reset token loaded from storage');
-          }
+          if (token) setResetToken(token);
         } catch (error) {
           console.error('[ChangePassword] Error loading reset token:', error);
         }
@@ -57,13 +54,12 @@ export default function ChangePasswordScreen() {
     }
   }, [isReset]);
 
-  // Password validation helper using the centralized validation service
-  const validatePasswordInput = (password) => {
-    const validation = validatePassword(password);
+  const validatePasswordInput = (pwd) => {
+    const validation = validatePassword(pwd);
     const errors = {};
     if (!validation.valid && validation.errors) {
-      validation.errors.forEach((error, index) => {
-        errors[`error${index}`] = error;
+      validation.errors.forEach((err, idx) => {
+        errors[`error${idx}`] = err;
       });
     }
     return errors;
@@ -72,68 +68,51 @@ export default function ChangePasswordScreen() {
   const handleNewPasswordChange = (value) => {
     setNewPassword(value);
     if (value.length > 0) {
-      setShowPasswordRequirements(true);
-      const errors = validatePasswordInput(value);
-      setPasswordErrors(errors);
+      setPasswordErrors(validatePasswordInput(value));
     } else {
-      setShowPasswordRequirements(false);
       setPasswordErrors({});
     }
   };
 
   const handlePasswordUpdate = async () => {
-    // Validation for reset mode (no current password required)
+    soundManager.playButtonClick();
+
     if (isReset) {
-      if (!newPassword.trim()) {
-        showError('Required Field', 'Please enter a new password');
-        return;
-      }
-      if (!confirmPassword.trim()) {
-        showError('Required Field', 'Please confirm your new password');
+      if (!newPassword.trim() || !confirmPassword.trim()) {
+        showError('Please fill in both password fields');
         return;
       }
       if (newPassword !== confirmPassword) {
-        showError('Passwords Mismatch', 'Passwords do not match. Please check and try again.');
+        showError('Passwords do not match');
         return;
       }
-
-      // Use centralized password validation
-      const passwordValidation = validatePassword(newPassword);
-      if (!passwordValidation.valid) {
-        showError('Weak Password', `Password requirements:\n• ${passwordValidation.errors.join('\n• ')}`);
+      const val = validatePassword(newPassword);
+      if (!val.valid) {
+        showError(`Password requirements:\n• ${val.errors.join('\n• ')}`);
         return;
       }
-
       return await handleResetPassword();
     }
 
-    // Validation for normal change mode (requires current password)
     if (!currentPassword.trim()) {
-      showError('Required Field', 'Please enter your current password');
+      showError('Please enter your current password');
       return;
     }
-    if (!newPassword.trim()) {
-      showError('Required Field', 'Please enter a new password');
-      return;
-    }
-    if (!confirmPassword.trim()) {
-      showError('Required Field', 'Please confirm your new password');
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      showError('Please fill in all password fields');
       return;
     }
     if (newPassword !== confirmPassword) {
-      showError('Passwords Mismatch', 'New passwords do not match. Please check and try again.');
+      showError('New passwords do not match');
       return;
     }
-
-    // Use centralized password validation
-    const passwordValidation = validatePassword(newPassword);
-    if (!passwordValidation.valid) {
-      showError('Weak Password', `Password requirements:\n• ${passwordValidation.errors.join('\n• ')}`);
+    const val = validatePassword(newPassword);
+    if (!val.valid) {
+      showError(`Password requirements:\n• ${val.errors.join('\n• ')}`);
       return;
     }
-
     if (currentPassword === newPassword) {
-      showError('Same Password', 'New password must be different from your current password');
+      showError('New password must be different from current password');
       return;
     }
 
@@ -142,44 +121,20 @@ export default function ChangePasswordScreen() {
 
   const handleChangePassword = async () => {
     setLoading(true);
-    Animated.sequence([
-      Animated.timing(submitScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(submitScale, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     try {
-      console.log('[ChangePassword] Updating password...');
       const { error } = await changePassword(currentPassword, newPassword);
-
       if (error) {
-        showError('Password Change Failed', error);
+        showError(error);
         setLoading(false);
         return;
       }
 
-      console.log('[ChangePassword] Password changed successfully');
-      showSuccess('Success', 'Your password has been changed successfully! [✓]');
-      
-      // Clear form after successful change
+      soundManager.playSuccess();
+      showSuccess('Your password has been changed successfully');
       setTimeout(() => {
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setPasswordErrors({});
-        setShowPasswordRequirements(false);
         navigation.goBack();
-      }, 1500);
+      }, 1200);
     } catch (error) {
-      console.error('[ChangePassword] Error:', error);
       const { title, message } = parseAuthError(error.message);
       showError(title, message);
     } finally {
@@ -189,55 +144,31 @@ export default function ChangePasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!resetToken) {
-      showError('Invalid Reset', 'Password reset token not found. Please request a new password reset link.');
+      showError('Reset token not found. Please request a new link.');
       return;
     }
 
     setLoading(true);
-    Animated.sequence([
-      Animated.timing(submitScale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(submitScale, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     try {
-      console.log('[ChangePassword] Resetting password with token...');
       const { error } = await resetPasswordWithToken(newPassword, resetToken);
-
       if (error) {
-        showError('Password Reset Failed', error);
+        showError(error);
         setLoading(false);
         return;
       }
 
-      console.log('[ChangePassword] Password reset successfully');
-      showSuccess('Success', 'Your password has been reset successfully! [✓]');
-      
-      // Clear storage and form
+      soundManager.playSuccess();
+      showSuccess('Password reset successfully');
       await AsyncStorage.removeItem('passwordResetToken');
       await AsyncStorage.removeItem('isPasswordReset');
-      
+
       setTimeout(() => {
-        setNewPassword('');
-        setConfirmPassword('');
-        setPasswordErrors({});
-        setShowPasswordRequirements(false);
-        // Navigate to login screen
         navigation.reset({
           index: 0,
           routes: [{ name: 'LoginSignup' }],
         });
-      }, 1500);
+      }, 1200);
     } catch (error) {
-      console.error('[ChangePassword] Reset error:', error);
       const { title, message } = parseAuthError(error.message);
       showError(title, message);
     } finally {
@@ -246,130 +177,162 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles(theme).container]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {!isReset && <Navbar onMenuPress={() => setSidebarOpen(true)} />}
       {!isReset && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles(theme).scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Password Change/Reset Reminder Banner */}
-          <View style={[styles(theme).reminderBanner, isReset && styles(theme).reminderBannerReset]}>
-            <View style={styles(theme).reminderContent}>
-              <Text style={styles(theme).reminderTitle}>
-                {isReset ? 'Reset Your Password' : 'Keep Your Account Secure'}
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.contentWrapper}>
+            {/* Hero Banner */}
+            <View
+              style={[
+                styles.heroBanner,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: `4px 4px 0px ${shadowColor}`,
+                },
+              ]}
+            >
+              <View style={styles.heroTopRow}>
+                <View
+                  style={[
+                    styles.heroBadge,
+                    {
+                      backgroundColor: theme.accent || '#FCD34D',
+                      borderColor: borderColor,
+                      borderWidth: borderWidth,
+                    },
+                  ]}
+                >
+                  <Text style={styles.heroBadgeText}>SECURITY // CREDENTIALS</Text>
+                </View>
+                <BrutalBadge
+                  label={isReset ? 'TOKEN AUTHENTICATED' : 'LOGGED IN'}
+                  color={theme.primary}
+                  textColor="#FFFFFF"
+                />
+              </View>
+
+              <Text style={[styles.heroTitle, { color: theme.text }]}>
+                {isReset ? 'RESET YOUR PASSWORD' : 'UPDATE SECURITY PASSWORD'}
               </Text>
-              <Text style={styles(theme).reminderMessage}>
-                {isReset 
-                  ? 'Create a new password to regain access to your account.' 
-                  : 'We recommend changing your password every 3-6 months to maintain your account security.'}
+              <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+                Ensure your account is protected with an 8+ character password containing mixed characters.
               </Text>
             </View>
-          </View>
 
-          <View style={styles(theme).header}>
-            {!isReset && (
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles(theme).backButton}>
-                <Text style={styles(theme).backText}>←</Text>
-              </TouchableOpacity>
-            )}
-            <Text style={styles(theme).title}>
-              {isReset ? 'Reset Password' : 'Change Password'}
-            </Text>
-          </View>
-
-          <View style={styles(theme).content}>
-            <Text style={styles(theme).description}>
-              {isReset 
-                ? 'Enter a new password to regain access to your account'
-                : 'Enter your current password and choose a new one'}
-            </Text>
-
-            <View style={styles(theme).form}>
-              {/* Only show current password field if NOT in reset mode */}
+            {/* Form Card */}
+            <BrutalCard
+              headerTitle="AUTHENTICATION FORM"
+              accentColor={theme.primary}
+              style={{ marginBottom: 20 }}
+            >
               {!isReset && (
-                <View style={styles(theme).inputGroup}>
-                  <Text style={styles(theme).label}>Current Password</Text>
+                <>
+                  <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                    CURRENT PASSWORD:
+                  </Text>
                   <TextInput
-                    style={styles(theme).input}
-                    placeholder="Enter your current password"
-                    placeholderTextColor={theme.textSecondary}
-                    secureTextEntry
+                    style={[
+                      styles.textInput,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                        color: theme.text,
+                        marginBottom: 14,
+                      },
+                    ]}
+                    placeholder="Enter current password"
+                    placeholderTextColor={theme.textTertiary || '#9CA3AF'}
                     value={currentPassword}
                     onChangeText={setCurrentPassword}
-                    editable={!loading}
+                    secureTextEntry
                   />
+                </>
+              )}
+
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                NEW PASSWORD:
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                    color: theme.text,
+                    marginBottom: 8,
+                  },
+                ]}
+                placeholder="Enter new strong password"
+                placeholderTextColor={theme.textTertiary || '#9CA3AF'}
+                value={newPassword}
+                onChangeText={handleNewPasswordChange}
+                secureTextEntry
+              />
+
+              {/* Password Errors / Requirements */}
+              {Object.keys(passwordErrors).length > 0 && (
+                <View
+                  style={[
+                    styles.reqBox,
+                    {
+                      backgroundColor: theme.isDark ? '#3E1C1C' : '#FEE2E2',
+                      borderColor: '#EF4444',
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  {Object.values(passwordErrors).map((err, i) => (
+                    <Text key={i} style={styles.reqErrorText}>
+                      • {err}
+                    </Text>
+                  ))}
                 </View>
               )}
 
-              <View style={styles(theme).inputGroup}>
-                <Text style={styles(theme).label}>New Password</Text>
-                <TextInput
-                  style={styles(theme).input}
-                  placeholder="Enter new password"
-                  placeholderTextColor={theme.textSecondary}
-                  secureTextEntry
-                  value={newPassword}
-                  onChangeText={handleNewPasswordChange}
-                  editable={!loading}
-                />
-                
-                {showPasswordRequirements && (
-                  <View style={styles(theme).passwordRequirements}>
-                    <Text style={styles(theme).requirementsTitle}>Password Requirements:</Text>
-                    <View style={styles(theme).requirementItem}>
-                      <Text style={newPassword.length >= 8 ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
-                        {newPassword.length >= 8 ? '✓' : '○'} At least 8 characters
-                      </Text>
-                    </View>
-                    <View style={styles(theme).requirementItem}>
-                      <Text style={/[A-Z]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
-                        {/[A-Z]/.test(newPassword) ? '✓' : '○'} One uppercase letter (A-Z)
-                      </Text>
-                    </View>
-                    <View style={styles(theme).requirementItem}>
-                      <Text style={/[a-z]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
-                        {/[a-z]/.test(newPassword) ? '✓' : '○'} One lowercase letter (a-z)
-                      </Text>
-                    </View>
-                    <View style={styles(theme).requirementItem}>
-                      <Text style={/[0-9]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
-                        {/[0-9]/.test(newPassword) ? '✓' : '○'} One number (0-9)
-                      </Text>
-                    </View>
-                    <View style={styles(theme).requirementItem}>
-                      <Text style={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? styles(theme).requirementMet : styles(theme).requirementUnmet}>
-                        {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword) ? '✓' : '○'} One special character (!@#$%...)
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </View>
+              <Text style={[styles.inputLabel, { color: theme.textSecondary, marginTop: 12 }]}>
+                CONFIRM NEW PASSWORD:
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                    color: theme.text,
+                    marginBottom: 20,
+                  },
+                ]}
+                placeholder="Re-enter new password"
+                placeholderTextColor={theme.textTertiary || '#9CA3AF'}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
 
-              <View style={styles(theme).inputGroup}>
-                <Text style={styles(theme).label}>Confirm Password</Text>
-                <TextInput
-                  style={styles(theme).input}
-                  placeholder="Confirm new password"
-                  placeholderTextColor={theme.textSecondary}
-                  secureTextEntry
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  editable={!loading}
-                />
-              </View>
-
-              <Animated.View style={{ transform: [{ scale: submitScale }] }}>
-                <TouchableOpacity
-                  style={[styles(theme).submitButton, loading && styles(theme).submitButtonDisabled]}
-                  onPress={handlePasswordUpdate}
-                  disabled={loading}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles(theme).submitText}>
-                    {loading ? 'Updating...' : (isReset ? 'Reset Password' : 'Change Password')}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
+              <BrutalButton
+                title={loading ? 'UPDATING CREDENTIALS...' : 'SAVE NEW PASSWORD'}
+                variant="primary"
+                icon={<MaterialIcons name="lock" size={20} color="#FFFFFF" />}
+                onPress={handlePasswordUpdate}
+                disabled={loading}
+              />
+            </BrutalCard>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -377,138 +340,79 @@ export default function ChangePasswordScreen() {
   );
 }
 
-const styles = (theme) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
   },
   scrollContent: {
-    flexGrow: 1,
+    paddingBottom: 60,
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 750,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  heroBanner: {
+    marginBottom: 16,
     padding: 20,
+    borderRadius: 4,
   },
-  reminderBanner: {
-    backgroundColor: theme.secondary,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.primaryAccent,
-    borderRadius: 8,
-    padding: 14,
-    marginBottom: 20,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  reminderBannerReset: {
-    borderLeftColor: '#f59e0b',
-    backgroundColor: theme.secondary,
-  },
-  reminderIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  reminderContent: {
-    flex: 1,
-  },
-  reminderTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.text,
-    marginBottom: 4,
-  },
-  reminderMessage: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    lineHeight: 18,
-  },
-  header: {
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
-    marginTop: 10,
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
   },
-  backButton: {
-    paddingRight: 15,
+  heroBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 3,
   },
-  backText: {
+  heroBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#111827',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+    letterSpacing: 0.8,
+  },
+  heroTitle: {
     fontSize: 24,
-    color: theme.primaryAccent,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: theme.text,
-  },
-  content: {
-    flex: 1,
-  },
-  description: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    marginBottom: 30,
-    lineHeight: 20,
-  },
-  form: {
-    gap: 20,
-  },
-  inputGroup: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.text,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: theme.secondary,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: theme.text,
-    fontSize: 16,
-    fontFamily: 'System',
-  },
-  passwordRequirements: {
-    backgroundColor: theme.secondary,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-  },
-  requirementsTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.textSecondary,
-    marginBottom: 8,
-  },
-  requirementItem: {
+    fontWeight: '900',
+    letterSpacing: 0.5,
     marginBottom: 6,
   },
-  requirementMet: {
-    fontSize: 12,
-    color: '#10b981',
-    fontWeight: '500',
-  },
-  requirementUnmet: {
-    fontSize: 12,
-    color: '#f59e0b',
-    fontWeight: '500',
-  },
-  submitButton: {
-    backgroundColor: theme.primaryAccent,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitText: {
-    color: '#fff',
-    fontSize: 16,
+  heroSubtitle: {
+    fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  textInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 4,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  reqBox: {
+    padding: 10,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  reqErrorText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF4444',
+    marginBottom: 2,
   },
 });

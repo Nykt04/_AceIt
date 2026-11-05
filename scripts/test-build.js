@@ -31,6 +31,13 @@ const files = [
   path.join('src', 'screens', 'PrivacyPolicyScreen.js'),
   path.join('src', 'screens', 'AboutScreen.js'),
   path.join('src', 'screens', 'LoginSignupScreen.js'),
+  path.join('src', 'screens', 'AIGenerateScreen.js'),
+  path.join('src', 'screens', 'FileUploadQuestionsScreen.js'),
+  path.join('src', 'screens', 'CreateSetScreen.js'),
+  path.join('src', 'screens', 'SettingsScreen.js'),
+  path.join('src', 'screens', 'QuizSettingsScreen.js'),
+  path.join('src', 'screens', 'HelpSupportScreen.js'),
+  path.join('src', 'screens', 'ChangePasswordScreen.js'),
 ];
 
 for (const file of files) {

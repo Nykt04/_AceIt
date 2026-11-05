@@ -2,21 +2,25 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   ScrollView,
   Alert,
-  ActivityIndicator,
   TextInput,
+  Platform,
+  Pressable,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { useStudy } from '../context/StudyContext';
 import { useTheme } from '../context/ThemeContext';
 import { generateQuestionsFromText } from '../services/aiService';
+import soundManager from '../services/soundService';
+import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
+import { showSuccess, showError } from '../services/notificationService';
 
 export default function FileUploadQuestionsScreen() {
   const navigation = useNavigation();
@@ -24,7 +28,7 @@ export default function FileUploadQuestionsScreen() {
   const { theme } = useTheme();
   const existingSet = route.params?.existingSet;
   const { addStudySet, updateStudySet } = useStudy();
-  
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileName, setFileName] = useState('');
@@ -33,103 +37,60 @@ export default function FileUploadQuestionsScreen() {
   const [loading, setLoading] = useState(false);
   const [setTitle, setSetTitle] = useState(existingSet?.title ?? '');
 
-  const styles = createStyles(theme);
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 2;
 
   // Extract text from file content
-  const extractTextFromFile = async (fileUri, fileName) => {
-    const fileNameLower = fileName.toLowerCase();
-    
-    // For text files, read the content directly
+  const extractTextFromFile = async (fileUri, fName) => {
+    const fileNameLower = fName.toLowerCase();
+
     if (fileNameLower.endsWith('.txt')) {
       try {
         const response = await fetch(fileUri);
         const text = await response.text();
-        
+
         if (!text || text.trim().length < 5) {
           throw new Error('Text file is empty or too short');
         }
-        
+
         return { text, isEmpty: false };
       } catch (error) {
-        Alert.alert('Error', 'Failed to read text file or file is empty');
-        return null;
-      }
-    }
-    
-    // For DOCX files
-    if (fileNameLower.endsWith('.docx') || fileNameLower.endsWith('.doc')) {
-      try {
-        const response = await fetch(fileUri);
-        const arrayBuffer = await response.arrayBuffer();
-        
-        // Since we're in React Native, we can't directly use mammoth
-        // Show user instructions for image-containing documents
-        Alert.alert(
-          '[!] Important',
-          'Document files with images need special handling.\n\n' +
-          '[✓] SOLUTION:\n' +
-          '1. If your document contains images:\n' +
-          '   - Use an OCR tool (Google Lens, smallpdf.com)\n' +
-          '   - Extract text and save as .txt file\n' +
-          '   - Upload the .txt file\n\n' +
-          '2. If your document is text-only:\n' +
-          '   - It should work fine\n' +
-          '   - Try again',
-          [{ text: 'OK' }]
-        );
-        
-        // Return placeholder - in real scenario, would need backend support
-        return { 
-          text: `[Document: ${fileName}]\n\nPlease ensure your document contains extractable text.`, 
-          isEmpty: true,
-          warning: true 
-        };
-      } catch (error) {
-        Alert.alert('Error', 'Failed to process document file');
+        showError('Failed to read text file or file is empty');
         return null;
       }
     }
 
-    // For PDF files
+    if (fileNameLower.endsWith('.docx') || fileNameLower.endsWith('.doc')) {
+      try {
+        const response = await fetch(fileUri);
+        await response.arrayBuffer();
+        return {
+          text: `[Document: ${fName}]\n\nPlease ensure your document contains plain text notes.`,
+          isEmpty: true,
+          warning: true,
+        };
+      } catch (error) {
+        showError('Failed to process document file');
+        return null;
+      }
+    }
+
     if (fileNameLower.endsWith('.pdf')) {
       Alert.alert(
-        '[file] PDF File Detected',
-        'PDF support in React Native requires uploading through the web version.\n\n' +
-        '[✓] SOLUTION:\n' +
-        '1. Access Study Buddy on a web browser\n' +
-        '2. Upload your PDF file there\n' +
-        '3. Or convert PDF to text:\n' +
-        '   - Use ilovepdf.com or smallpdf.com\n' +
-        '   - Save as .txt file\n' +
-        '   - Upload the .txt file in this app',
+        'PDF Detected',
+        'Direct PDF parsing in browser requires plain text. Please save your notes as a .txt file or paste them into a text document.',
         [{ text: 'OK' }]
       );
       return null;
     }
-    
-    // For image files
-    if (fileNameLower.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-      Alert.alert(
-        '📸 Image File Detected',
-        'Direct image uploads are not yet supported.\n\n' +
-        'PLEASE:\n' +
-        '1. Convert your image to text using:\n' +
-        '   • Google Lens (take screenshot)\n' +
-        '   • Online OCR: ilovepdf.com, smallpdf.com\n' +
-        '   • Microsoft Lens\n\n' +
-        '2. Save the text as a .txt file\n' +
-        '3. Upload the .txt file instead',
-        [{ text: 'OK' }]
-      );
-      return null;
-    }
-    
-    // For unsupported file types
-    Alert.alert('Unsupported File Type', `${fileNameLower} files are not directly supported. Please use .txt, .docx, or .pdf files with text content.`);
+
+    showError(`Unsupported file format. Please use .txt or .docx notes.`);
     return null;
   };
 
   const handleSelectFile = async () => {
+    soundManager.playButtonClick();
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: [
@@ -137,124 +98,82 @@ export default function FileUploadQuestionsScreen() {
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           'application/msword',
           'text/plain',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-          'image/webp',
         ],
         copyToCacheDirectory: true,
       });
 
-      if (result.type === 'success') {
+      if (result.type === 'success' || (result.assets && result.assets.length > 0)) {
+        const asset = result.assets ? result.assets[0] : result;
         const file = {
-          uri: result.uri,
-          name: result.name,
-          size: result.size ?? 0,
+          uri: asset.uri,
+          name: asset.name,
+          size: asset.size ?? 0,
         };
 
         const extractedData = await extractTextFromFile(file.uri, file.name);
-        
+
         if (extractedData) {
           setSelectedFile(file);
           setFileName(file.name);
-          
-          // Auto-populate title from filename (without extension)
+
           const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
-          setSetTitle(fileNameWithoutExt);
-          
-          // Check if content is empty or has warning
+          if (!setTitle.trim()) {
+            setSetTitle(fileNameWithoutExt);
+          }
+
           if (extractedData.isEmpty || extractedData.warning) {
-            setFileContent(''); // Don't set placeholder text
-            Alert.alert(
-              'Cannot Process File',
-              'This file appears to contain only images or is incompatible.\n\n' +
-              'SOLUTION:\n' +
-              'Convert your images to text first:\n' +
-              '1. Use Google Lens\n' +
-              '2. Use online OCR tool\n' +
-              '3. Save extracted text as .txt file\n' +
-              '4. Upload the .txt file'
-            );
+            setFileContent('');
+            showError('File contains minimal text. Please provide notes with extractable content.');
           } else {
             setFileContent(extractedData.text);
-            Alert.alert('Success', `File ready: ${file.name}\n\n${extractedData.text.length} characters extracted`);
+            showSuccess(`File loaded: ${file.name} (${extractedData.text.length} chars)`);
           }
         }
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to select file: ' + (err?.message || 'Unknown error'));
+      showError('Failed to select file: ' + (err?.message || 'Unknown error'));
     }
   };
 
   const handleGenerateFromFile = async () => {
     if (!fileContent.trim()) {
-      Alert.alert(
-        'No Content',
-        'Please select a file with text content first.\n\n' +
-        '[*] If your file contains images:\n' +
-        '1. Use an OCR tool to extract text\n' +
-        '2. Save as .txt file\n' +
-        '3. Upload the .txt file'
-      );
+      showError('Please upload a file with study text first');
       return;
     }
 
-    // Minimum text requirement
     if (fileContent.trim().length < 20) {
-      Alert.alert('Insufficient Content', 'Please provide more study material (at least 20 characters)');
+      showError('Insufficient study material (minimum 20 characters required)');
       return;
     }
-    
+
     const questionCount = parseInt(numQuestions, 10);
     if (isNaN(questionCount) || questionCount < 1) {
-      Alert.alert('Invalid Input', 'Please enter a valid number of questions (minimum 1)');
+      showError('Enter a valid count of questions (minimum 1)');
       return;
     }
-    
-    // Warn for very large numbers but still allow them
-    if (questionCount > 250) {
-      Alert.alert(
-        'Large Question Set',
-        `You're requesting ${questionCount} questions. This may take a while. Continue?`,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Continue',
-            onPress: async () => {
-              await proceedWithGeneration(questionCount);
-            },
-          },
-        ]
-      );
-      return;
-    }
-    
-    await proceedWithGeneration(questionCount);
-  };
 
-  const proceedWithGeneration = async (questionCount) => {
     if (!setTitle.trim() && !existingSet) {
-      Alert.alert('Required', 'Please enter a set title');
+      showError('Please enter a study deck title');
       return;
     }
 
+    soundManager.playButtonClick();
     setLoading(true);
+
     try {
       const questions = await generateQuestionsFromText(fileContent, questionCount);
 
       if (!questions || questions.length === 0) {
-        Alert.alert('Info', 'No questions could be generated. Try with more detailed content.');
+        showError('No questions generated. Try uploading more detailed notes.');
         return;
       }
 
-      // Convert questions to flashcard terms
       const terms = questions.map((q) => ({
         term: q.question || 'Question',
         definition: q.explanation || q.correctAnswer?.toString() || 'Answer',
       }));
+
+      soundManager.playSuccess();
 
       if (existingSet) {
         const existing = existingSet.questions || [];
@@ -263,381 +182,443 @@ export default function FileUploadQuestionsScreen() {
           questions: [...existing, ...questions],
           terms: [...existingTerms, ...terms],
         });
+        showSuccess(`Generated ${questions.length} questions for ${existingSet.title}`);
         navigation.navigate('SetDetail', {
-          set: { ...existingSet, questions: [...existing, ...questions], terms: [...existingTerms, ...terms] },
+          set: {
+            ...existingSet,
+            questions: [...existing, ...questions],
+            terms: [...existingTerms, ...terms],
+          },
         });
       } else {
         const newSet = await addStudySet({
           title: setTitle.trim(),
-          description: 'AI-generated from study material',
+          description: `Extracted from ${fileName || 'study notes'}`,
           terms,
           questions,
         });
+        showSuccess(`Created new deck "${setTitle.trim()}" with ${questions.length} questions`);
         navigation.replace('SetDetail', { set: newSet });
       }
-
-      Alert.alert('Success', `Generated ${questions.length} questions and terms using AI!`);
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to generate questions');
-      console.error(error);
+      showError(error.message || 'Failed to generate questions from file');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancel}>Cancel</Text>
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Generate from File</Text>
-          <Text style={styles.headerSubtitle}>Upload DOCX, PDF, or TXT files</Text>
-        </View>
-        <TouchableOpacity onPress={handleGenerateFromFile} disabled={loading} activeOpacity={0.8}>
-          <Text style={[styles.generate, loading && styles.generateDisabled]}>{loading ? '…' : 'Go'}</Text>
-        </TouchableOpacity>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
 
-        {/* Set Title (if not existing set) */}
-        {!existingSet && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialIcons name="edit" size={24} color={theme.primaryAccent} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>Set Title</Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Biology Notes, History Chapter 5"
-              placeholderTextColor={theme.textTertiary}
-              value={setTitle}
-              onChangeText={setSetTitle}
-            />
-          </View>
-        )}
-
-        {/* File Selection Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionIcon}>📁</Text>
-            <Text style={styles.sectionTitle}>Upload Document</Text>
-          </View>
-          
-          <View style={styles.fileBox}>
-            {!selectedFile ? (
-              <>
-                <Text style={styles.fileIcon}>📄</Text>
-                <Text style={styles.fileText}>No file selected</Text>
-                <Text style={styles.fileHint}>Upload .txt, .docx, or .pdf</Text>
-              </>
-            ) : (
-              <>
-                <MaterialIcons name="check-circle" size={24} color="#10b981" style={styles.fileIcon} />
-                <Text style={styles.fileText}>{fileName}</Text>
-                <Text style={styles.fileSize}>
-                  {(selectedFile.size / 1024).toFixed(2)} KB • {fileContent.length} characters
-                </Text>
-              </>
-            )}
-          </View>
-
-          <TouchableOpacity
-            style={styles.selectButton}
-            onPress={handleSelectFile}
-            activeOpacity={0.8}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.contentWrapper}>
+          {/* Hero Banner */}
+          <View
+            style={[
+              styles.heroBanner,
+              {
+                backgroundColor: theme.card,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+              Platform.OS === 'web' && {
+                boxShadow: `4px 4px 0px ${shadowColor}`,
+              },
+            ]}
           >
-            <MaterialIcons name="folder-open" size={24} color={theme.primaryAccent} style={styles.selectButtonIcon} />
-            <Text style={styles.selectButtonText}>Select File</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.heroTopRow}>
+              <View
+                style={[
+                  styles.heroBadge,
+                  {
+                    backgroundColor: theme.accent || '#FCD34D',
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                  },
+                ]}
+              >
+                <Text style={styles.heroBadgeText}>DOCUMENT INGESTION // OCR & TEXT</Text>
+              </View>
+              {existingSet && (
+                <View
+                  style={[
+                    styles.contextPill,
+                    {
+                      backgroundColor: theme.primary,
+                      borderColor: borderColor,
+                      borderWidth: 1.5,
+                    },
+                  ]}
+                >
+                  <Text style={styles.contextPillText}>TARGET: {existingSet.title}</Text>
+                </View>
+              )}
+            </View>
 
-        {/* Number of Questions Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialIcons name="track-changes" size={24} color={theme.primaryAccent} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>Number of Questions</Text>
+            <Text style={[styles.heroTitle, { color: theme.text }]}>
+              UPLOAD STUDY MATERIAL
+            </Text>
+            <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+              Convert lecture slides, outlines, or text notes directly into interactive flashcards.
+            </Text>
           </View>
-          
-          <View style={styles.questionInputContainer}>
-            <MaterialIcons name="note" size={20} color={theme.textSecondary} style={{ marginRight: 8 }} />
-            <TextInput
-              style={styles.questionInput}
-              placeholder="e.g., 10, 20, 30..."
-              placeholderTextColor={theme.textTertiary}
-              value={numQuestions}
-              onChangeText={setNumQuestions}
-              keyboardType="number-pad"
-            />
-          </View>
-        </View>
 
-        {/* How It Works */}
-        <View style={styles.tipsBox}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-            <MaterialIcons name="lightbulb" size={20} color={theme.primaryAccent} style={{ marginRight: 8 }} />
-            <Text style={styles.tipsTitle}>How It Works</Text>
-          </View>
-          <Text style={styles.tipItem}>• Upload your study material</Text>
-          <Text style={styles.tipItem}>• Specify number of questions</Text>
-          <Text style={styles.tipItem}>• AI generates both questions and terms</Text>
-          <Text style={styles.tipItem}>• Review and study instantly</Text>
-        </View>
-
-        {/* Generate Button */}
-        <TouchableOpacity
-          style={[styles.generateButton, loading && styles.generateButtonDisabled]}
-          onPress={handleGenerateFromFile}
-          disabled={loading}
-          activeOpacity={0.8}
-        >
-          {loading ? (
-            <>
-              <ActivityIndicator color="#f5f5f5" size="small" />
-              <Text style={styles.generateButtonText}>Generating...</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.generateButtonText}>Generate Questions</Text>
-            </>
+          {/* 1. Deck Title Card (if not appending) */}
+          {!existingSet && (
+            <BrutalCard
+              headerTitle="1. STUDY DECK TITLE"
+              accentColor={theme.primary}
+              style={{ marginBottom: 16 }}
+            >
+              <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                Name for your new study deck:
+              </Text>
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                    color: theme.text,
+                  },
+                  Platform.OS === 'web' && {
+                    boxShadow: `2px 2px 0px ${shadowColor}`,
+                  },
+                ]}
+                placeholder="e.g. Chapter 4 Cellular Biology, Midterm Exam Notes"
+                placeholderTextColor={theme.textTertiary || '#9CA3AF'}
+                value={setTitle}
+                onChangeText={setSetTitle}
+                editable={!loading}
+              />
+            </BrutalCard>
           )}
-        </TouchableOpacity>
+
+          {/* 2. Upload Document Card */}
+          <BrutalCard
+            headerTitle="2. SELECT STUDY DOCUMENT"
+            accentColor={theme.accent || '#FCD34D'}
+            style={{ marginBottom: 16 }}
+          >
+            {/* File Drop/Pick Area */}
+            <Pressable
+              onPress={handleSelectFile}
+              style={({ pressed }) => [
+                styles.uploadZone,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                  transform: [
+                    { translateX: pressed ? 1 : 0 },
+                    { translateY: pressed ? 1 : 0 },
+                  ],
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: pressed
+                    ? `1px 1px 0px ${shadowColor}`
+                    : `3px 3px 0px ${shadowColor}`,
+                  cursor: 'pointer',
+                  transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+                },
+              ]}
+            >
+              {selectedFile ? (
+                <View style={styles.selectedFileView}>
+                  <View
+                    style={[
+                      styles.iconStamp,
+                      {
+                        backgroundColor: '#10B981',
+                        borderColor: borderColor,
+                        borderWidth: 2,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name="check" size={24} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.fileDetailsCol}>
+                    <Text style={[styles.fileNameText, { color: theme.text }]} numberOfLines={1}>
+                      {fileName}
+                    </Text>
+                    <Text style={[styles.fileSizeText, { color: theme.textSecondary }]}>
+                      {(selectedFile.size / 1024).toFixed(1)} KB • {fileContent.length} characters ready
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.changePill,
+                      {
+                        backgroundColor: theme.primary,
+                        borderColor: borderColor,
+                        borderWidth: 1.5,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.changePillText}>CHANGE</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.emptyUploadView}>
+                  <MaterialIcons name="cloud-upload" size={38} color={theme.primary} />
+                  <Text style={[styles.uploadPromptTitle, { color: theme.text }]}>
+                    CHOOSE STUDY DOCUMENT (.TXT, .DOCX)
+                  </Text>
+                  <Text style={[styles.uploadPromptDesc, { color: theme.textSecondary }]}>
+                    Click here to select study files from your device
+                  </Text>
+                  <View style={styles.formatTagsRow}>
+                    <View style={[styles.formatTag, { borderColor }]}>
+                      <Text style={[styles.formatTagText, { color: theme.textSecondary }]}>.TXT</Text>
+                    </View>
+                    <View style={[styles.formatTag, { borderColor }]}>
+                      <Text style={[styles.formatTagText, { color: theme.textSecondary }]}>.DOCX</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </Pressable>
+          </BrutalCard>
+
+          {/* 3. Question Quantity Card */}
+          <BrutalCard
+            headerTitle="3. QUANTITY OF QUESTIONS"
+            accentColor={theme.brandSecondary || '#F97316'}
+            style={{ marginBottom: 20 }}
+          >
+            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+              How many questions to extract from the material:
+            </Text>
+            <View style={styles.chipsRow}>
+              {['3', '5', '10', '15', '20'].map((val) => {
+                const isSelected = numQuestions === val;
+                return (
+                  <Pressable
+                    key={val}
+                    onPress={() => {
+                      soundManager.playButtonClick();
+                      setNumQuestions(val);
+                    }}
+                    style={({ pressed }) => [
+                      styles.chipBtn,
+                      {
+                        backgroundColor: isSelected ? theme.primary : theme.background,
+                        borderColor: borderColor,
+                        borderWidth: borderWidth,
+                        transform: [
+                          { translateX: pressed || isSelected ? 2 : 0 },
+                          { translateY: pressed || isSelected ? 2 : 0 },
+                        ],
+                      },
+                      Platform.OS === 'web' && {
+                        boxShadow: isSelected
+                          ? `1px 1px 0px ${shadowColor}`
+                          : pressed
+                          ? `1px 1px 0px ${shadowColor}`
+                          : `3px 3px 0px ${shadowColor}`,
+                        cursor: 'pointer',
+                        transition: 'transform 0.08s ease, box-shadow 0.08s ease',
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipBtnText,
+                        { color: isSelected ? '#FFFFFF' : theme.text },
+                      ]}
+                    >
+                      {val}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </BrutalCard>
+
+          {/* Action Button */}
+          <BrutalButton
+            title={loading ? 'EXTRACTING & SYNTHESIZING...' : 'EXTRACT QUESTIONS FROM DOCUMENT'}
+            variant="primary"
+            icon={<MaterialIcons name="auto-awesome" size={22} color="#FFFFFF" />}
+            onPress={handleGenerateFromFile}
+            disabled={loading}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const createStyles = (theme) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
   },
-  header: {
+  scrollContent: {
+    paddingBottom: 60,
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  heroBanner: {
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 4,
+  },
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    borderBottomWidth: 1.5,
-    borderBottomColor: theme.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  cancel: {
-    fontSize: 18,
-    color: theme.textSecondary,
-    fontWeight: '700',
-  },
-  headerTitleContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.text,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  generate: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.primaryAccent,
-  },
-  generateDisabled: {
-    color: theme.textTertiary,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 60,
-  },
-
-  // Section Styling
-  section: {
-    marginBottom: 24,
-    backgroundColor: theme.secondary,
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: theme.border,
-    shadowColor: theme.background,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionIcon: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.text,
-    flex: 1,
-  },
-
-  // Input
-  input: {
-    backgroundColor: theme.background,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    borderColor: theme.border,
-    fontSize: 15,
-    color: theme.text,
-    fontWeight: '500',
-  },
-
-  // File Box
-  fileBox: {
-    backgroundColor: theme.background,
-    borderRadius: 14,
-    paddingVertical: 32,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.primaryAccent + '30',
-    borderStyle: 'dashed',
-    marginBottom: 14,
-  },
-  fileIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  fileText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.text,
-    marginBottom: 6,
-  },
-  fileHint: {
-    fontSize: 12,
-    color: theme.textTertiary,
-    fontWeight: '500',
-  },
-  fileSize: {
-    fontSize: 12,
-    color: theme.primaryAccent,
-    marginTop: 10,
-    fontWeight: '600',
-  },
-
-  // Select Button
-  selectButton: {
-    backgroundColor: theme.primaryAccent,
-    borderRadius: 12,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexWrap: 'wrap',
     gap: 8,
-    shadowColor: theme.primaryAccent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  selectButtonIcon: {
-    fontSize: 18,
-  },
-  selectButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#f5f5f5',
-  },
-
-  // Question Input
-  questionInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.background,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: theme.border,
     marginBottom: 10,
   },
-  inputPrefix: {
-    fontSize: 18,
-    paddingLeft: 12,
+  heroBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 3,
   },
-  questionInput: {
-    flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    fontSize: 15,
-    color: theme.text,
-    fontWeight: '500',
+  heroBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#111827',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+    letterSpacing: 0.8,
   },
-  questionInputHint: {
-    fontSize: 12,
-    color: theme.textTertiary,
-    fontWeight: '500',
+  contextPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 3,
   },
-
-  // Tips Box
-  tipsBox: {
-    backgroundColor: theme.primaryAccent + '10',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 28,
-    borderWidth: 1.5,
-    borderColor: theme.primaryAccent + '30',
+  contextPillText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
   },
-  tipsTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.text,
-    marginBottom: 12,
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginBottom: 6,
   },
-  tipItem: {
+  heroSubtitle: {
     fontSize: 13,
-    color: theme.textSecondary,
-    fontWeight: '500',
-    marginBottom: 8,
+    fontWeight: '600',
     lineHeight: 18,
   },
-
-  // Generate Button
-  generateButton: {
-    backgroundColor: theme.primaryAccent,
-    borderRadius: 14,
-    paddingVertical: 16,
-    flexDirection: 'row',
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  textInput: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 4,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  uploadZone: {
+    padding: 20,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyUploadView: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadPromptTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    marginTop: 10,
+    marginBottom: 4,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  uploadPromptDesc: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  formatTagsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  formatTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 3,
+    borderWidth: 1.5,
+  },
+  formatTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+  },
+  selectedFileView: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    gap: 12,
+  },
+  iconStamp: {
+    width: 36,
+    height: 36,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fileDetailsCol: {
+    flex: 1,
+  },
+  fileNameText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  fileSizeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  changePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 3,
+  },
+  changePillText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+  },
+  chipsRow: {
+    flexDirection: 'row',
     gap: 10,
-    shadowColor: theme.primaryAccent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    flexWrap: 'wrap',
   },
-  generateButtonDisabled: {
-    opacity: 0.7,
+  chipBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 4,
+    minWidth: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  generateButtonIcon: {
-    fontSize: 18,
-  },
-  generateButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#f5f5f5',
+  chipBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
   },
 });

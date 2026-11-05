@@ -62,7 +62,7 @@ function FlashcardView({ terms, questions }) {
       toValue: 1,
       friction: 8,
       tension: 60,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [index, flipAnim, slideAnim]);
 
@@ -72,7 +72,7 @@ function FlashcardView({ terms, questions }) {
       toValue: flipped ? 0 : 1,
       friction: 8,
       tension: 35,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
     setFlipped(!flipped);
   };

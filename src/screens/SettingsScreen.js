@@ -2,41 +2,42 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
   SafeAreaView,
   ScrollView,
   Switch,
   Alert,
-  ActivityIndicator,
-  Linking,
+  Platform,
+  Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { supabase, deleteAccount } from '../services/authService';
+import { deleteAccount } from '../services/authService';
 import { parseAuthError } from '../services/errorHandler';
 import { showSuccess, showError } from '../services/notificationService';
 import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import { BrutalCard, BrutalButton, BrutalBadge } from '../components/brutal';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAuthenticated } = useAuth();
   const { theme, toggleTheme, isDarkMode } = useTheme();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [notifications, setNotifications] = useState(true);
-  const [offlineMode, setOfflineMode] = useState(false);
-  const [autoSave, setAutoSave] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [soundVolume, setSoundVolume] = useState(0.7);
   const [showPasswordReminder, setShowPasswordReminder] = useState(false);
 
-  // Load sound settings from AsyncStorage
+  const borderColor = theme.border || '#121212';
+  const shadowColor = theme.shadow || '#121212';
+  const borderWidth = theme.borderWidth || 2;
+
   useEffect(() => {
     loadSoundSettings();
   }, []);
@@ -44,13 +45,8 @@ export default function SettingsScreen() {
   const loadSoundSettings = async () => {
     try {
       const savedSoundEnabled = await AsyncStorage.getItem('soundEnabled');
-      const savedVolume = await AsyncStorage.getItem('soundVolume');
-      
       if (savedSoundEnabled !== null) {
         setSoundEnabled(JSON.parse(savedSoundEnabled));
-      }
-      if (savedVolume !== null) {
-        setSoundVolume(parseFloat(savedVolume));
       }
     } catch (error) {
       console.error('[Settings] Error loading sound settings:', error);
@@ -70,7 +66,6 @@ export default function SettingsScreen() {
     }
   };
 
-  // Check if password change reminder should be shown
   useFocusEffect(
     React.useCallback(() => {
       checkPasswordChangeReminder();
@@ -81,19 +76,13 @@ export default function SettingsScreen() {
     try {
       const lastPasswordChangeTime = await AsyncStorage.getItem('lastPasswordChangeTime');
       const now = Date.now();
-      const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000; // 90 days in milliseconds
+      const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
       if (!lastPasswordChangeTime) {
-        // First time user hasn't changed password - show reminder
         setShowPasswordReminder(true);
       } else {
-        const timeSinceLastChange = now - parseInt(lastPasswordChangeTime);
-        if (timeSinceLastChange > NINETY_DAYS_MS) {
-          // More than 90 days since last password change
-          setShowPasswordReminder(true);
-        } else {
-          setShowPasswordReminder(false);
-        }
+        const timeSinceLastChange = now - parseInt(lastPasswordChangeTime, 10);
+        setShowPasswordReminder(timeSinceLastChange > NINETY_DAYS_MS);
       }
     } catch (error) {
       console.error('[Settings] Error checking password reminder:', error);
@@ -103,7 +92,6 @@ export default function SettingsScreen() {
   const handlePasswordReminderDismiss = async () => {
     setShowPasswordReminder(false);
     try {
-      // Record the time of the reminder dismissal (user acknowledged)
       await AsyncStorage.setItem('lastPasswordReminderTime', Date.now().toString());
     } catch (error) {
       console.error('[Settings] Error saving reminder time:', error);
@@ -111,309 +99,407 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = async () => {
-  const confirmed = typeof window !== 'undefined' && window.confirm 
-    ? window.confirm('Are you sure you want to logout?')
-    : true;
-  
-  if (!confirmed) return;
-  
-  console.log('[Settings] ===== LOGOUT BUTTON CLICKED =====');
-  setLogoutLoading(true);
-  try {
-    console.log('[Settings] Starting logout...');
-    await signOut();
-    console.log('[Settings] Logout completed, redirecting to About screen');
-    // Redirect to About screen after successful logout
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'About' }],
-    });
-  } catch (error) {
-    console.error('[Settings] Logout error:', error);
-    console.log('[Settings] ===== LOGOUT COMPLETED (WITH ERROR) =====');
-    setLogoutLoading(false);
-    showError('Error', `Logout failed: ${error?.message || 'Unknown error'}`);
-  }
-};
+    soundManager.playButtonClick();
+    const confirmed =
+      typeof window !== 'undefined' && window.confirm
+        ? window.confirm('Are you sure you want to log out of AceIt?')
+        : true;
+
+    if (!confirmed) return;
+
+    setLogoutLoading(true);
+    try {
+      await signOut();
+      showSuccess('You have been logged out.');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'LoginSignup' }],
+      });
+    } catch (error) {
+      setLogoutLoading(false);
+      showError(`Logout failed: ${error?.message || 'Unknown error'}`);
+    }
+  };
 
   const handleDeleteAccount = async () => {
-    console.log('[Settings] ===== DELETE BUTTON CLICKED =====');
-    console.log('[Settings] Platform check - window exists:', typeof window !== 'undefined');
-    
+    soundManager.playButtonClick();
     let confirmed = false;
-    
-    // Use window.confirm for web, Alert.alert for native
+
     if (typeof window !== 'undefined') {
-      console.log('[Settings] Using window.confirm for web');
       confirmed = window.confirm(
-        'Are you sure you want to permanently delete your account? This cannot be undone.\n\nThis action cannot be reversed.'
+        'PERMANENT ACCOUNT DELETION\n\nAre you absolutely sure? All your decks, questions, and progress will be permanently erased. This cannot be undone.'
       );
     } else {
-      console.log('[Settings] Using Alert.alert for native');
       Alert.alert(
         'Delete Account',
-        'Are you sure you want to permanently delete your account? This cannot be undone.',
+        'Are you sure you want to permanently delete your account? This action cannot be undone.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Delete',
+            text: 'Delete Forever',
             style: 'destructive',
-            onPress: () => {
-              confirmed = true;
-              performDelete();
-            },
+            onPress: () => performDelete(),
           },
         ]
       );
       return;
     }
-    
-    console.log('[Settings] Confirmation result:', confirmed);
-    
+
     if (confirmed) {
       performDelete();
-    } else {
-      console.log('[Settings] Delete cancelled by user');
     }
   };
 
   const performDelete = async () => {
     setDeleteLoading(true);
     try {
-      console.log('[Settings] ===== DELETE ACCOUNT STARTED =====');
-      console.log('[Settings] User ID:', user?.id);
-      console.log('[Settings] User object:', user);
-      
-      // Delete user data first
-      if (!user?.id) {
-        throw new Error('User ID not found. User object: ' + JSON.stringify(user));
-      }
-      
-      console.log('[Settings] Calling deleteAccount...');
+      if (!user?.id) throw new Error('User session not found');
+
       const { error: deleteError } = await deleteAccount(user.id);
-      
-      console.log('[Settings] Delete response - Error:', deleteError);
-      
-      if (deleteError) {
-        throw new Error(`Delete failed: ${deleteError}`);
-      }
-      
-      console.log('[Settings] User data deleted successfully');
-      
-      // Then sign out
-      console.log('[Settings] Signing out...');
+      if (deleteError) throw new Error(deleteError);
+
       await signOut();
-      
-      console.log('[Settings] Account deleted and logged out');
-      showSuccess('Account Deleted', 'Your account and all data have been permanently deleted.');
-      // Auth state change will automatically trigger navigation to LoginSignup
+      showSuccess('Account Deleted', 'Your account has been permanently removed.');
     } catch (error) {
-      console.error('[Settings] ===== DELETE ACCOUNT ERROR =====');
-      console.error('[Settings] Error message:', error?.message);
-      console.error('[Settings] Full error:', error);
-      console.log('[Settings] ===== DELETE ACCOUNT COMPLETED (WITH ERROR) =====');
       setDeleteLoading(false);
       const { title, message } = parseAuthError(error?.message);
       showError(title, message);
     }
   };
 
-  const SettingRow = ({ icon, title, description, value, onToggle, isToggle, theme }) => (
-    <View style={styles.settingRow}>
-      <View style={styles.settingContent}>
-        <Text style={styles.settingIcon}>{icon}</Text>
-        <View style={styles.settingText}>
-          <Text style={[styles.settingTitle, { color: theme.text }]}>{title}</Text>
-          {description && <Text style={[styles.settingDesc, { color: theme.textSecondary }]}>{description}</Text>}
+  const SettingLinkRow = ({ icon, label, description, onPress }) => (
+    <Pressable
+      onPress={() => {
+        soundManager.playButtonClick();
+        onPress();
+      }}
+      style={({ pressed }) => [
+        styles.linkRow,
+        {
+          backgroundColor: theme.background,
+          borderColor: borderColor,
+          borderWidth: 1.5,
+          transform: [
+            { translateX: pressed ? 1 : 0 },
+            { translateY: pressed ? 1 : 0 },
+          ],
+        },
+        Platform.OS === 'web' && {
+          boxShadow: pressed
+            ? `1px 1px 0px ${shadowColor}`
+            : `2px 2px 0px ${shadowColor}`,
+          cursor: 'pointer',
+        },
+      ]}
+    >
+      <View style={styles.linkLeft}>
+        <View
+          style={[
+            styles.linkIconBox,
+            {
+              backgroundColor: theme.isDark ? '#232936' : '#F1F5F9',
+              borderColor: borderColor,
+              borderWidth: 1,
+            },
+          ]}
+        >
+          <MaterialIcons name={icon} size={20} color={theme.primary} />
+        </View>
+        <View style={styles.linkTextCol}>
+          <Text style={[styles.linkTitle, { color: theme.text }]}>{label}</Text>
+          {description && (
+            <Text style={[styles.linkDesc, { color: theme.textSecondary }]}>
+              {description}
+            </Text>
+          )}
         </View>
       </View>
-      {isToggle ? (
-        <Switch
-          value={value}
-          onValueChange={onToggle}
-          trackColor={{ false: theme.tertiary, true: theme.primaryAccent }}
-          thumbColor={theme.primaryLight}
-        />
-      ) : (
-        <Text style={[styles.settingArrow, { color: theme.textTertiary }]}>›</Text>
-      )}
-    </View>
+      <MaterialIcons
+        name="chevron-right"
+        size={22}
+        color={theme.textTertiary || '#9CA3AF'}
+      />
+    </Pressable>
   );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <Navbar onMenuPress={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Customize your experience</Text>
-        </View>
 
-        {/* Password Change Reminder Banner */}
-        {showPasswordReminder && (
-          <View style={[styles.reminderBanner, { backgroundColor: theme.isDark ? '#1e3a8a' : '#eff6ff', borderLeftColor: '#3b82f6' }]}>
-            <Text style={styles.reminderBannerIcon}>⚠️</Text>
-            <View style={styles.reminderBannerContent}>
-              <Text style={[styles.reminderBannerTitle, { color: theme.text }]}>Change Your Password</Text>
-              <Text style={[styles.reminderBannerMessage, { color: theme.textSecondary }]}>
-                It's been a while since you last changed your password. Update it to keep your account secure.
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.contentWrapper}>
+          {/* Hero Banner */}
+          <View
+            style={[
+              styles.heroBanner,
+              {
+                backgroundColor: theme.card,
+                borderColor: borderColor,
+                borderWidth: borderWidth,
+              },
+              Platform.OS === 'web' && {
+                boxShadow: `4px 4px 0px ${shadowColor}`,
+              },
+            ]}
+          >
+            <View style={styles.heroTopRow}>
+              <View
+                style={[
+                  styles.heroBadge,
+                  {
+                    backgroundColor: theme.accent || '#FCD34D',
+                    borderColor: borderColor,
+                    borderWidth: borderWidth,
+                  },
+                ]}
+              >
+                <Text style={styles.heroBadgeText}>PREFERENCES & SECURITY</Text>
+              </View>
+              <BrutalBadge
+                label={isAuthenticated ? 'AUTHENTICATED' : 'GUEST SESSION'}
+                color={isAuthenticated ? '#10B981' : theme.textSecondary}
+                textColor="#FFFFFF"
+              />
+            </View>
+
+            <Text style={[styles.heroTitle, { color: theme.text }]}>SYSTEM SETTINGS</Text>
+            <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+              Control interface appearance, sound effects, security credentials, and account details.
+            </Text>
+          </View>
+
+          {/* Password Reminder Banner */}
+          {showPasswordReminder && isAuthenticated && (
+            <View
+              style={[
+                styles.reminderCard,
+                {
+                  backgroundColor: theme.isDark ? '#1E293B' : '#FEF3C7',
+                  borderColor: borderColor,
+                  borderWidth: borderWidth,
+                },
+                Platform.OS === 'web' && {
+                  boxShadow: `3px 3px 0px ${shadowColor}`,
+                },
+              ]}
+            >
+              <View style={styles.reminderHeader}>
+                <MaterialIcons name="security" size={22} color="#F59E0B" />
+                <Text style={[styles.reminderTitle, { color: theme.text }]}>
+                  SECURITY REMINDER: CHANGE PASSWORD
+                </Text>
+              </View>
+              <Text style={[styles.reminderText, { color: theme.textSecondary }]}>
+                It is recommended to update your security credentials periodically to keep your account safe.
               </Text>
-              <View style={styles.reminderBannerActions}>
-                <TouchableOpacity
+              <View style={styles.reminderActionsRow}>
+                <BrutalButton
+                  title="UPDATE PASSWORD NOW"
+                  variant="primary"
                   onPress={() => {
                     handlePasswordReminderDismiss();
                     navigation.navigate('ChangePassword');
                   }}
-                  style={[styles.reminderBannerButton, { backgroundColor: '#3b82f6' }]}
-                >
-                  <Text style={styles.reminderBannerButtonText}>Change Now</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                  style={{ flex: 1 }}
+                />
+                <BrutalButton
+                  title="REMIND LATER"
+                  variant="secondary"
                   onPress={handlePasswordReminderDismiss}
-                  style={[styles.reminderBannerButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#3b82f6' }]}
-                >
-                  <Text style={[styles.reminderBannerButtonText, { color: '#3b82f6' }]}>Remind Later</Text>
-                </TouchableOpacity>
+                  style={{ flex: 0.8 }}
+                />
               </View>
             </View>
+          )}
+
+          {/* 1. Interface & Audio Card */}
+          <BrutalCard
+            headerTitle="1. APPEARANCE & AUDIO"
+            accentColor={theme.primary}
+            style={{ marginBottom: 16 }}
+          >
+            {/* Dark Theme Toggle */}
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleTextCol}>
+                <View style={styles.labelWithIcon}>
+                  <MaterialIcons
+                    name={isDarkMode ? 'dark-mode' : 'light-mode'}
+                    size={20}
+                    color={theme.primary}
+                  />
+                  <Text style={[styles.toggleTitle, { color: theme.text }]}>
+                    Dark Theme
+                  </Text>
+                </View>
+                <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
+                  {isDarkMode ? 'Active: High-contrast Dark Neubrutalism' : 'Active: Crisp Paper Light Neubrutalism'}
+                </Text>
+              </View>
+              <Switch
+                value={isDarkMode}
+                onValueChange={() => {
+                  soundManager.playButtonClick();
+                  toggleTheme();
+                }}
+                trackColor={{
+                  false: theme.isDark ? '#374151' : '#CBD5E1',
+                  true: theme.primary,
+                }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View
+              style={[
+                styles.divider,
+                { borderBottomColor: theme.isDark ? '#374151' : '#E2E8F0', borderBottomWidth: 1 },
+              ]}
+            />
+
+            {/* Sound Effects Toggle */}
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleTextCol}>
+                <View style={styles.labelWithIcon}>
+                  <MaterialIcons
+                    name={soundEnabled ? 'volume-up' : 'volume-off'}
+                    size={20}
+                    color={theme.accent || '#FCD34D'}
+                  />
+                  <Text style={[styles.toggleTitle, { color: theme.text }]}>
+                    Tactile Audio Feedback
+                  </Text>
+                </View>
+                <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
+                  Click, snap, and success sounds during card flipping and quiz answering
+                </Text>
+              </View>
+              <Switch
+                value={soundEnabled}
+                onValueChange={(val) => {
+                  soundManager.playButtonClick();
+                  handleSoundToggle(val);
+                }}
+                trackColor={{
+                  false: theme.isDark ? '#374151' : '#CBD5E1',
+                  true: theme.primary,
+                }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </BrutalCard>
+
+          {/* 2. Account & Authentication Card */}
+          <BrutalCard
+            headerTitle="2. ACCOUNT CREDENTIALS"
+            accentColor={theme.accent || '#FCD34D'}
+            style={{ marginBottom: 16 }}
+          >
+            <View style={styles.accountInfoRow}>
+              <Text style={[styles.accountLabel, { color: theme.textSecondary }]}>
+                SIGN-IN STATUS:
+              </Text>
+              <Text style={[styles.accountEmail, { color: theme.text }]}>
+                {user?.email || 'Guest User (Unauthenticated)'}
+              </Text>
+            </View>
+
+            <View style={styles.accountActionsRow}>
+              <View style={{ flex: 1 }}>
+                <BrutalButton
+                  title="CHANGE PASSWORD"
+                  variant="secondary"
+                  icon={<MaterialIcons name="lock-reset" size={18} color="#FFFFFF" />}
+                  onPress={() => navigation.navigate('ChangePassword')}
+                />
+              </View>
+              {isAuthenticated ? (
+                <View style={{ flex: 1 }}>
+                  <BrutalButton
+                    title={logoutLoading ? 'LOGGING OUT...' : 'LOG OUT'}
+                    variant="warning"
+                    icon={<MaterialIcons name="logout" size={18} color="#FFFFFF" />}
+                    onPress={handleLogout}
+                    disabled={logoutLoading}
+                  />
+                </View>
+              ) : (
+                <View style={{ flex: 1 }}>
+                  <BrutalButton
+                    title="LOGIN / SIGNUP"
+                    variant="primary"
+                    icon={<MaterialIcons name="login" size={18} color="#FFFFFF" />}
+                    onPress={() => navigation.navigate('LoginSignup')}
+                  />
+                </View>
+              )}
+            </View>
+          </BrutalCard>
+
+          {/* 3. Support & Policies Card */}
+          <BrutalCard
+            headerTitle="3. SUPPORT & LEGAL"
+            accentColor={theme.brandSecondary || '#F97316'}
+            style={{ marginBottom: 16 }}
+          >
+            <SettingLinkRow
+              icon="help-outline"
+              label="Help & Support Desk"
+              description="Report an issue or get answers about AceIt"
+              onPress={() => navigation.navigate('HelpSupport')}
+            />
+            <SettingLinkRow
+              icon="description"
+              label="Terms & Conditions"
+              description="Review platform terms of service"
+              onPress={() => navigation.navigate('TermsAndConditionsView')}
+            />
+            <SettingLinkRow
+              icon="privacy-tip"
+              label="Privacy Policy"
+              description="How your data is protected and stored"
+              onPress={() => navigation.navigate('PrivacyPolicyView')}
+            />
+            <SettingLinkRow
+              icon="info-outline"
+              label="About AceIt Architecture"
+              description="Design philosophy, version 2.0 features"
+              onPress={() => navigation.navigate('About')}
+            />
+          </BrutalCard>
+
+          {/* 4. Danger Zone Card */}
+          {isAuthenticated && (
+            <BrutalCard
+              headerTitle="4. DANGER ZONE"
+              accentColor="#EF4444"
+              style={{ marginBottom: 20 }}
+            >
+              <Text style={[styles.dangerNotice, { color: theme.textSecondary }]}>
+                Permanently delete your account, saved flashcard decks, and study logs. This action cannot be reversed.
+              </Text>
+              <BrutalButton
+                title={deleteLoading ? 'DELETING ACCOUNT...' : 'PERMANENTLY DELETE ACCOUNT'}
+                variant="danger"
+                icon={<MaterialIcons name="delete-forever" size={20} color="#FFFFFF" />}
+                onPress={handleDeleteAccount}
+                disabled={deleteLoading}
+              />
+            </BrutalCard>
+          )}
+
+          {/* Footer Info */}
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+              ACEIT v2.0 • TACTILE NEUBRUTALISM STUDY ENGINE
+            </Text>
+            <Text style={[styles.copyright, { color: theme.textTertiary || '#9CA3AF' }]}>
+              © 2026 AceIt. Zero Blurs. High Contrast.
+            </Text>
           </View>
-        )}
-
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>Account</Text>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            onPress={() => Alert.alert('Profile', `Email: ${user?.email || 'N/A'}`)}
-            activeOpacity={0.7}
-          >
-            <SettingRow
-              icon=""
-              title="Profile"
-              description={user?.email || 'View your profile'}
-              theme={theme}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('ChangePassword')}
-            activeOpacity={0.7}
-          >
-            <SettingRow
-              title="Change Password"
-              description="Update your password"
-              theme={theme}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Preferences Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>Preferences</Text>
-          <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-            <SettingRow
-              title="Dark Mode"
-              description={isDarkMode ? "Using dark theme" : "Using light theme"}
-              value={isDarkMode}
-              onToggle={toggleTheme}
-              isToggle
-              theme={theme}
-            />
-          </View>
-
-          <View style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
-            <SettingRow
-              title="Sound Effects"
-              description="Enable audio feedback"
-              value={soundEnabled}
-              onToggle={handleSoundToggle}
-              isToggle
-              theme={theme}
-            />
-          </View>
-        </View>
-
-        {/* App Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.primaryAccent }]}>App</Text>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('About')}
-            activeOpacity={0.7}
-          >
-            <SettingRow
-              title="About"
-              description="Learn more about AceIt"
-              theme={theme}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('TermsAndConditionsView')}
-            activeOpacity={0.7}
-          >
-            <SettingRow
-              title="Terms & Conditions"
-              description="Review our terms"
-              theme={theme}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('PrivacyPolicyView')}
-            activeOpacity={0.7}
-          >
-            <SettingRow
-              title="Privacy Policy"
-              description="Review our privacy policy"
-              theme={theme}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.settingItem, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('HelpSupport')}
-            activeOpacity={0.7}
-          >
-            <SettingRow
-              title="Help & Support"
-              description="Get help and contact us"
-              theme={theme}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {/* Danger Zone */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.logoutButton, { borderColor: theme.tertiary }, logoutLoading && styles.buttonDisabled]}
-            onPress={handleLogout}
-            disabled={logoutLoading}
-            activeOpacity={0.8}
-          >
-            {logoutLoading ? (
-              <ActivityIndicator size="small" color={theme.text} />
-            ) : (
-              <Text style={[styles.logoutText, { color: theme.text }]}>Logout</Text>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.deleteButton, { backgroundColor: theme.isDark ? '#4c2626' : '#fee2e2', borderColor: theme.isDark ? '#7f1d1d' : '#fecaca' }, deleteLoading && styles.buttonDisabled]}
-            onPress={handleDeleteAccount}
-            disabled={deleteLoading}
-            activeOpacity={0.8}
-          >
-            {deleteLoading ? (
-              <ActivityIndicator size="small" color={theme.isDark ? '#fca5a5' : '#dc2626'} />
-            ) : (
-              <Text style={[styles.deleteText, { color: theme.isDark ? '#fca5a5' : '#dc2626' }]}> Delete Account</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: theme.textSecondary }]}>AceIt v1.0.0</Text>
-          <Text style={[styles.copyright, { color: theme.textTertiary }]}>© 2026 AceIt. All rights reserved.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -423,190 +509,178 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
-  header: {
-    marginBottom: 28,
-    marginTop: 12,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#f8fafc',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#94a3b8',
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: 28,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#6366f1',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 14,
-  },
-  settingItem: {
-    backgroundColor: '#1e293b',
-    borderRadius: 14,
-    marginBottom: 10,
+  contentWrapper: {
+    width: '100%',
+    maxWidth: 900,
+    alignSelf: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1.5,
-    borderColor: '#334155',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingTop: 16,
   },
-  settingRow: {
+  heroBanner: {
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 4,
+  },
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
   },
-  settingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+  heroBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 3,
   },
-  settingIcon: {
-    fontSize: 26,
-    marginRight: 16,
+  heroBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#111827',
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+    letterSpacing: 0.8,
   },
-  settingText: {
-    flex: 1,
-  },
-  settingTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#f8fafc',
-    marginBottom: 4,
-  },
-  settingDesc: {
-    fontSize: 13,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-  settingArrow: {
-    fontSize: 20,
-    color: '#64748b',
-    marginLeft: 12,
-  },
-  logoutButton: {
-    backgroundColor: '#6366f1',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: '#818cf8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  logoutText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#e2e8f0',
-  },
-  deleteButton: {
-    backgroundColor: '#4c2626',
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#7f1d1d',
-    shadowColor: '#f87171',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  deleteText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#fca5a5',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: 36,
-    paddingTop: 24,
-    borderTopWidth: 1.5,
-    borderTopColor: '#334155',
-  },
-  footerText: {
-    fontSize: 13,
-    color: '#94a3b8',
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 0.5,
     marginBottom: 6,
+  },
+  heroSubtitle: {
+    fontSize: 13,
     fontWeight: '600',
+    lineHeight: 18,
   },
-  copyright: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  reminderBanner: {
-    borderLeftWidth: 4,
-    borderRadius: 12,
+  reminderCard: {
     padding: 16,
-    marginBottom: 24,
+    borderRadius: 4,
+    marginBottom: 16,
+  },
+  reminderHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  reminderBannerIcon: {
-    fontSize: 28,
-    marginRight: 12,
-    marginTop: 2,
-  },
-  reminderBannerContent: {
-    flex: 1,
-  },
-  reminderBannerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 6,
   },
-  reminderBannerMessage: {
+  reminderTitle: {
     fontSize: 13,
-    lineHeight: 20,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  reminderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 18,
     marginBottom: 12,
   },
-  reminderBannerActions: {
+  reminderActionsRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  reminderBannerButton: {
-    paddingHorizontal: 16,
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: 8,
-    borderRadius: 6,
+  },
+  toggleTextCol: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  labelWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  toggleTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  toggleDesc: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  divider: {
+    marginVertical: 10,
+  },
+  accountInfoRow: {
+    marginBottom: 14,
+  },
+  accountLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+    marginBottom: 4,
+  },
+  accountEmail: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  accountActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 4,
+    marginBottom: 10,
+  },
+  linkLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  linkIconBox: {
+    width: 34,
+    height: 34,
+    borderRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  reminderBannerButtonText: {
+  linkTextCol: {
+    flex: 1,
+  },
+  linkTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  linkDesc: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  dangerNotice: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 16,
+    marginBottom: 20,
+  },
+  footerText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
+  },
+  copyright: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
   },
 });
