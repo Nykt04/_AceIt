@@ -33,6 +33,7 @@ const files = [
   path.join('src', 'screens', 'LoginSignupScreen.js'),
   path.join('src', 'screens', 'AIGenerateScreen.js'),
   path.join('src', 'screens', 'FileUploadQuestionsScreen.js'),
+  path.join('src', 'screens', 'FileUploadQuestionsScreen.web.js'),
   path.join('src', 'screens', 'CreateSetScreen.js'),
   path.join('src', 'screens', 'SettingsScreen.js'),
   path.join('src', 'screens', 'QuizSettingsScreen.js'),
