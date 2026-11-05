@@ -7,6 +7,9 @@ export function BrutalSkeleton({
   height = 80,
   style,
   borderRadius = 4,
+  showStripe,
+  bordered = true,
+  shadowed = true,
   ...props
 }) {
   const { theme } = useTheme();
@@ -18,12 +21,12 @@ export function BrutalSkeleton({
         Animated.timing(opacityAnim, {
           toValue: 0.85,
           duration: 650,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(opacityAnim, {
           toValue: 0.4,
           duration: 650,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ])
     );
@@ -34,17 +37,19 @@ export function BrutalSkeleton({
 
   const borderColor = theme.border || '#121212';
   const shadowColor = theme.shadow || '#121212';
-  const borderWidth = theme.borderWidth || 3;
+  const borderWidth = theme.borderWidth || 2;
 
-  const webShadow = Platform.OS === 'web' ? {
+  const hasStripe = showStripe !== undefined ? showStripe : height >= 45;
+
+  const webShadow = shadowed && Platform.OS === 'web' ? {
     boxShadow: `3px 3px 0px ${shadowColor}`,
-  } : {
+  } : shadowed ? {
     shadowColor: shadowColor,
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 3,
-  };
+  } : {};
 
   return (
     <Animated.View
@@ -54,9 +59,9 @@ export function BrutalSkeleton({
           width,
           height,
           borderRadius,
-          borderColor: borderColor,
-          borderWidth: borderWidth,
-          backgroundColor: theme.isDark ? '#2A2A2A' : '#EAE8DE',
+          borderColor: bordered ? borderColor : 'transparent',
+          borderWidth: bordered ? borderWidth : 0,
+          backgroundColor: theme.isDark ? '#232936' : '#E2E8F0',
           opacity: opacityAnim,
         },
         webShadow,
@@ -64,27 +69,28 @@ export function BrutalSkeleton({
       ]}
       {...props}
     >
-      <View
-        style={[
-          styles.stripePlaceholder,
-          {
-            backgroundColor: theme.isDark ? '#333333' : '#DAD6C9',
-            borderBottomColor: borderColor,
-            borderBottomWidth: borderWidth,
-          },
-        ]}
-      />
+      {hasStripe && (
+        <View
+          style={[
+            styles.stripePlaceholder,
+            {
+              backgroundColor: theme.isDark ? '#2E384D' : '#CBD5E1',
+              borderBottomColor: borderColor,
+              borderBottomWidth: borderWidth,
+            },
+          ]}
+        />
+      )}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   skeleton: {
-    marginVertical: 8,
     overflow: 'hidden',
   },
   stripePlaceholder: {
-    height: 18,
+    height: 16,
     width: '100%',
   },
 });

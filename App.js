@@ -12,6 +12,7 @@ import { setNotificationHandler } from './src/services/notificationService';
 import soundManager from './src/services/soundService';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { NotificationDisplay } from './src/components/NotificationDisplay';
+import { BrutalBootScreen } from './src/components/brutal';
 import HomeScreen from './src/screens/HomeScreen';
 import CreateSetScreen from './src/screens/CreateSetScreen';
 import SetDetailScreen from './src/screens/SetDetailScreen';
@@ -38,6 +39,7 @@ function RootNavigator() {
     const { theme } = useTheme();
     const [initialState, setInitialState] = useState(undefined);
     const [isReady, setIsReady] = useState(false);
+    const [bootComplete, setBootComplete] = useState(false);
     const navigationRef = React.useRef(null);
 
     // Initialize notification handler
@@ -65,11 +67,12 @@ function RootNavigator() {
         };
     }, []);
 
-    if (loading || !isReady) {
+    if (!bootComplete || loading || !isReady) {
         return (
-            <View style={[styles.boot, { backgroundColor: theme.background }]}>
-                <ActivityIndicator size="large" color={theme.primaryAccent} />
-            </View>
+            <BrutalBootScreen
+                isReady={isReady && !loading}
+                onFinished={() => setBootComplete(true)}
+            />
         );
     }
 

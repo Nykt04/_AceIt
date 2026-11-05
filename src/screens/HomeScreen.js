@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import soundManager from '../services/soundService';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { BrutalCard, BrutalButton, BrutalSkeleton, BrutalBadge } from '../components/brutal';
+import { BrutalCard, BrutalButton, BrutalSkeleton, BrutalBadge, DashboardSkeleton } from '../components/brutal';
 import { showNotification, showError, NotificationType } from '../services/notificationService';
 
 // Physical Deck Stack Card Component with 3D Layer Spread and Tactile Spring Physics
@@ -455,25 +455,7 @@ export default function HomeScreen() {
   const borderWidth = theme.borderWidth || 2;
 
   if (loading && studySets.length === 0) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <Navbar onMenuPress={() => setSidebarOpen(true)} />
-        <View style={styles.contentWrapper}>
-          <BrutalSkeleton height={110} style={{ marginBottom: 16 }} />
-          <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-            <BrutalSkeleton height={80} style={{ flex: 1 }} />
-            <BrutalSkeleton height={80} style={{ flex: 1 }} />
-            <BrutalSkeleton height={80} style={{ flex: 1 }} />
-            <BrutalSkeleton height={80} style={{ flex: 1 }} />
-          </View>
-          <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
-            <BrutalSkeleton height={240} style={{ flex: 1, minWidth: 280 }} />
-            <BrutalSkeleton height={240} style={{ flex: 1, minWidth: 280 }} />
-            <BrutalSkeleton height={240} style={{ flex: 1, minWidth: 280 }} />
-          </View>
-        </View>
-      </SafeAreaView>
-    );
+    return <DashboardSkeleton onMenuPress={() => setSidebarOpen(true)} />;
   }
 
   const stats = calculateStats();
