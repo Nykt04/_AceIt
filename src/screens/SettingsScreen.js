@@ -38,6 +38,11 @@ export default function SettingsScreen() {
   const shadowColor = theme.shadow || '#121212';
   const borderWidth = theme.borderWidth || 2;
 
+  // Disciplined, minimal color tokens for clean executive settings
+  const neutralStripe = theme.isDark ? '#232B3B' : '#E2E8F0';
+  const neutralIconBox = theme.isDark ? '#1E2533' : '#F1F5F9';
+  const dangerStripe = theme.isDark ? '#3D1B1B' : '#FEE2E2';
+
   useEffect(() => {
     loadSoundSettings();
   }, []);
@@ -197,13 +202,13 @@ export default function SettingsScreen() {
           style={[
             styles.linkIconBox,
             {
-              backgroundColor: theme.isDark ? '#232936' : '#F1F5F9',
+              backgroundColor: neutralIconBox,
               borderColor: borderColor,
               borderWidth: 1,
             },
           ]}
         >
-          <MaterialIcons name={icon} size={20} color={theme.primary} />
+          <MaterialIcons name={icon} size={20} color={theme.textSecondary} />
         </View>
         <View style={styles.linkTextCol}>
           <Text style={[styles.linkTitle, { color: theme.text }]}>{label}</Text>
@@ -232,7 +237,7 @@ export default function SettingsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.contentWrapper}>
-          {/* Hero Banner */}
+          {/* Hero Banner with Unified Minimal Palette */}
           <View
             style={[
               styles.heroBanner,
@@ -251,34 +256,34 @@ export default function SettingsScreen() {
                 style={[
                   styles.heroBadge,
                   {
-                    backgroundColor: theme.accent || '#FCD34D',
+                    backgroundColor: neutralStripe,
                     borderColor: borderColor,
                     borderWidth: borderWidth,
                   },
                 ]}
               >
-                <Text style={styles.heroBadgeText}>PREFERENCES & SECURITY</Text>
+                <Text style={[styles.heroBadgeText, { color: theme.text }]}>PREFERENCES & SECURITY</Text>
               </View>
               <BrutalBadge
                 label={isAuthenticated ? 'AUTHENTICATED' : 'GUEST SESSION'}
-                color={isAuthenticated ? '#10B981' : theme.textSecondary}
-                textColor="#FFFFFF"
+                color={neutralStripe}
+                textColor={theme.text}
               />
             </View>
 
             <Text style={[styles.heroTitle, { color: theme.text }]}>SYSTEM SETTINGS</Text>
             <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
-              Control interface appearance, sound effects, security credentials, and account details.
+              Manage application theme, audio feedback, security credentials, and data.
             </Text>
           </View>
 
-          {/* Password Reminder Banner */}
+          {/* Password Reminder Banner with Restrained Neutral Contrast */}
           {showPasswordReminder && isAuthenticated && (
             <View
               style={[
                 styles.reminderCard,
                 {
-                  backgroundColor: theme.isDark ? '#1E293B' : '#FEF3C7',
+                  backgroundColor: theme.card,
                   borderColor: borderColor,
                   borderWidth: borderWidth,
                 },
@@ -288,17 +293,17 @@ export default function SettingsScreen() {
               ]}
             >
               <View style={styles.reminderHeader}>
-                <MaterialIcons name="security" size={22} color="#F59E0B" />
+                <MaterialIcons name="security" size={20} color={theme.textSecondary} />
                 <Text style={[styles.reminderTitle, { color: theme.text }]}>
-                  SECURITY REMINDER: CHANGE PASSWORD
+                  SECURITY REMINDER: UPDATE PASSWORD
                 </Text>
               </View>
               <Text style={[styles.reminderText, { color: theme.textSecondary }]}>
-                It is recommended to update your security credentials periodically to keep your account safe.
+                It is recommended to refresh your security credentials periodically.
               </Text>
               <View style={styles.reminderActionsRow}>
                 <BrutalButton
-                  title="UPDATE PASSWORD NOW"
+                  title="UPDATE PASSWORD"
                   variant="primary"
                   onPress={() => {
                     handlePasswordReminderDismiss();
@@ -319,7 +324,7 @@ export default function SettingsScreen() {
           {/* 1. Interface & Audio Card */}
           <BrutalCard
             headerTitle="1. APPEARANCE & AUDIO"
-            accentColor={theme.primary}
+            accentColor={neutralStripe}
             style={{ marginBottom: 16 }}
           >
             {/* Dark Theme Toggle */}
@@ -329,14 +334,14 @@ export default function SettingsScreen() {
                   <MaterialIcons
                     name={isDarkMode ? 'dark-mode' : 'light-mode'}
                     size={20}
-                    color={theme.primary}
+                    color={theme.text}
                   />
                   <Text style={[styles.toggleTitle, { color: theme.text }]}>
                     Dark Theme
                   </Text>
                 </View>
                 <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
-                  {isDarkMode ? 'Active: High-contrast Dark Neubrutalism' : 'Active: Crisp Paper Light Neubrutalism'}
+                  {isDarkMode ? 'Active: Dark Neubrutalism' : 'Active: Light Neubrutalism'}
                 </Text>
               </View>
               <Switch
@@ -356,7 +361,7 @@ export default function SettingsScreen() {
             <View
               style={[
                 styles.divider,
-                { borderBottomColor: theme.isDark ? '#374151' : '#E2E8F0', borderBottomWidth: 1 },
+                { borderBottomColor: theme.isDark ? '#2D3748' : '#E2E8F0', borderBottomWidth: 1 },
               ]}
             />
 
@@ -367,14 +372,14 @@ export default function SettingsScreen() {
                   <MaterialIcons
                     name={soundEnabled ? 'volume-up' : 'volume-off'}
                     size={20}
-                    color={theme.accent || '#FCD34D'}
+                    color={theme.text}
                   />
                   <Text style={[styles.toggleTitle, { color: theme.text }]}>
                     Tactile Audio Feedback
                   </Text>
                 </View>
                 <Text style={[styles.toggleDesc, { color: theme.textSecondary }]}>
-                  Click, snap, and success sounds during card flipping and quiz answering
+                  Tactile clicks and flip sounds during card study and quiz drills
                 </Text>
               </View>
               <Switch
@@ -395,15 +400,15 @@ export default function SettingsScreen() {
           {/* 2. Account & Authentication Card */}
           <BrutalCard
             headerTitle="2. ACCOUNT CREDENTIALS"
-            accentColor={theme.accent || '#FCD34D'}
+            accentColor={neutralStripe}
             style={{ marginBottom: 16 }}
           >
             <View style={styles.accountInfoRow}>
               <Text style={[styles.accountLabel, { color: theme.textSecondary }]}>
-                SIGN-IN STATUS:
+                CURRENT ACCOUNT:
               </Text>
               <Text style={[styles.accountEmail, { color: theme.text }]}>
-                {user?.email || 'Guest User (Unauthenticated)'}
+                {user?.email || 'Guest Session (Local Mode)'}
               </Text>
             </View>
 
@@ -412,7 +417,7 @@ export default function SettingsScreen() {
                 <BrutalButton
                   title="CHANGE PASSWORD"
                   variant="secondary"
-                  icon={<MaterialIcons name="lock-reset" size={18} color="#FFFFFF" />}
+                  icon={<MaterialIcons name="lock" size={18} color={theme.text} />}
                   onPress={() => navigation.navigate('ChangePassword')}
                 />
               </View>
@@ -420,8 +425,8 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <BrutalButton
                     title={logoutLoading ? 'LOGGING OUT...' : 'LOG OUT'}
-                    variant="warning"
-                    icon={<MaterialIcons name="logout" size={18} color="#FFFFFF" />}
+                    variant="secondary"
+                    icon={<MaterialIcons name="logout" size={18} color={theme.text} />}
                     onPress={handleLogout}
                     disabled={logoutLoading}
                   />
@@ -442,13 +447,13 @@ export default function SettingsScreen() {
           {/* 3. Support & Policies Card */}
           <BrutalCard
             headerTitle="3. SUPPORT & LEGAL"
-            accentColor={theme.brandSecondary || '#F97316'}
+            accentColor={neutralStripe}
             style={{ marginBottom: 16 }}
           >
             <SettingLinkRow
               icon="help-outline"
               label="Help & Support Desk"
-              description="Report an issue or get answers about AceIt"
+              description="FAQ and direct support contact"
               onPress={() => navigation.navigate('HelpSupport')}
             />
             <SettingLinkRow
@@ -466,23 +471,23 @@ export default function SettingsScreen() {
             <SettingLinkRow
               icon="info-outline"
               label="About AceIt Architecture"
-              description="Design philosophy, version 2.0 features"
+              description="Design philosophy and interactive demo"
               onPress={() => navigation.navigate('About')}
             />
           </BrutalCard>
 
-          {/* 4. Danger Zone Card */}
+          {/* 4. Danger Zone Card (Restrained single red accent) */}
           {isAuthenticated && (
             <BrutalCard
               headerTitle="4. DANGER ZONE"
-              accentColor="#EF4444"
+              accentColor={dangerStripe}
               style={{ marginBottom: 20 }}
             >
               <Text style={[styles.dangerNotice, { color: theme.textSecondary }]}>
                 Permanently delete your account, saved flashcard decks, and study logs. This action cannot be reversed.
               </Text>
               <BrutalButton
-                title={deleteLoading ? 'DELETING ACCOUNT...' : 'PERMANENTLY DELETE ACCOUNT'}
+                title={deleteLoading ? 'DELETING ACCOUNT...' : 'DELETE ACCOUNT FOREVER'}
                 variant="danger"
                 icon={<MaterialIcons name="delete-forever" size={20} color="#FFFFFF" />}
                 onPress={handleDeleteAccount}
@@ -494,10 +499,10 @@ export default function SettingsScreen() {
           {/* Footer Info */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-              ACEIT v2.0 • TACTILE NEUBRUTALISM STUDY ENGINE
+              ACEIT v2.0 • TACTILE STUDY ENGINE
             </Text>
             <Text style={[styles.copyright, { color: theme.textTertiary || '#9CA3AF' }]}>
-              © 2026 AceIt. Zero Blurs. High Contrast.
+              © 2026 AceIt. Zero Blurs. Disciplined Palette.
             </Text>
           </View>
         </View>
@@ -541,7 +546,6 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     fontSize: 11,
     fontWeight: '900',
-    color: '#111827',
     fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
     letterSpacing: 0.8,
   },
@@ -568,9 +572,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   reminderTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'web' ? 'monospace' : 'Courier',
   },
   reminderText: {
     fontSize: 12,
@@ -620,7 +625,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   accountEmail: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   accountActionsRow: {
